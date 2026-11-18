@@ -190,6 +190,11 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .tg button,.tgadd{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:3px 6px}
 .tgadd{border:1px dashed var(--btnline);border-radius:999px;font-size:12.5px;padding:3px 10px}
 #tgNew{margin:4px 0 6px}
+.gsync{display:flex;align-items:center;gap:8px;margin:8px 0 0;flex-wrap:wrap}.gsync .small{margin:0}
+.srch{margin:8px 0 2px}.srch .small{margin:4px 0}
+.board.txm .sec-hd{outline:1px dashed rgba(243,236,210,.4);outline-offset:2px;cursor:pointer;border-radius:3px;min-height:22px}
+.sed{margin:0 2px 12px}
+.sed input{width:100%;box-sizing:border-box;height:38px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:0 10px;font:inherit;margin-bottom:6px}
 #tgNew .row{display:flex;gap:6px}
 #tgNew input{flex:1;min-width:0;height:36px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:0 10px;font:inherit}
 #tgNew button,.qrow button{height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;cursor:pointer}
@@ -249,6 +254,12 @@ body{padding-bottom:215px}
   </div>
 
   <div id="app" hidden>
+    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><span class="small" id="gMsg"></span></div>
+    <div class="srch">
+      <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="qX" hidden>解除</button></div>
+      <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
+      <div class="sres" id="sres" hidden></div>
+    </div>
     <header>
       <h1 id="title"></h1>
       <div class="meta">
@@ -297,6 +308,7 @@ body{padding-bottom:215px}
       <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
       <div id="txBox" hidden>
         <p class="small">直したい文をタップすると、その場で書き換えられます（改行キーで改行）。色やマーカーは、文字を選んでからボタンを押します。「ここで分ける」は、カーソルの位置で文を2つのブロックに分けます。「前の文とつなげる」は、1つ前の文と同じブロックにまとめます。「保存」で確定します。科目名のブロックは直せません。</p>
+        <p class="small">見出し（「帰結 2」や【見出し】）の行をタップすると、見出しの書き換えと、その上の横線を消すことができます。横線を足すときは、足したい行の文をタップして「この行から新しい帰結」か「この行の前に横線だけ」を押します（横線だけにした区切りは、帰結の番号を数えません）。</p>
         <div class="act"><button id="txUndo">このカードの直しを全部取り消す</button></div>
       </div>
       <label class="small" id="edAuLab">直したカードの音声
@@ -315,9 +327,6 @@ body{padding-bottom:215px}
 
     <details class="panel" id="setup">
       <summary>聞くカードの選び方・取り込み</summary>
-      <h3>検索（題名・本文・タグ。スペースで区切ると「全部を含む」）</h3>
-      <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="例：譲渡担保 対抗要件" aria-label="検索する言葉"><button id="qGo">探す</button></div>
-      <div class="sres" id="sres"></div>
       <h3>タグ　<select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select></h3>
       <div class="tgrow" id="fTag"></div>
       <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
@@ -329,6 +338,9 @@ body{padding-bottom:215px}
         <label><input type="checkbox" value="3">3 ざっくり</label>
         <label><input type="checkbox" value="4">卒業</label>
       </div>
+      <h3>Googleドライブ同期の設定</h3>
+      <p class="small">直した文字・図・タグ・重要度・科目・学習の記録を、Googleドライブの「論証フローチャート同期」フォルダの「編集データ.json」と1回のタップで入れ替えます（直した時刻が新しい方が残ります）。使う前に、Googleで「クライアントID」を1回だけ作る必要があります（手順は 使い方.txt）。</p>
+      <div class="qrow"><input type="text" id="gcid" placeholder="クライアントID（….apps.googleusercontent.com）" aria-label="クライアントID" autocomplete="off"><button id="gSave">保存</button></div>
       <h3>音声</h3>
       <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
       <h3>自己評価</h3>
@@ -400,9 +412,12 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"", think:0, tx:{}, cv:{}, edAu:"vv", tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0 };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
+if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
+/* 「いつ直したか」の記録：S.ts["種類:カード番号"] = 直した時刻。Googleドライブの同期で、時刻が新しい方を残すのに使う */
+function st(kind, id){ S.ts[kind + ":" + id] = Date.now(); }
 
 /* ---------- ファイルの保管（この端末のブラウザの中） ---------- */
 function db(){ return new Promise((res, rej) => { const r = indexedDB.open("ronshoPlayer", 1);
@@ -511,13 +526,14 @@ function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({},
      S.cv[id] = { sections:直した後の図, qa:表面が何番目の文までか, sig:直す前の文の並び（PCでの照合用）, stamp:最後に直した時刻 }
    文字は1文字ずつ { ch:文字, c:文字色, m:マーカー, b:太字 } の並び（runs）にしてから扱う。
    refs[u] = u番目の文が、図のどこにあるか { p:文, b:ブロック, row:行, sec:区切り } */
+let secEd = -1;
 let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
 function edited(c){ return !!S.cv[c.id]; }
 function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.s) out.push(nows(plainOf(p.h))); })))); return out.join("|"); }
 function ensureCv(){ const c = card();
   if (!S.cv[c.id]){ S.cv[c.id] = { sig: sigOf(c.sections), qa: qaOf(c), sections: JSON.parse(JSON.stringify(c.sections)) }; render(); }
   return S.cv[c.id]; }
-function touch(){ S.cv[card().id].stamp = String(Date.now()); save(); }
+function touch(){ S.cv[card().id].stamp = String(Date.now()); st("cv", card().id); save(); }
 function sayOf(runs){ return runs.map(r => r.ch).join("").replace(/\n/g, "、").replace(/[→↓]+/g, "、").replace(/、{2,}/g, "、").replace(/([。（「])、/g, "$1"); }
 function hasText(runs){ return runs.some(r => /[^\s]/.test(r.ch)); }
 function colOf(r){ return (r.b.p && r.p.c) || ({ reason:"c", norm:"y" })[r.b.t] || ""; }
@@ -579,7 +595,10 @@ function openEd(u){
   const bar = el("div", "tbar");
   [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"],["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","マーカーなし"],["b","太字"]].forEach(([a, t]) => { const x = el("button"); x.textContent = t; x.dataset.a = a; bar.append(x); });
   bar.append(el("span", "sp"));
-  [["save","保存","go"],["cancel","やめる",""],["split","ここで分ける",""],["merge","前の文とつなげる",""]].forEach(([a, t, k]) => { const x = el("button", k); x.textContent = t; x.dataset.a = a; bar.append(x); });
+  const rf = refs[u], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = card().kind === "yk";
+  [["save","保存","go"],["cancel","やめる",""],["split","ここで分ける",""],["merge","前の文とつなげる",""]]
+    .concat(first ? [] : yk ? [["hr","この行の前に横線を入れる",""]] : [["hr","この行から新しい帰結",""],["hr1","この行の前に横線だけ",""]])
+    .forEach(([a, t, k]) => { const x = el("button", k); x.textContent = t; x.dataset.a = a; bar.append(x); });
   bar.addEventListener("pointerdown", e => e.preventDefault());       /* ボタンを押しても、文字の選択が外れないようにする */
   bar.addEventListener("mousedown", e => e.preventDefault());
   bar.onclick = e => { e.stopPropagation(); const x = e.target.closest("button"); if (x) edAct(x.dataset.a); };
@@ -595,6 +614,15 @@ function openEd(u){
 function edAct(a){
   if (a === "save"){ commit(); return; }
   if (a === "cancel"){ closeEd(); return; }
+  if (a === "hr" || a === "hr1"){
+    const u = edU, runs = trimRuns(runsOf(edEl));
+    if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return; }
+    if (htmlOf(runs, false) !== normH(refs[u].p.h)){ ensureCv(); setPart(refs[u].p, runs); }
+    const cv = ensureCv(), r = refs[u], ri = r ? r.sec.rows.indexOf(r.row) : -1;
+    if (ri < 1){ closeEd(); $("editMsg").textContent = "この行は、すでに区切りの最初です。"; return; }
+    const ns = { label: "", rows: r.sec.rows.splice(ri) }; if (a === "hr1") ns.nn = 1; delete ns.rows[0].via;
+    cv.sections.splice(cv.sections.indexOf(r.sec) + 1, 0, ns); touch(); secEd = cv.sections.indexOf(ns); $("editMsg").textContent = ""; closeEd(); return;
+  }
   if (a === "split"){
     const v = selNow() || lastSel, runs = runsOf(edEl), at = v ? Math.min(v[0], v[1]) : -1;
     const L = trimRuns(runs.slice(0, Math.max(at, 0))), R = trimRuns(runs.slice(Math.max(at, 0)));
@@ -644,7 +672,24 @@ function txTap(ev){
   if (edEl && !commit()) return;
   openEd(u);
 }
+/* 見出し（帰結）と横線：S.cv[id].sections[番号] = { label:見出し, nn:1なら「帰結 N」の番号を出さない（横線だけ）, rows:[...] }。
+   音声の文は変わらないので、光る位置と音声はずれない。 */
+function secOp(si, fn){
+  const cv = ensureCv(); fn(cv.sections, cv.sections[si]); touch(); secEd = -1; $("editMsg").textContent = ""; render();
+}
+function secEditor(si){
+  const c = ecard(), sec = c.sections[si], box = el("div", "sed"), inp = el("input");
+  inp.value = sec.label || ""; inp.maxLength = 40; inp.placeholder = "見出し（空でもよい）"; inp.setAttribute("aria-label", "見出し"); box.append(inp);
+  const bar = el("div", "tbar");
+  const add = (t, f, k) => { const b = el("button", k || ""); b.textContent = t; b.onclick = e => { e.stopPropagation(); f(); }; bar.append(b); };
+  add("保存", () => { const v = inp.value.trim(); if (v !== (sec.label || "")) secOp(si, (a, x) => { x.label = v; }); else { secEd = -1; render(); } }, "go");
+  if (c.kind !== "yk") add(sec.nn ? "「帰結」の番号を出す" : "横線だけにする（番号なし）", () => secOp(si, (a, x) => { if (x.nn) delete x.nn; else x.nn = 1; }));
+  if (si > 0) add("この横線を消す（前の区切りとつなぐ）", () => secOp(si, (a, x) => { a[si - 1].rows.push(...x.rows); a.splice(si, 1); }));
+  add("やめる", () => { secEd = -1; render(); });
+  box.append(bar); return box;
+}
 function setTx(v){
+  if (!v) secEd = -1;
   if (!v && edEl && !commit()) return;
   if (v && editing) setEditing(false);
   txMode = v; $("txBtn").setAttribute("aria-pressed", v ? "true" : "false"); $("txBtn").textContent = v ? "文字と図を直す：オン（タップで終了）" : "文字と図を直す";
@@ -652,7 +697,7 @@ function setTx(v){
 }
 $("txBtn").onclick = () => setTx(!txMode);
 $("txUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
-  delete S.cv[c.id]; save(); edEl = null; $("editMsg").textContent = "このカードの直しを取り消しました。"; load(false, true); };
+  delete S.cv[c.id]; st("cv", c.id); save(); edEl = null; $("editMsg").textContent = "このカードの直しを取り消しました。"; load(false, true); };
 $("selEdAu").onchange = e => { S.edAu = e.target.value; save(); load(false, true); };
 /* 取り込み直したとき：PCに入った直しは片付ける。前の版の「文字の直し」（S.tx）は、新しい形（S.cv）に移す */
 function tidyTx(){
@@ -757,8 +802,8 @@ function baseImp(c){ return c.imp === 4 ? (c.imp0 || 3) : c.imp; }
 /* 科目と重要度も同じ。画面で変えた分はこの端末が覚えていて、「直した内容を書き出す」でPCの「重要度一覧.txt」に入る */
 function impOf(c){ return S.imp[c.id] || c.imp; }
 function deckOf(c){ return S.deckOv[c.id] || c.deck; }
-function setImp(v){ const c = card(); if (v === c.imp) delete S.imp[c.id]; else S.imp[c.id] = v; save(); render(); }
-function setDeck(v){ const c = card(); if (v === c.deck) delete S.deckOv[c.id]; else S.deckOv[c.id] = v; S.decks[v] = S.decks[v] !== false; save(); render(); }
+function setImp(v){ const c = card(); if (v === c.imp) delete S.imp[c.id]; else S.imp[c.id] = v; st("imp", c.id); save(); render(); }
+function setDeck(v){ const c = card(); if (v === c.deck) delete S.deckOv[c.id]; else S.deckOv[c.id] = v; S.decks[v] = S.decks[v] !== false; st("deck", c.id); save(); render(); }
 function countLine(){
   const a = S.edits.length, b = Object.keys(S.imp).length, d = Object.keys(S.deckOv).length;
   const t = Object.keys(S.cv).length, g = Object.keys(S.tags).length;
@@ -783,9 +828,12 @@ function render(){
   if (c.flow) board.append(makeFlow(c.flow));
   c.sections.forEach((sec, si) => {
     const s = el("section", "sec"); const hd = el("div", "sec-hd");
-    if (c.kind !== "yk"){ const n = el("span"); n.textContent = "帰結 " + (si + 1); hd.append(n); }
+    if (c.kind !== "yk" && !sec.nn){ const n = el("span"); n.textContent = "帰結 " + c.sections.slice(0, si + 1).filter(x => !x.nn).length; hd.append(n); }
     if (sec.label){ const lb = el("b"); lb.textContent = sec.label; hd.append(lb); }
+    if (txMode){ if (!hd.childNodes.length){ const e = el("span"); e.textContent = "（見出しなし。タップして直す）"; hd.append(e); }
+      hd.onclick = () => { if (edEl && !commit()) return; secEd = si; render(); }; }
     s.append(hd);
+    if (txMode && secEd === si) s.append(secEditor(si));
     sec.rows.forEach((row, ri) => {
       if (ri > 0){ const w = el("div", "wire" + (row.via ? " via" : "")); w.dataset.w = utts.length;
         if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
@@ -902,22 +950,28 @@ function tagOk(c){
   const has = k => k === NOTAG ? !t.length : t.includes(k);
   return S.tagMode === "all" ? S.tagSel.every(has) : S.tagSel.some(has);
 }
+let sresOpen = false, lastNone = false;
 function renderSearch(none){
-  const box = $("sres"); box.innerHTML = ""; if (!S.q) return;
+  lastNone = !!none; const box = $("sres"); box.innerHTML = "";
+  $("qX").hidden = !S.q; $("qInfo").hidden = !S.q; box.hidden = !(S.q && sresOpen);
+  if (!S.q) return;
+  $("qCnt").textContent = "「" + S.q + "」で " + (none ? 0 : list.length) + " 枚が対象です"; $("qList").textContent = sresOpen ? "一覧を閉じる" : "一覧を開く";
   const w = words()[0] || "", show = none ? [] : list.slice(0, 30);
   show.forEach((ci, n) => { const c = CARDS[ci], b = el("button"); b.textContent = (n + 1) + ". [" + deckOf(c) + "] " + c.title;
     const e = indexOf(c); let sn = "";
     for (const s of e.sents){ const k = normQ(s).indexOf(w); if (k >= 0){ sn = (k > 12 ? "…" : "") + s.slice(Math.max(0, k - 12), k + 28) + "…"; break; } }
     if (sn){ const x = el("span", "sn"); x.textContent = sn; b.append(x); }
-    b.onclick = () => { stop(); pi = n; load(false); $("setup").open = false; window.scrollTo(0, 0); }; box.append(b); });
+    b.onclick = () => { stop(); sresOpen = false; box.hidden = true; $("qList").textContent = "一覧を開く"; pi = n; load(false); window.scrollTo(0, 0); }; box.append(b); });
   if (!none && list.length > 30){ const p = el("p", "small"); p.textContent = "ほか " + (list.length - 30) + " 枚（上の「いまの条件で…」の枚数は全部の数です）"; box.append(p); }
 }
 function refilter(){ const keep = card().id; buildList(keep); if (card().id !== keep){ stop(); load(false); } }
-function doSearch(){ S.q = $("qIn").value.trim(); save(); refilter(); }
+function doSearch(){ S.q = $("qIn").value.trim(); sresOpen = !!S.q; save(); refilter(); renderSearch(lastNone); }
+$("qX").onclick = () => { S.q = ""; sresOpen = false; $("qIn").value = ""; save(); refilter(); renderSearch(false); };
+$("qList").onclick = () => { sresOpen = !sresOpen; renderSearch(lastNone); };
 $("qGo").onclick = doSearch;
 $("qIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); doSearch(); $("qIn").blur(); } };
 $("qIn").onchange = doSearch;
-$("qClr").onclick = () => { S.q = ""; S.tagSel = []; $("qIn").value = ""; save(); renderTagFilter(); refilter(); };
+$("qClr").onclick = () => { S.q = ""; sresOpen = false; S.tagSel = []; $("qIn").value = ""; save(); renderTagFilter(); refilter(); };
 $("tagMode").onchange = e => { S.tagMode = e.target.value; save(); refilter(); };
 function allTags(){ const n = {}; CARDS.forEach(c => tagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
 function renderTagFilter(){
@@ -934,7 +988,7 @@ function renderTagFilter(){
 function normTag(t){ return String(t || "").normalize("NFKC").replace(/[\s\u0001\u0002|]+/g, " ").trim().slice(0, 20); }
 function setTags(c, arr){
   if (sameArr(arr, c.tags || [])) delete S.tags[c.id]; else S.tags[c.id] = arr;
-  save(); renderTags(true); renderTagFilter(); countLine();
+  st("tag", c.id); save(); renderTags(true); renderTagFilter(); countLine();
 }
 function addTags(raw){
   const c = card(); let cur = tagsOf(c).slice(), over = false;
@@ -980,7 +1034,7 @@ function renderGrade(){
 }
 function grade(g){
   const c = card(), r = S.rev[c.id] || (S.rev[c.id] = {}), today = dayKey();
-  r.g = g; r.d = today; r.n = (r.n || 0) + 1;
+  r.g = g; r.d = today; r.n = (r.n || 0) + 1; st("rev", c.id);
   /* ○は「別の日に」続いた回数を数える。△・×で0に戻る */
   if (g === "o"){ if (r.od !== today){ r.s = (r.s || 0) + 1; r.od = today; } } else { r.s = 0; delete r.od; }
   logDay()[g]++; countHeard(c.id); S.heard[c.id] = 1; save();
@@ -1011,7 +1065,7 @@ $("recIn").onclick = () => $("fi").click();
 
 /* ---------- 音声 ---------- */
 async function load(autoplay, keep){
-  const my = ++tok; const c = card(), y0 = window.scrollY;
+  const my = ++tok; const c = card(), y0 = window.scrollY; if (!keep) secEd = -1;
   S.last = c.id; save();
   if (window.speechSynthesis) speechSynthesis.cancel();
   endThink(false); shownTo = -1; opened = new Set(); allShown = false; $("sug").hidden = true;
@@ -1143,6 +1197,91 @@ $("dAll").onclick = () => setDecks(true); $("dNone").onclick = () => setDecks(fa
 $("fImp").querySelectorAll("input").forEach(x => x.onchange = () => {
   S.imps = [...$("fImp").querySelectorAll("input:checked")].map(i => +i.value); save(); relist(); });
 
+/* ---------- Googleドライブとの同期 ----------
+   しくみ：①Googleの「ログイン」の小窓で許可をもらう（このページが作ったファイルだけ触れる権限）→ ②ドライブの
+   「論証フローチャート同期」フォルダの「編集データ.json」を読む → ③カードごとに「直した時刻が新しい方」を残して混ぜる
+   → ④混ぜた結果をドライブに書き戻す。サーバーは使わず、ブラウザがGoogleと直接やり取りします。 */
+const G_FOLDER = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev]];
+let gTok = "", gExp = 0, gBusy = false;
+function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, study: { rev: S.rev, log: S.log } }; }
+function tsOf(kind, id, store, ts){ const k = kind + ":" + id; return ts && ts[k] ? ts[k] : (kind === "cv" && store && store[id] && +store[id].stamp) || 0; }
+/* 混ぜる：カード1枚ごとに、直した時刻が新しい方を採る（新しい方が「直しを消した」なら、消した方が勝つ）。戻り値＝この端末が書き換わった数 */
+function mergeSnap(o){
+  let n = 0;
+  G_KINDS.forEach(([kind, pickR, pickL]) => {
+    const R = pickR(o) || {}, L = pickL(), ids = new Set(Object.keys(R).concat(Object.keys(L)));
+    Object.keys(o.ts || {}).forEach(k => { if (k.startsWith(kind + ":")) ids.add(k.slice(kind.length + 1)); });
+    ids.forEach(id => {
+      const k = kind + ":" + id, lt = tsOf(kind, id, L, S.ts), rt = tsOf(kind, id, R, o.ts), hasL = id in L, hasR = id in R;
+      const adopt = rt > lt || (rt === lt && !hasL && hasR && !(k in S.ts));
+      if (!adopt) return;
+      if (hasR){ if (JSON.stringify(L[id]) !== JSON.stringify(R[id])){ L[id] = R[id]; n++; } }
+      else if (hasL){ delete L[id]; n++; }
+      if (rt) S.ts[k] = rt;
+    });
+  });
+  const lg = (o.study || {}).log || {};
+  Object.keys(lg).forEach(d => { const a = S.log[d] || (S.log[d] = { h:0, o:0, d:0, x:0 }); ["h", "o", "d", "x"].forEach(f => { if ((lg[d][f] || 0) > a[f]){ a[f] = lg[d][f]; n++; } }); });
+  return n;
+}
+function gMsg(t){ $("gMsg").textContent = t; }
+function gStatus(){
+  const mx = Math.max(0, ...Object.values(S.ts)), z = n => String(n).padStart(2, "0"), d = new Date(S.gLast);
+  gMsg(S.gLast ? "最後の同期 " + (d.getMonth() + 1) + "/" + d.getDate() + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + (mx > S.gLast ? "（そのあとに直した分あり）" : "") : (S.gcid ? "まだ同期していません" : "初めに「設定」でクライアントIDを入れてください"));
+}
+function loadGis(){ return new Promise((res, rej) => { if (window.google && google.accounts && google.accounts.oauth2) return res();
+  const x = document.createElement("script"); x.src = "https://accounts.google.com/gsi/client"; x.async = true; x.onload = () => res(); x.onerror = () => rej(new Error("Googleのログイン部品を読み込めません（ネット接続か、Braveのシールドを確認）"));
+  document.head.append(x); }); }
+function gToken(){
+  return new Promise((res, rej) => {
+    if (gTok && Date.now() < gExp - 60000) return res(gTok);
+    const ask = () => { try {
+      const tc = google.accounts.oauth2.initTokenClient({ client_id: S.gcid, scope: G_SCOPE,
+        callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { gTok = r.access_token; gExp = Date.now() + (+r.expires_in || 3000) * 1000; res(gTok); } },
+        error_callback: e => rej(new Error("ログインの小窓が開かない／閉じられました（" + ((e && e.type) || "") + "）")) });
+      tc.requestAccessToken({ prompt: S.gOk ? "" : "consent" }); } catch(e){ rej(e); } };
+    if (window.google && google.accounts && google.accounts.oauth2) ask();       /* ボタンを押した直後に小窓を開く（遅れるとブロックされる） */
+    else loadGis().then(() => ask(), rej);
+  });
+}
+async function gApi(url, opt){
+  const r = await fetch(url, Object.assign({}, opt, { headers: Object.assign({ Authorization: "Bearer " + gTok }, (opt && opt.headers) || {}) }));
+  if (!r.ok){ const t = await r.text().catch(() => ""); throw new Error("Googleドライブの応答エラー " + r.status + " " + t.slice(0, 120)); }
+  return r;
+}
+const Q = s => encodeURIComponent(s);
+async function gFind(name, extra){ const j = await (await gApi("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q=" + Q("name='" + name + "' and trashed=false" + extra))).json(); return (j.files || [])[0] || null; }
+async function gSync(){
+  if (gBusy) return;
+  if (!S.gcid){ $("setup").open = true; $("gcid").focus(); gStatus(); return; }
+  gBusy = true; $("gBtn").disabled = true;
+  try {
+    gMsg("Googleに接続中…"); await gToken(); S.gOk = 1;
+    gMsg("ドライブを確認中…");
+    let fo = await gFind(G_FOLDER, " and mimeType='application/vnd.google-apps.folder'");
+    if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
+    const fl = await gFind(G_FILE, " and '" + fo.id + "' in parents");
+    let n = 0, remote = null;
+    if (fl){ gMsg("ドライブから読み込み中…"); remote = await (await gApi("https://www.googleapis.com/drive/v3/files/" + fl.id + "?alt=media")).json();
+      if (!remote || remote.app !== "ronsho-sync") throw new Error("「" + G_FILE + "」の中身がこのページのものではありません。ドライブ側のファイル名を変えてからやり直してください。");
+      try { localStorage.setItem("rp_bak", JSON.stringify(S)); } catch(e){}          /* 混ぜる前の状態を1回ぶん控える */
+      n = mergeSnap(remote); }
+    gMsg("ドライブへ書き込み中…");
+    const body = JSON.stringify(snapshot());
+    if (fl) await gApi("https://www.googleapis.com/upload/drive/v3/files/" + fl.id + "?uploadType=media", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+    else { const bd = "ronshoBoundary" + Date.now(), meta = JSON.stringify({ name: G_FILE, parents: [fo.id], mimeType: "application/json" });
+      await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
+        body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
+    S.gLast = Date.now(); save();
+    if (n){ tidyTx(); save(); try { buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
+    gStatus(); gMsg($("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。"));
+  } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e)); }
+  finally { gBusy = false; $("gBtn").disabled = false; }
+}
+$("gBtn").onclick = gSync;
+$("gSave").onclick = () => { S.gcid = $("gcid").value.trim(); S.gOk = 0; gTok = ""; save(); gStatus(); if (S.gcid) loadGis().catch(() => {}); };
+
 /* ---------- 起動 ---------- */
 async function init(){
   let blob = null;
@@ -1157,6 +1296,7 @@ async function init(){
   Object.keys(S.deckOv).forEach(id => { if (byId[id] && byId[id].deck === S.deckOv[id]) delete S.deckOv[id]; });
   tidyTx();
   save();
+  $("gcid").value = S.gcid || ""; gStatus(); if (S.gcid) loadGis().catch(() => {});
   const decks = [...new Set(CARDS.map(c => c.deck).concat(CARDS.map(deckOf)))].sort((a, b) => deckNo(a) - deckNo(b));
   const sd = $("selDeck"); sd.innerHTML = "";
   [...new Set(DECK_ORDER.concat(decks))].forEach(d => { const o = el("option"); o.value = d; o.textContent = d; sd.append(o); });
