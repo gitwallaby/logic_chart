@@ -206,6 +206,16 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .dbr{border-top:1px solid var(--rule);padding:8px 0}.dbr .dbt{font-size:13px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-all}
 .dbr select{margin:6px 6px 0 0;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:5px 8px;font:inherit;font-size:13px}
 .dbr .dbn{margin-top:6px}.dbr.on{background:rgba(232,198,74,.08)}#dbMsg2{min-height:1.4em;font-size:12.5px;color:#e08a8a;margin:8px 0 0}
+.dbp{margin:6px 0 0;padding:7px 9px;border:1px solid var(--btnline);border-radius:10px;font-size:12.5px;line-height:1.6}
+.dbp b{color:var(--ink)}.dbp .it{margin-top:3px}.dbp .un{color:var(--sub)}.dbp a{color:var(--yellow);text-decoration:underline;margin-left:6px}
+.pt.dbhl{outline:2px solid #e8c64a;outline-offset:3px;border-radius:6px;transition:outline-color .6s}
+.board.dbm .blk,.board.dbm .pt{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default!important}
+.dbm[data-t]{border-radius:3px;padding:0 1px}.dbm[data-t]::before{content:attr(data-t);font-size:9px;vertical-align:super;margin-right:2px;color:var(--sub);font-style:normal}
+.dbm[data-t="要件"]{background:rgba(232,198,74,.30)}.dbm[data-t="規範"]{background:rgba(110,180,255,.28)}.dbm[data-t="趣旨"]{background:rgba(160,220,140,.28)}
+.dbm.sel{outline:2px solid #fff;outline-offset:1px}
+.dbbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
+.dbbar input{box-sizing:border-box;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;width:100%;margin-top:4px}
+.dbbar .act{margin-top:6px}.dbbar .tg{font-weight:600}
 .gsync{display:flex;align-items:center;gap:8px;margin:8px 0 0;flex-wrap:wrap}.gsync .small{margin:0}
 .srch{margin:8px 0 2px}.srch .small{margin:4px 0}
 .board.txm .sec-hd{outline:1px dashed rgba(243,236,210,.4);outline-offset:2px;cursor:pointer;border-radius:3px;min-height:22px}
@@ -292,6 +302,7 @@ body{padding-bottom:215px}
       </div>
       <select class="pick" id="pick" aria-label="カードを選ぶ"></select>
       <div class="flag" id="flag" hidden></div>
+      <div class="dbp" id="dbp" hidden></div>
       <div class="small" id="src"></div>
     </header>
     <div class="legend" aria-label="色の意味">
@@ -320,7 +331,7 @@ body{padding-bottom:215px}
       <button class="grad" id="edit" aria-pressed="false" hidden>改行を直す</button>
       <button class="grad" id="editOut">直した内容を書き出す</button>
       <button class="grad" id="ncEdit" hidden>元の文章を書き直す</button>
-      <button class="grad" id="dbBtn">DBに送る部分を選ぶ</button>
+      <button class="grad" id="dbBtn">DBに送る範囲を選ぶ（マーカー）</button>
       <div class="small" id="editCnt"></div>
       <p class="small" id="editMsg"></p>
       <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
@@ -340,6 +351,13 @@ body{padding-bottom:215px}
           <button id="editUndo">このカードの改行の直しを取り消す</button>
         </div>
       </div>
+    </div>
+    <div class="dbbar" id="dbBar" hidden>
+      <div id="dbBarMsg">文の一部を指でなぞって選び、下のボタンを押します（選んだ範囲だけがDBに送られます）。</div>
+      <input type="text" id="dbBarField" list="dbFields" placeholder="分野（例：法律/刑法　「/」で階層）" autocomplete="off" aria-label="分野">
+      <input type="text" id="dbBarName" placeholder="名前（要件・規範のとき。空なら、選んだ文字の先頭）" autocomplete="off" aria-label="名前">
+      <div class="act"><button class="grad" data-t="要件">要件にする</button> <button class="grad" data-t="規範">規範（下位要件）にする</button> <button class="grad" data-t="趣旨">趣旨にする</button></div>
+      <div class="act"><button class="grad" id="dbBarDel" hidden>タップしたマークを消す</button> <button class="grad" id="dbBarList">一覧・直す</button> <button class="grad" id="dbBarEnd">終わる</button></div>
     </div>
     <div class="board" id="board"></div>
 
@@ -365,8 +383,10 @@ body{padding-bottom:215px}
         <button class="grad" id="txtAll">全カードを文章で書き出す</button> <button class="grad" id="txtChg">直したカードだけ文章で</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
       <p class="small" id="csvMsg"></p>
       <h3>判断ロジックツリー（DB）へ送る</h3>
-      <p class="small">カードごとに「DBに送る部分を選ぶ」で、要件・規範・趣旨を選んでおきます。ここを押すと、選んだ部分を全部まとめて「DB送信.json」にします。</p>
+      <p class="small">カードごとに「DBに送る範囲を選ぶ（マーカー）」で、文の一部をマーカーして、要件・規範・趣旨にしておきます。ここを押すと、選んだ部分を全部まとめて「DB送信.json」にします。</p>
       <div class="act"><button class="grad" id="dbSend">DBに送る（全カードぶん）</button></div><p class="small" id="dbSendMsg"></p>
+      <p class="small">ツリーで置いた場所を、カードに表示します（ツリーの「配置ファイル（DB配置.json）を書き出す」で作ったファイルを読みます）。</p>
+      <div class="act"><button class="grad" id="dbPlGet">ツリーの置き場所を読み込む（ドライブ）</button> <button class="grad" id="dbPlFile">ファイルから読み込む</button><input type="file" id="dbPlIn" accept=".json,application/json" hidden></div><p class="small" id="dbPlMsg"></p>
       <h3>音声</h3>
       <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
       <h3>自己評価</h3>
@@ -444,8 +464,8 @@ body{padding-bottom:215px}
   <div class="act"><button class="grad" id="ncSave">保存</button> <button class="grad" id="ncSample">見本を入れる</button> <button class="grad" id="ncCancel">やめる</button> <button class="grad" id="ncDel" hidden>このカードを削除</button></div>
 </dialog>
 <dialog id="dbDlg">
-  <h3>DB（判断ロジックツリー）に送る部分を選ぶ</h3>
-  <p class="small">送りたい文だけ、要件・規範・趣旨のどれかを選びます（選ばない文は送りません）。上から順に見て、<b>規範は直前の「要件」の下位要件</b>、<b>趣旨は直前の要件または規範の趣旨</b>になります。いちばん最初に選ぶのは「要件」にしてください。</p>
+  <h3>DBに送る範囲の一覧</h3>
+  <p class="small">マーカーした範囲の一覧です。タグ・名前を直したり、「消す」にチェックを入れて保存すると、そのマークがなくなります。上から順に見て、<b>規範は直前の「要件」の下位要件</b>、<b>趣旨は直前の要件または規範の趣旨</b>になります。いちばん上は「要件」にしてください。</p>
   <label class="small">分野（例：法律/刑法　「/」で階層にできます）<input type="text" id="dbField" list="dbFields" autocomplete="off"></label><datalist id="dbFields"></datalist>
   <div id="dbRows"></div>
   <p id="dbMsg2"></p>
@@ -461,7 +481,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{} };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, dbPlace:null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
@@ -529,15 +549,15 @@ function makeBlock(b){
     d.dataset.u0 = u0; d.dataset.u1 = u1; if (u1 > u0) d.classList.add("multi");
     d.tabIndex = 0; d.setAttribute("role", "button");
     let lp = null, lx = 0, ly = 0;
-    d.addEventListener("pointerdown", e => { if (txMode || editing || card().draft || e.button > 0) return; const t = e.target.closest(".pt[data-u]"); if (!t || !+t.dataset.u) return;
+    d.addEventListener("pointerdown", e => { if (txMode || editing || dbMode || card().draft || e.button > 0) return; const t = e.target.closest(".pt[data-u]"); if (!t || !+t.dataset.u) return;
       lx = e.clientX; ly = e.clientY; clearTimeout(lp); lp = setTimeout(() => { lpFired = true; setTimeout(() => { lpFired = false; }, 900); longEdit(+t.dataset.u); }, 550); });
     ["pointerup", "pointercancel"].forEach(n => d.addEventListener(n, () => clearTimeout(lp)));
     d.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lx, e.clientY - ly) > 10) clearTimeout(lp); });
-    d.addEventListener("contextmenu", e => { if (txMode || editing || card().draft) return; const t = e.target.closest(".pt[data-u]"); if (t && +t.dataset.u){ e.preventDefault(); clearTimeout(lp); longEdit(+t.dataset.u); } });
-    d.onclick = e => { if (lpFired){ lpFired = false; return; } if (txMode){ txTap(e); return; } if (editing){ editTap(e); return; } const t = e.target.closest(".pt[data-u]");
+    d.addEventListener("contextmenu", e => { if (txMode || editing || dbMode || card().draft) return; const t = e.target.closest(".pt[data-u]"); if (t && +t.dataset.u){ e.preventDefault(); clearTimeout(lp); longEdit(+t.dataset.u); } });
+    d.onclick = e => { if (dbMode){ dbTap(e); return; } if (lpFired){ lpFired = false; return; } if (txMode){ txTap(e); return; } if (editing){ editTap(e); return; } const t = e.target.closest(".pt[data-u]");
       if (t && covered(+t.dataset.u)){ opened.add(+t.dataset.u); update(); return; }
       jump(t ? +t.dataset.u : u0); };
-    d.onkeydown = e => { if (txMode) return; if (e.key === "Enter" || e.key === " "){ e.preventDefault(); jump(u0); } };
+    d.onkeydown = e => { if (txMode || dbMode) return; if (e.key === "Enter" || e.key === " "){ e.preventDefault(); jump(u0); } };
   }
   else if (d.querySelector(".pt[data-vu]")) d.onclick = e => { if (txMode) txTap(e); };    /* 音声のないメモだけのブロックも、直すときはタップできる */
   if (b.to){ const t = el("span", "to"); t.textContent = "→ " + b.to; d.append(t); }
@@ -584,7 +604,7 @@ function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({},
    文字は1文字ずつ { ch:文字, c:文字色, m:マーカー, b:太字 } の並び（runs）にしてから扱う。
    refs[u] = u番目の文が、図のどこにあるか { p:文, b:ブロック, row:行, sec:区切り } */
 let secEd = -1;
-let vk = 0, lpFired = false;
+let vk = 0, lpFired = false, dbMode = false, dbSelK = null, dbLastSel = null;
 let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
 function edited(c){ return !!S.cv[c.id]; }
 function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.s) out.push(nows(plainOf(p.h))); })))); return out.join("|"); }
@@ -752,6 +772,7 @@ function secEditor(si){
   box.append(bar); return box;
 }
 function setTx(v){
+  if (v && dbMode) setDbMode(false);
   if (!v) secEd = -1;
   if (!v && edEl && !commit()) return;
   if (v && editing) setEditing(false);
@@ -840,7 +861,7 @@ function addEdit(pt, o, del){
   const e = { id: c.id, title: c.title, n: pts.indexOf(pt), before, after, k }; if (del) e.del = 1;
   S.edits.push(e); $("editMsg").textContent = ""; return true;
 }
-function setEditing(v){ editing = v; $("edit").setAttribute("aria-pressed", v ? "true" : "false"); $("edit").textContent = v ? "改行を直す：オン（タップで終了）" : "改行を直す";
+function setEditing(v){ if (v && dbMode) setDbMode(false); editing = v; $("edit").setAttribute("aria-pressed", v ? "true" : "false"); $("edit").textContent = v ? "改行を直す：オン（タップで終了）" : "改行を直す";
   $("editBox").hidden = !v; if (v && txMode) setTx(false); if (v && playing) stop(); render(); }
 $("edit").onclick = () => setEditing(!editing);
 $("editUndo").onclick = () => { const id = card().id; S.edits = S.edits.filter(e => e.id !== id); save(); render(); };
@@ -885,7 +906,7 @@ function render(){
   $("flag").hidden = !c.flags; if (c.flags) $("flag").textContent = "要確認：" + c.flags.join("、");
   $("grad").setAttribute("aria-pressed", impOf(c) === 4 ? "true" : "false");
   $("grad").textContent = impOf(c) === 4 ? "卒業を取り消す" : "卒業にする";
-  board.className = "board" + (c.kind ? " yk" : "") + (editing ? " editing" : "") + (txMode ? " txm" : "");
+  board.className = "board" + (c.kind ? " yk" : "") + (editing ? " editing" : "") + (txMode ? " txm" : "") + (dbMode ? " dbm" : "");
   board.innerHTML = ""; utts = []; refs = []; vk = 0; curRow = curSec = null; edEl = null; edU = -1;
   const top = el("div", "row one top"); top.append(makeBlock({ t:"subj", h:deckOf(c), s:deckOf(c) + "。" })); board.append(top);
   if (c.flow) board.append(makeFlow(c.flow));
@@ -924,12 +945,12 @@ function qaOf(c){
   else for (const r of s0.rows){ if (r.b.every(b => b.t === "fact")) r.b.forEach(b => n += cnt(b)); else break; }
   return n;
 }
-function covered(i){ return !!S.hide && !editing && !txMode && !allShown && i >= qaIdx && i > shownTo && !opened.has(i); }
+function covered(i){ return !!S.hide && !editing && !txMode && !dbMode && !allShown && i >= qaIdx && i > shownTo && !opened.has(i); }
 function update(){
   if (cur > shownTo) shownTo = cur;
   board.querySelectorAll(".pt[data-u]").forEach(e => { const cv = covered(+e.dataset.u);
     e.classList.toggle("cv", cv && S.hide === "all"); e.classList.toggle("cm", cv && S.hide === "m1"); });
-  board.classList.toggle("veil", S.hide === "all" && !editing && !txMode && !allShown && shownTo < utts.length - 1);
+  board.classList.toggle("veil", S.hide === "all" && !editing && !txMode && !dbMode && !allShown && shownTo < utts.length - 1);
   $("showAll").hidden = !S.hide; $("showAll").textContent = allShown ? "隠し直す" : "答えを全部見る";
   board.querySelectorAll(".blk[data-u0]").forEach(e => { const a = +e.dataset.u0, b = +e.dataset.u1;
     e.classList.toggle("on", cur >= a && cur <= b); e.classList.toggle("past", cur > b); });
@@ -1156,6 +1177,7 @@ async function load(autoplay, keep, pre){
   if (my !== tok) return;
   setSrc(why);
   if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: c.title, artist: deckOf(c), album: "論証フローチャート" });
+  renderDbp();
   if (autoplay) start();
   if (hasAudio) prefetchNext();
 }
@@ -1534,6 +1556,7 @@ async function gSync(){
         body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
     S.gLast = Date.now(); save();
     if (n){ tidyTx(); save(); try { CARDS = DATA.cards.concat(draftList()); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
+    try { const t = await gGet(DB_PLACE_FILE); if (t) dbPlaceAccept(t, "drive"); } catch(e){}
     gStatus(); gMsg($("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。"));
   } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e)); }
   finally { gBusy = false; $("gBtn").disabled = false; }
@@ -1550,46 +1573,114 @@ function plainOf(h){ const d = el("div"); d.innerHTML = h || ""; d.querySelector
 function cardTexts(c){ const out = []; (c.sections || []).forEach(sec => sec.rows.forEach(r => r.b.forEach(b => (b.p || [b]).forEach(p => { const t = plainOf(p.h); if (t) out.push(t); })))); return out; }
 const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.．、・\s]+/, "").slice(0, 16);
 let dbCid = null;
+const dbSorted = dq => (dq && dq.items ? dq.items.slice() : []).sort((a, b) => (a.pos ? a.pos[0] : 1e9) - (b.pos ? b.pos[0] : 1e9) || (a.pos ? a.pos[1] : 0) - (b.pos ? b.pos[1] : 0) || a.k - b.k);
+const strip = t => String(t || "").replace(/\s+/g, "");
+function ptNodes(pt){ const w = document.createTreeWalker(pt, NodeFilter.SHOW_TEXT), a = []; let n; while ((n = w.nextNode())) a.push(n); return a; }
+function ptMap(pt){ let str = ""; const map = []; ptNodes(pt).forEach(n => { for (let i = 0; i < n.data.length; i++){ if (/\s/.test(n.data[i])) continue; str += n.data[i]; map.push([n, i]); } }); return { str, map }; }
+function dbFind(pts, it){
+  const t = strip(it.text); if (!t) return null; const order = [];
+  if (it.pos && pts[it.pos[0]]) order.push(it.pos[0]); pts.forEach((x, i) => { if (!order.includes(i)) order.push(i); });
+  for (const i of order){ const m = ptMap(pts[i]); let k = it.pos && i === it.pos[0] ? m.str.indexOf(t, Math.max(0, it.pos[1] - 1)) : -1; if (k < 0) k = m.str.indexOf(t); if (k >= 0) return { pi: i, s: k, m, len: t.length }; }
+  return null;
+}
+function dbWrap(loc, it){
+  const segs = []; let cur = null;
+  for (let q = loc.s; q < loc.s + loc.len; q++){ const [n, o] = loc.m.map[q]; if (cur && cur.n === n && cur.b + 1 === o) cur.b = o; else { cur = { n, a: o, b: o }; segs.push(cur); } }
+  segs.reverse().forEach(g => { const r = document.createRange(); r.setStart(g.n, g.a); r.setEnd(g.n, g.b + 1); const sp = el("span", "dbm"); sp.dataset.t = it.tag; sp.dataset.k = it.k; try { r.surroundContents(sp); } catch(e){} });
+}
+function applyDbMarks(){
+  board.querySelectorAll(".dbm").forEach(sp => { const p = sp.parentNode; if (!p) return; while (sp.firstChild) p.insertBefore(sp.firstChild, sp); p.removeChild(sp); p.normalize(); });
+  const c = card(), dq = c && S.dbq[c.id]; if (!dq || !dq.items) return;
+  const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed"));
+  dbSorted(dq).forEach(it => { const loc = dbFind(pts, it); if (!loc){ it.lost = 1; return; } delete it.lost; it.pos = [loc.pi, loc.s]; dbWrap(loc, it); });
+}
+function setDbMode(v){
+  if (v && !card()) return;
+  if (v){ if (txMode) setTx(false); if (editing) setEditing(false); }
+  dbMode = v; $("dbBar").hidden = !v; $("dbBtn").setAttribute("aria-pressed", v ? "true" : "false"); dbSelK = null; $("dbBarDel").hidden = true;
+  if (v){ const dq = S.dbq[card().id]; $("dbBarField").value = (dq && dq.field) || S.dbLast || ""; $("dbBarName").value = ""; $("dbBarMsg").textContent = "文の一部を指でなぞって選び、下のボタンを押します（選んだ範囲だけがDBに送られます）。"; fillFields(); if (playing) stop(); }
+  render(); renderDbp();
+}
+function fillFields(){ const fl = $("dbFields"); fl.innerHTML = ""; [...new Set(Object.values(S.dbq).map(x => x && x.field).filter(Boolean))].forEach(f => { const o = el("option"); o.value = f; fl.append(o); }); }
+document.addEventListener("selectionchange", () => {
+  if (!dbMode) return; const sel = getSelection(); if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+  const r = sel.getRangeAt(0), a = (r.startContainer.nodeType === 3 ? r.startContainer.parentNode : r.startContainer).closest && (r.startContainer.nodeType === 3 ? r.startContainer.parentNode : r.startContainer).closest(".pt");
+  const b = (r.endContainer.nodeType === 3 ? r.endContainer.parentNode : r.endContainer).closest && (r.endContainer.nodeType === 3 ? r.endContainer.parentNode : r.endContainer).closest(".pt");
+  if (!a || a !== b || !board.contains(a)) { dbLastSel = a && b && a !== b ? "many" : null; return; }
+  const pre = document.createRange(); pre.selectNodeContents(a); pre.setEnd(r.startContainer, r.startOffset);
+  const text = sel.toString().replace(/[ \t\u3000]*\n[ \t\u3000]*/g, "\n").trim();
+  if (!strip(text)) return;
+  dbLastSel = { pt: a, text, s: strip(pre.toString()).length };
+});
+function dbTap(e){
+  const m = e.target.closest(".dbm");
+  document.querySelectorAll(".dbm.sel").forEach(x => x.classList.remove("sel"));
+  if (m && !getSelection().toString()){ dbSelK = +m.dataset.k; board.querySelectorAll('.dbm[data-k="' + dbSelK + '"]').forEach(x => x.classList.add("sel"));
+    const dq = S.dbq[card().id], it = dq && dq.items.find(x => x.k === dbSelK); $("dbBarMsg").textContent = it ? "選んだマーク：" + it.tag + "「" + (it.title || shortOf(it.text)) + "」" : ""; $("dbBarDel").hidden = !it; }
+  else { dbSelK = null; $("dbBarDel").hidden = true; }
+}
+function dbMark(tag){
+  const msg = t => { $("dbBarMsg").textContent = t; };
+  if (dbLastSel === "many"){ msg("1つの文（ブロックの中の1か所）の中で選んでください。"); return; }
+  if (!dbLastSel){ msg("先に、文の一部を指でなぞって選んでください。"); return; }
+  const c = card(), field = $("dbBarField").value.trim();
+  if (!field){ msg("分野を入れてください（例：法律/刑法）。"); $("dbBarField").focus(); return; }
+  const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed")), pi0 = pts.indexOf(dbLastSel.pt), L = strip(dbLastSel.text).length;
+  const dq = S.dbq[c.id] || (S.dbq[c.id] = { field, items: [], g: {} });
+  const same = dq.items.find(x => strip(x.text) === strip(dbLastSel.text));
+  const over = dq.items.find(x => x !== same && x.pos && x.pos[0] === pi0 && x.pos[1] < dbLastSel.s + L && dbLastSel.s < x.pos[1] + strip(x.text).length);
+  if (over){ if (!Object.keys(dq.g).length && !dq.items.length) delete S.dbq[c.id]; msg("すでにマークした範囲と重なっています（" + over.tag + "「" + (over.title || shortOf(over.text)) + "」）。先に、そのマークをタップして消してください。"); return; }
+  const title = tag === "趣旨" ? "" : ($("dbBarName").value.trim() || shortOf(dbLastSel.text));
+  const it = same || { k: Math.max(0, ...dq.items.map(x => x.k)) + 1, text: dbLastSel.text };
+  it.tag = tag; it.title = title; it.text = dbLastSel.text; it.pos = [pi0, dbLastSel.s]; if (!same) dq.items.push(it);
+  const first = dbSorted(dq)[0]; if (first.tag !== "要件"){ if (!same) dq.items.splice(dq.items.indexOf(it), 1); else { /* 変更前に戻せないので、そのまま */ }
+    if (!dq.items.length) delete S.dbq[c.id]; msg("いちばん上のマークは「要件」にしてください（規範・趣旨の親になる要件が必要です）。先に、上にある文を「要件」にしてください。"); applyDbMarks(); return; }
+  dq.field = field; S.dbLast = field; dq.ts = Date.now(); st("dbq", c.id); save();
+  getSelection().removeAllRanges(); dbLastSel = null; $("dbBarName").value = "";
+  applyDbMarks(); renderDbp(); msg(tag + "にしました：「" + (title || shortOf(it.text)) + "」（このカードで " + dq.items.length + " か所）。");
+}
 function dbOpen(){
-  const c = ecard(), dq = S.dbq[c.id] || { field: "", items: [] }; dbCid = c.id;
-  $("dbField").value = dq.field || ""; const fl = $("dbFields"); fl.innerHTML = "";
-  [...new Set(Object.values(S.dbq).map(x => x && x.field).filter(Boolean))].forEach(f => { const o = el("option"); o.value = f; fl.append(o); });
-  const box = $("dbRows"); box.innerHTML = ""; const used = new Set(), texts = cardTexts(c);
-  const addRow = (t, it, stray) => {
-    const r = el("div", "dbr" + (it ? " on" : "")); r.dataset.k = it ? it.k : ""; r.dataset.text = t;
-    const tx = el("div", "dbt"); tx.textContent = (stray ? "【カードの文が変わっています】" : "") + (t.length > 110 ? t.slice(0, 110) + "…" : t); r.append(tx);
-    const sel = el("select"); sel.setAttribute("aria-label", "タグ"); [["", "送らない"], ["要件", "要件"], ["規範", "規範（下位要件）"], ["趣旨", "趣旨"]].forEach(([v, l]) => { const o = el("option"); o.value = v; o.textContent = l; sel.append(o); });
-    sel.value = it ? it.tag : ""; r.append(sel);
-    const nm = el("input"); nm.type = "text"; nm.className = "dbn"; nm.placeholder = "名前（短く。例：不法領得の意思）"; nm.value = it ? (it.title || "") : shortOf(t); nm.hidden = !(it && it.tag !== "趣旨");
-    r.append(nm);
-    sel.onchange = () => { r.classList.toggle("on", !!sel.value); nm.hidden = !sel.value || sel.value === "趣旨"; $("dbMsg2").textContent = ""; };
-    box.append(r); };
-  texts.forEach(t => { const it = (dq.items || []).find(x => x.text === t && !used.has(x.k)); if (it) used.add(it.k); addRow(t, it, false); });
-  (dq.items || []).filter(x => !used.has(x.k)).forEach(x => addRow(x.text, x, true));
+  const c = card(), dq = S.dbq[c.id] || { field: "", items: [] }; dbCid = c.id;
+  $("dbField").value = dq.field || S.dbLast || ""; fillFields();
+  const box = $("dbRows"); box.innerHTML = "";
+  if (!dq.items.length){ const p = el("p", "small"); p.textContent = "まだマークがありません。「DBに送る範囲を選ぶ（マーカー）」で、文の一部を選んでください。"; box.append(p); }
+  dbSorted(dq).forEach(it => {
+    const r = el("div", "dbr on"); r._it = it; const tx = el("div", "dbt"); tx.textContent = (it.lost ? "【カードの文が変わって、見つかりません】" : "") + (it.text.length > 110 ? it.text.slice(0, 110) + "…" : it.text); r.append(tx);
+    const sel = el("select"); sel.setAttribute("aria-label", "タグ"); ["要件", "規範", "趣旨"].forEach(v => { const o = el("option"); o.value = v; o.textContent = v === "規範" ? "規範（下位要件）" : v; sel.append(o); }); sel.value = it.tag; r.append(sel);
+    const nm = el("input"); nm.type = "text"; nm.className = "dbn"; nm.placeholder = "名前（短く）"; nm.value = it.title || ""; nm.hidden = it.tag === "趣旨"; r.append(nm);
+    sel.onchange = () => { nm.hidden = sel.value === "趣旨"; if (!nm.value && sel.value !== "趣旨") nm.value = shortOf(it.text); };
+    const lb = el("label", "small"); const cb = el("input"); cb.type = "checkbox"; cb.className = "dbx"; lb.append(cb, document.createTextNode(" 消す")); lb.style.marginLeft = "8px"; r.append(lb);
+    box.append(r); });
   $("dbMsg2").textContent = ""; $("dbDlg").showModal();
 }
 function dbSave(){
-  const rows = [...$("dbRows").children], dq0 = S.dbq[dbCid] || { items: [], g: {} }, items = []; let nextK = Math.max(0, ...(dq0.items || []).map(x => x.k)) + 1;
-  for (const r of rows){ const tag = r.querySelector("select").value; if (!tag) continue;
-    const title = r.querySelector("input").value.trim(); if (tag !== "趣旨" && !title){ $("dbMsg2").textContent = "「" + tag + "」には、名前（短く）を入れてください。"; return; }
-    items.push({ k: r.dataset.k ? +r.dataset.k : nextK++, tag, title: tag === "趣旨" ? "" : title, text: r.dataset.text }); }
+  const dq0 = S.dbq[dbCid] || { items: [], g: {} }, rows = [...$("dbRows").querySelectorAll(".dbr")], keep = [];
+  for (const r of rows){ const it = r._it; if (r.querySelector(".dbx").checked) continue; const tag = r.querySelector("select").value, title = r.querySelector("input.dbn").value.trim();
+    if (tag !== "趣旨" && !title){ $("dbMsg2").textContent = "「" + tag + "」には、名前（短く）を入れてください。"; return; }
+    keep.push(Object.assign({}, it, { tag, title: tag === "趣旨" ? "" : title })); }
   const field = $("dbField").value.trim();
-  if (!items.length){ delete S.dbq[dbCid]; st("dbq", dbCid); save(); $("dbDlg").close(); return; }
-  if (items[0].tag !== "要件"){ $("dbMsg2").textContent = "いちばん最初に選ぶのは「要件」にしてください（規範・趣旨の親になる要件が必要です）。"; return; }
+  if (!keep.length){ delete S.dbq[dbCid]; st("dbq", dbCid); save(); $("dbDlg").close(); applyDbMarks(); renderDbp(); return; }
+  if (keep[0].tag !== "要件"){ $("dbMsg2").textContent = "いちばん上は「要件」にしてください（規範・趣旨の親になる要件が必要です）。"; return; }
   if (!field){ $("dbMsg2").textContent = "分野を入れてください（例：法律/刑法）。"; return; }
-  const g = {}; items.forEach(x => { if (x.tag === "要件" && dq0.g && dq0.g[x.k]) g[x.k] = dq0.g[x.k]; });
-  S.dbq[dbCid] = { field, items, g, ts: Date.now() }; st("dbq", dbCid); save(); $("dbDlg").close();
-  $("dbSendMsg").textContent = "このカードの選択を保存しました（" + items.length + " か所）。まとめて送るには「DBに送る（全カードぶん）」を押してください。";
+  const g = {}; keep.forEach(x => { if (x.tag === "要件" && dq0.g && dq0.g[x.k]) g[x.k] = dq0.g[x.k]; });
+  S.dbq[dbCid] = { field, items: keep, g, ts: Date.now() }; S.dbLast = field; st("dbq", dbCid); save(); $("dbDlg").close(); applyDbMarks(); renderDbp();
 }
-$("dbBtn").onclick = dbOpen; $("dbNo").onclick = () => $("dbDlg").close(); $("dbOk").onclick = dbSave;
-$("dbClr").onclick = () => { if (!S.dbq[dbCid] || !confirm("このカードのDB用の選択を、全部消します。よろしいですか？")) return; delete S.dbq[dbCid]; st("dbq", dbCid); save(); $("dbDlg").close(); };
+$("dbBtn").onclick = () => setDbMode(!dbMode); $("dbNo").onclick = () => $("dbDlg").close(); $("dbOk").onclick = dbSave;
+$("dbClr").onclick = () => { if (!S.dbq[dbCid] || !confirm("このカードのDB用のマークを、全部消します。よろしいですか？")) return; delete S.dbq[dbCid]; st("dbq", dbCid); save(); $("dbDlg").close(); applyDbMarks(); renderDbp(); };
+$("dbBarEnd").onclick = () => setDbMode(false); $("dbBarList").onclick = dbOpen;
+$("dbBar").addEventListener("pointerdown", e => { if (e.target.closest("button")) e.preventDefault(); });
+$("dbBar").addEventListener("mousedown", e => { if (e.target.closest("button")) e.preventDefault(); });
+$("dbBar").querySelectorAll("button[data-t]").forEach(b => b.onclick = () => dbMark(b.dataset.t));
+$("dbBarDel").onclick = () => { const c = card(), dq = S.dbq[c.id]; if (!dq || dbSelK == null) return; dq.items = dq.items.filter(x => x.k !== dbSelK); dbSelK = null; $("dbBarDel").hidden = true;
+  if (!dq.items.length) delete S.dbq[c.id]; else { dq.ts = Date.now(); const f = dbSorted(dq)[0]; if (f && f.tag !== "要件") $("dbBarMsg").textContent = "注意：いちばん上が「要件」ではなくなりました。一覧で直してください。"; }
+  st("dbq", c.id); save(); applyDbMarks(); renderDbp(); if (!$("dbBarMsg").textContent.startsWith("注意")) $("dbBarMsg").textContent = "マークを消しました。"; };
 function hashId(s){ let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
 function dbRows(){
   const rows = []; let changed = false;
   Object.entries(S.dbq).forEach(([cid, dq]) => { if (!dq || !dq.items || !dq.items.length) return;
     const c = CARDS.find(x => x.id === cid), base = "fc-" + hashId(cid), ref = "論証フローチャート：" + (c ? c.title : cid);
     dq.g = dq.g || {}; const groups = [];
-    dq.items.forEach(x => { if (x.tag === "要件") groups.push([x]); else if (groups.length) groups[groups.length - 1].push(x); });
+    dbSorted(dq).forEach(x => { if (x.tag === "要件") groups.push([x]); else if (groups.length) groups[groups.length - 1].push(x); });
     groups.forEach(gr => { const rk = gr[0].k, sig = dq.field + "¦" + gr.map(x => x.tag + "|" + x.title + "|" + x.text).join("¦"), g = dq.g[rk] || (dq.g[rk] = { v: 1, sig: "" });
       if (g.sig && g.sig !== sig){ g.v++; changed = true; } if (g.sig !== sig){ g.sig = sig; changed = true; }
       const suf = g.v > 1 ? "-v" + g.v : "", idOf = x => base + "-" + x.k + suf; let lastReq = null, lastAny = null;
@@ -1600,6 +1691,68 @@ function dbRows(){
   if (changed){ Object.keys(S.dbq).forEach(k => st("dbq", k)); save(); }
   return rows;
 }
+const _render = render; render = function(){ _render.apply(this, arguments); try { applyDbMarks(); } catch(e){} };
+const TREE_URL = "https://gitwallaby.github.io/decisions/decisions.html";
+const DB_PLACE_FILE = "DB配置.json";
+function dbItemIds(cid){
+  const dq = S.dbq[cid]; if (!dq || !dq.items) return []; const base = "fc-" + hashId(cid), out = []; let ver = 1;
+  dbSorted(dq).forEach(x => { if (x.tag === "要件") ver = (dq.g && dq.g[x.k] && dq.g[x.k].v) || 1; out.push({ x, base: base + "-" + x.k, id: base + "-" + x.k + (ver > 1 ? "-v" + ver : "") }); });
+  return out;
+}
+const stripV = id => String(id || "").replace(/-v\d+$/, "");
+function placeOf(id){ const m = S.dbPlace && S.dbPlace.rows; if (!m) return null; if (m[id]) return m[id]; const k = Object.keys(m).find(k => stripV(k) === stripV(id)); return k ? m[k] : null; }
+function renderDbp(){
+  const box = $("dbp"), c = card(); if (!c){ box.hidden = true; return; }
+  const ids = dbItemIds(c.id); if (!ids.length){ box.hidden = true; return; }
+  box.hidden = false; box.innerHTML = "";
+  const h = el("div"); h.innerHTML = "<b>DB（判断ロジックツリー）</b>　" + esc((S.dbq[c.id].field) || ""); box.append(h);
+  let parentO = null;
+  ids.forEach(o => { const d = el("div", "it"), pl = placeOf(o.id), lab = o.x.tag + "：" + (o.x.title || shortOf(o.x.text));
+    if (o.x.tag !== "趣旨") parentO = o;
+    if (o.x.tag === "趣旨" && parentO && placeOf(parentO.id)){ d.textContent = lab + "　→　直前のブロックの「趣旨」欄に入っています"; }
+    else if (pl && pl.path){ d.textContent = lab + "　→　" + (pl.field ? pl.field + " ／ " : "") + pl.path; const a = el("a"); a.textContent = "ツリーで開く"; a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || o.id); a.target = "_blank"; a.rel = "noopener"; d.append(a); }
+    else { d.className = "it un"; d.textContent = lab + "　（ツリーでは、まだ置き場所が決まっていません）"; }
+    d.onclick = e => { if (e.target.closest("a")) return; const t = [...board.querySelectorAll(".pt")].find(x => plainOf(x.innerHTML) === o.x.text); if (t){ t.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" }); t.classList.add("dbhl"); setTimeout(() => t.classList.remove("dbhl"), 2500); } };
+    box.append(d); });
+}
+function dbPlaceAccept(txt, where){
+  let j; try { j = JSON.parse(txt); } catch(e){ throw new Error("読めないファイルです（JSONではありません）"); }
+  if (!j || j.format !== "decisions-placement" || !Array.isArray(j.rows)) throw new Error("ツリーの配置ファイル（DB配置.json）ではありません");
+  const rows = {}; j.rows.forEach(r => { if (r && r.id) rows[r.id] = { id: r.id, field: r.field || "", tree: r.tree || "", path: r.path || r.tree || "", parent: r.parent || "" }; });
+  S.dbPlace = { at: j.exportedAt || "", got: Date.now(), rows }; save(); renderDbp();
+  return j.rows.length;
+}
+async function gGet(name){
+  const fo = await gFind(G_FOLDER, " and mimeType='application/vnd.google-apps.folder'"); if (!fo) return null;
+  const fl = await gFind(name, " and '" + fo.id + "' in parents"); if (!fl) return null;
+  return await (await gApi("https://www.googleapis.com/drive/v3/files/" + fl.id + "?alt=media")).text();
+}
+$("dbPlGet").onclick = async () => {
+  const out = $("dbPlMsg");
+  if (!S.gcid){ out.textContent = "先に、Googleドライブの設定（クライアントID）が必要です。または「ファイルから読み込む」を使ってください。"; return; }
+  try { out.textContent = "Googleに接続中…"; await gToken(); S.gOk = 1; out.textContent = "ドライブを確認中…";
+    const t = await gGet(DB_PLACE_FILE);
+    if (t === null){ await gPut(DB_PLACE_FILE, JSON.stringify({ format: "decisions-placement", version: 1, source: "tree", exportedAt: "", rows: [] }));
+      out.textContent = "ドライブの「" + G_FOLDER + "」フォルダに、空の「" + DB_PLACE_FILE + "」を作りました。ツリー側の「配置ファイルを書き出す」で、保存先にこのファイルを選んで上書きしてから、もう一度ここを押してください。"; return; }
+    const n = dbPlaceAccept(t, "drive");
+    out.textContent = n ? n + " 件の置き場所を読み込みました。" : "ドライブのファイルは、まだ空です。ツリー側の「配置ファイルを書き出す」で、このファイル（" + G_FOLDER + "／" + DB_PLACE_FILE + "）を選んで上書きしてください。";
+  } catch(e){ out.textContent = "読み込めませんでした：" + (e && e.message || e); }
+};
+$("dbPlFile").onclick = () => $("dbPlIn").click();
+$("dbPlIn").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try { const n = dbPlaceAccept(await f.text(), "file"); $("dbPlMsg").textContent = n + " 件の置き場所を読み込みました。"; } catch(er){ $("dbPlMsg").textContent = "読み込めませんでした：" + (er && er.message || er); } };
+/* ツリーから飛んで来る：…/ronsho.html#fc=<送信元のid>。そのブロックを含むカードを開き、該当の文を光らせる */
+function applyHash(){
+  const m = /[#&]fc=([^&]+)/.exec(location.hash || ""); if (!m || !CARDS.length) return;
+  const want = stripV(decodeURIComponent(m[1]));
+  let hit = null; for (const cd of CARDS){ const o = dbItemIds(cd.id).find(z => z.base === want); if (o){ hit = { cd, o }; break; } }
+  if (!hit){ $("dbPlMsg").textContent = "ツリーから指定されたブロック（" + want + "）が、この端末のカードの中に見つかりません。ドライブと同期してから、もう一度開いてください。"; return; }
+  let i = list.findIndex(n => CARDS[n].id === hit.cd.id);
+  if (i < 0){ const n = CARDS.indexOf(hit.cd); list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
+  pi = i; stop(); load(false).then(() => { const t = [...board.querySelectorAll(".pt")].find(x => plainOf(x.innerHTML) === hit.o.x.text); if (t){ t.scrollIntoView({ block: "center" }); t.classList.add("dbhl"); setTimeout(() => t.classList.remove("dbhl"), 3500); } });
+  history.replaceState(null, "", location.pathname + location.search);
+}
+window.addEventListener("hashchange", applyHash);
 async function gPut(name, body){
   let fo = await gFind(G_FOLDER, " and mimeType='application/vnd.google-apps.folder'");
   if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
@@ -1649,6 +1802,7 @@ async function init(){
   $("info").textContent = "カード " + CARDS.length + "枚（" + (DATA.made || "") + " 作成）／音声ファイル " + have + " / " + (DATA.bundles || []).length + " 個" + (have < (DATA.bundles || []).length ? "　※足りない分は端末の読み上げで代用します" : "");
   setRate(S.rate || 1);
   buildList(S.last); await load(false);
+  applyHash();
   return true;
 }
 init();
