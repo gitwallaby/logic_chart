@@ -854,7 +854,7 @@ function blkDraw(){
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
   if (blkLevel === "tree"){
-    ttl.textContent = "ツリー作成：文の一部を選んでから、押してください（分野は、下のツリー欄に入れます）";
+    ttl.textContent = "ツリー作成：文の一部を選んで、押してください（分野は決めません。骨格だけ作って、DBに送ります）";
     const ss = el("div", "selshow"); ss.id = "selShow"; body.before(ss);
     const nm = el("input"); nm.type = "text"; nm.id = "blkName"; nm.placeholder = "名前（判断・要件のとき。空なら、選んだ文字の先頭）"; nm.setAttribute("aria-label", "名前"); body.before(nm);
     [["判断にする", "判断"], ["子の要件にする", "子"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
@@ -1683,7 +1683,7 @@ const DB_FILE = "DB送信.json";
 function plainOf(h){ const d = el("div"); d.innerHTML = h || ""; d.querySelectorAll(".n").forEach(x => x.remove()); d.querySelectorAll("br").forEach(b => b.replaceWith("\n")); return d.textContent.replace(/[ \t\u3000]+\n/g, "\n").trim(); }
 function cardTexts(c){ const out = []; (c.sections || []).forEach(sec => sec.rows.forEach(r => r.b.forEach(b => (b.p || [b]).forEach(p => { const t = plainOf(p.h); if (t) out.push(t); })))); return out; }
 const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.．、・\s]+/, "").slice(0, 16);
-const VER = "11/19 夜 版g";
+const VER = "11/19 夜 版h（分野なし）";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
