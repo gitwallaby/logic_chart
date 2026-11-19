@@ -339,7 +339,7 @@ body{padding-bottom:215px}
   </div>
 
   <div id="app" hidden>
-    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="gMsg"></span></div>
+    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
     <div class="srch">
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="qX" hidden>解除</button></div>
       <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
@@ -401,7 +401,6 @@ body{padding-bottom:215px}
     </div>
     <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
       <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
-      <div class="trow"><input type="text" id="treeField" list="dbFields" placeholder="分野（例：法律/刑法　「/」で階層）" autocomplete="off" aria-label="分野"><datalist id="dbFields"></datalist></div>
       <div class="tbar"><button data-op="addroot">＋ 判断を足す（文なし）</button><button class="go" id="treeSend">📤 DBに送る</button><button id="treeFile">💾 ファイルで保存</button></div>
       <p class="tmsg" id="treeMsg">ツリーはまだありません。</p>
       <div class="small" id="treeFormula"></div>
@@ -1616,8 +1615,10 @@ function mergeSnap(o){
   Object.keys(lg).forEach(d => { const a = S.log[d] || (S.log[d] = { h:0, o:0, d:0, x:0 }); ["h", "o", "d", "x"].forEach(f => { if ((lg[d][f] || 0) > a[f]){ a[f] = lg[d][f]; n++; } }); });
   return n;
 }
-function gMsg(t){ $("gMsg").textContent = t; toast(t, /できません|失敗|エラー/.test(t) ? "ng" : "", 7000); }
-function gStatus(){
+let gQuiet = false;
+function gMsg(t){ $("gMsg").textContent = t; if (!gQuiet) toast(t, /できません|失敗|エラー/.test(t) ? "ng" : "", 7000); }
+function gStatus(){ gQuiet = true; try { gStatus0(); } finally { gQuiet = false; } }
+function gStatus0(){
   const mx = Math.max(0, ...Object.values(S.ts)), z = n => String(n).padStart(2, "0"), d = new Date(S.gLast);
   gMsg(S.gLast ? "最後の同期 " + (d.getMonth() + 1) + "/" + d.getDate() + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + (mx > S.gLast ? "（そのあとに直した分あり）" : "") : (S.gcid ? "まだ同期していません" : "初めに「設定」でクライアントIDを入れてください"));
 }
@@ -1682,6 +1683,8 @@ const DB_FILE = "DB送信.json";
 function plainOf(h){ const d = el("div"); d.innerHTML = h || ""; d.querySelectorAll(".n").forEach(x => x.remove()); d.querySelectorAll("br").forEach(b => b.replaceWith("\n")); return d.textContent.replace(/[ \t\u3000]+\n/g, "\n").trim(); }
 function cardTexts(c){ const out = []; (c.sections || []).forEach(sec => sec.rows.forEach(r => r.b.forEach(b => (b.p || [b]).forEach(p => { const t = plainOf(p.h); if (t) out.push(t); })))); return out; }
 const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.．、・\s]+/, "").slice(0, 16);
+const VER = "11/19 夜 版g";
+$("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
 $("toast").onclick = () => { $("toast").hidden = true; };
@@ -1694,7 +1697,7 @@ const tKids = (nodes, k) => nodes.filter(n => n.parent === k);
 const tRoots = nodes => nodes.filter(n => !n.parent);
 const tGet = (nodes, k) => nodes.find(n => n.k === k);
 function tSubtree(nodes, k){ const out = [], walk = kk => { const n = tGet(nodes, kk); if (!n) return; out.push(n); tKids(nodes, kk).forEach(c => walk(c.k)); }; walk(k); return out; }
-function tEnsure(cid, field){ if (!S.tree[cid]) S.tree[cid] = { field: field || S.dbLast || "", nodes: [], salt: Math.random().toString(36).slice(2, 5), ts: Date.now() }; return S.tree[cid]; }
+function tEnsure(cid){ if (!S.tree[cid]) S.tree[cid] = { field: "", nodes: [], salt: Math.random().toString(36).slice(2, 5), ts: Date.now() }; return S.tree[cid]; }
 const nextK = t => Math.max(0, ...t.nodes.map(n => n.k)) + 1;
 function tTouch(cid){ const t = S.tree[cid]; if (!t) return; if (!t.nodes.length) delete S.tree[cid]; else t.ts = Date.now(); st("tree", cid); save(); }
 function tFormula(nodes, n){
@@ -1743,8 +1746,7 @@ function tMark(kind){
   const msg = t => { $("editMsg").textContent = t; toast(t, "ng", 5000); };
   if (dbLastSel === "many"){ msg("1つのブロックの中の1か所だけを選んでください。"); return; }
   if (!dbLastSel){ msg("先に、文の一部を指でなぞって選んでください（文字を長押しして、両端をずらします）。"); return; }
-  const c = card(), field = $("treeField").value.trim();
-  if (!field){ msg("分野を、下のツリー欄に入れてください（例：法律/刑法）。"); treeOpen = true; renderTree(); $("treeField").focus(); return; }
+  const c = card();
   const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed")), pi0 = pts.indexOf(dbLastSel.pt), L = strip(dbLastSel.text).length;
   const t0 = S.tree[c.id], nodes0 = t0 ? t0.nodes : [];
   const over = tMarks({ nodes: nodes0 }).find(x => x.ref.pos && x.ref.pos[0] === pi0 && x.ref.pos[1] < dbLastSel.s + L && dbLastSel.s < x.ref.pos[1] + strip(x.text).length);
@@ -1754,13 +1756,13 @@ function tMark(kind){
   if (kind === "趣旨"){
     if (!cur || cur.kind === "group"){ msg("趣旨をつけたい判断・要件を、先にタップして選んでください（下のツリー、または色のついた文）。"); return; }
     cur.pur = cur.pur || []; cur.pur.push({ text: dbLastSel.text, pos });
-    t0.field = field; S.dbLast = field; treeFlash = cur.k; tTouch(c.id); finishMark("✔ 趣旨を「" + (cur.title || "名前なし") + "」につけました。", "ok"); return; }
+    treeFlash = cur.k; tTouch(c.id); finishMark("✔ 趣旨を「" + (cur.title || "名前なし") + "」につけました。", "ok"); return; }
   let parent = 0, afterK = 0, note = "";
   if (kind === "判断"){ parent = 0; }
   else { if (!cur){ msg("先に「判断」を作ってください（判断は、いちばん上の親になります）。"); return; }
     if (kind === "子"){ parent = cur.k; }
     else { if (!cur.parent){ parent = cur.k; note = "（判断と並列の要件は作れないので、判断の下に作りました）"; } else { parent = cur.parent; afterK = cur.k; } } }
-  const t = tEnsure(c.id, field); t.field = field; S.dbLast = field;
+  const t = tEnsure(c.id);
   const k = nextK(t), n = { k, kind: "node", title, text: dbLastSel.text, pur: [], parent, mode: "all", role: "", pos };
   const at = afterK ? t.nodes.findIndex(x => x.k === afterK) + 1 : t.nodes.length; t.nodes.splice(at, 0, n); treeSel = k; treeFlash = k; tTouch(c.id);
   finishMark("✔ " + (parent ? "要件" : "判断") + "「" + title + "」を、ツリーに足しました。" + note, "ok");
@@ -1786,7 +1788,7 @@ function tLi(nodes, n, par, bi, ids, c){
   if (n.text){ const j = el("button", "jmp", "⌖ 本文"); j.title = "カードの中の、この文へ移る"; j.onclick = e => { e.stopPropagation(); jumpToMark(n.k, false); }; row.append(j); }
   if (n.lost) row.append(el("span", "un", "⚠文が変わって見つかりません"));
   const e0 = ids[n.k], pl = e0 && placeOf(e0.id);
-  if (pl && pl.path){ const a = el("a", "pl", "📍" + pl.path); a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e0.id); a.target = "_blank"; a.rel = "noopener"; a.onclick = e => e.stopPropagation(); row.append(a); }
+  if (pl && (pl.path || pl.field || pl.tree)){ const a = el("a", "pl", pl.path ? "📍" + pl.path : "📂 分野：" + (pl.field || pl.tree) + "（置き場所は、これから）"); a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e0.id); a.target = "_blank"; a.rel = "noopener"; a.onclick = e => e.stopPropagation(); row.append(a); }
   row.onclick = e => { if (e.target.closest("a,button,input")) return; treeSel = n.k; renderTree(); selShowUpdate(); };
   li.append(row);
   if (n.k === treeSel && n.text){ const sd = el("div", "src", "カードの文：「" + (n.text.replace(/\s+/g, " ").length > 70 ? n.text.replace(/\s+/g, " ").slice(0, 70) + "…" : n.text.replace(/\s+/g, " ")) + "」"); li.append(sd); }
@@ -1822,8 +1824,6 @@ function renderTree(){
   if (!treeOpen) return;
   $("treeSize").textContent = treeSz === 1 ? "大きく" : treeSz === 2 ? "たたむ" : "ひらく";
   if (!tGet(nodes, treeSel)) treeSel = 0;
-  const fl = $("dbFields"); fl.innerHTML = ""; [...new Set(Object.values(S.tree).map(x => x && x.field).filter(Boolean))].forEach(f => { const o = el("option"); o.value = f; fl.append(o); });
-  if (document.activeElement !== $("treeField")) $("treeField").value = (t && t.field) || S.dbLast || "";
   $("treeSum").textContent = "ツリー（このカード）　判断 " + nj + "・要件 " + ny + "・趣旨 " + np;
   $("treeFormula").textContent = treeFormulaText(c);
   if (!$("treeMsg").textContent || /^ツリーはまだありません/.test($("treeMsg").textContent)) $("treeMsg").textContent = nodes.length ? "行をタップして選ぶと、並べ替え・かつ/または・括弧などの操作が出ます。" : "ツリーはまだありません。文を長押し →「ツリー作成」で、文を選んで「判断にする」を押すと、ここに出ます。";
@@ -1845,8 +1845,7 @@ function renderTree(){
 function tOp(op){
   const c = card();
   if (op === "addroot"){
-    const field = $("treeField").value.trim(); if (!field){ tmsg("先に、分野を入れてください（例：法律/刑法）。", "ng"); $("treeField").focus(); return; }
-    const t = tEnsure(c.id, field); t.field = field; S.dbLast = field; const k = nextK(t);
+    const t = tEnsure(c.id); const k = nextK(t);
     t.nodes.push({ k, kind: "node", title: "新しい判断", text: "", pur: [], parent: 0, mode: "all", role: "", pos: null }); treeSel = k; treeFlash = k; tTouch(c.id); renderTree(); selShowUpdate(); tmsg("✔ 判断「新しい判断」を足しました。名前は、選ばれた行で、そのまま打ち直せます。", "ok"); return; }
   const t = S.tree[c.id]; if (!t){ tmsg("先にツリーを作ってください。", "ng"); return; }
   const nodes = t.nodes, n = tGet(nodes, treeSel); if (!n){ tmsg("先に、ツリーの行をタップして選んでください。", "ng"); return; }
@@ -1868,7 +1867,6 @@ function tOp(op){
 }
 $("treeTools").addEventListener("pointerdown", e => { if (e.target.closest("button")) e.preventDefault(); });
 $("treeBox").addEventListener("click", e => { const b = e.target.closest("button[data-op]"); if (b) tOp(b.dataset.op); });
-$("treeField").addEventListener("change", () => { const c = card(), v = $("treeField").value.trim(); if (!v) return; S.dbLast = v; const t = S.tree[c.id]; if (t){ t.field = v; tTouch(c.id); } save(); tmsg("分野を「" + v + "」にしました。", "ok"); });
 $("treeClr").onclick = () => { const c = card(); if (!S.tree[c.id]){ tmsg("このカードには、ツリーがありません。"); return; } if (!confirm("このカードのツリーを、全部消します。よろしいですか？")) return; delete S.tree[c.id]; st("tree", c.id); save(); treeSel = 0; applyDbMarks(); renderTree(); selShowUpdate(); tmsg("このカードのツリーを消しました。", "ok"); };
 $("treeTop").onclick = () => { treeOpen = !treeOpen; if (treeOpen && treeSz === 0) treeSz = 1; renderTree(); if (treeOpen){ const c = card(); toast("このカードのツリーを表示しました（画面の下）。", "", 2000); } };
 $("treeClose").onclick = () => { treeOpen = false; renderTree(); };
@@ -1899,7 +1897,7 @@ function dbRows(){
     es.forEach(e => { const n = e.n;
       if (e.pur){ rows.push({ id: e.id, parent: idOf[n.k], title: "", tag: "趣旨", purpose: e.pur.text, ref, card: cid }); return; }
       const kids = tKids(t.nodes, n.k), row = { id: e.id, parent: n.parent ? idOf[n.parent] : "", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, tag: n.parent ? "要件" : "判断", text: n.text || "", ref, card: cid, order: tKids(t.nodes, n.parent).indexOf(n) + 1 };
-      if (!n.parent) row.field = t.field; if (kids.length) row.mode = MODE_LB[n.mode || "all"]; if (n.role === "ただし") row.role = "ただし"; if (n.kind === "group") row.group = true; rows.push(row); }); });
+      if (!n.parent && t.field) row.field = t.field; if (kids.length) row.mode = MODE_LB[n.mode || "all"]; if (n.role === "ただし") row.role = "ただし"; if (n.kind === "group") row.group = true; rows.push(row); }); });
   if (changed){ Object.keys(S.tree).forEach(k => st("tree", k)); save(); }
   return rows;
 }
@@ -1923,7 +1921,7 @@ function renderDbp(){ renderTree(); }
 function dbPlaceAccept(txt, where){
   let j; try { j = JSON.parse(txt); } catch(e){ throw new Error("読めないファイルです（JSONではありません）"); }
   if (!j || j.format !== "decisions-placement" || !Array.isArray(j.rows)) throw new Error("ツリーの配置ファイル（DB配置.json）ではありません");
-  const rows = {}; j.rows.forEach(r => { if (r && r.id) rows[r.id] = { id: r.id, field: r.field || "", tree: r.tree || "", path: r.path || r.tree || "", parent: r.parent || "" }; });
+  const rows = {}; j.rows.forEach(r => { if (r && r.id) rows[r.id] = { id: r.id, field: r.field || "", tree: r.tree || "", path: r.path || "", parent: r.parent || "", stage: r.stage || "" }; });
   S.dbPlace = { at: j.exportedAt || "", got: Date.now(), rows }; save(); renderDbp();
   return j.rows.length;
 }
