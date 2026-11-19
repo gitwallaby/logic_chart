@@ -208,7 +208,7 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .dbr .dbn{margin-top:6px}.dbr.on{background:rgba(232,198,74,.08)}#dbMsg2{min-height:1.4em;font-size:12.5px;color:#e08a8a;margin:8px 0 0}
 .dbp{margin:6px 0 0;padding:7px 9px;border:1px solid var(--btnline);border-radius:10px;font-size:12.5px;line-height:1.6}
 .dbp b{color:var(--ink)}.dbp .it{margin-top:3px}.dbp .un{color:var(--sub)}.dbp a{color:var(--yellow);text-decoration:underline;margin-left:6px}
-.pt.dbhl{outline:2px solid #e8c64a;outline-offset:3px;border-radius:6px;transition:outline-color .6s}
+.dbhl{outline:2px solid #e8c64a;outline-offset:3px;border-radius:6px;transition:outline-color .6s}
 .board.dbm .blk,.board.dbm .pt{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default!important}
 .dbm[data-t]{border-radius:3px;padding:0 1px}.dbm[data-t]::before{content:attr(data-t);font-size:9px;vertical-align:super;margin-right:2px;color:var(--sub);font-style:normal}
 .dbm[data-t="要件"]{background:rgba(232,198,74,.30)}.dbm[data-t="規範"]{background:rgba(110,180,255,.28)}.dbm[data-t="趣旨"]{background:rgba(160,220,140,.28)}
@@ -220,6 +220,50 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .blkbar .bt{font-weight:600;margin-bottom:5px}.blkbar .tbar{margin:4px 0 4px}.blkbar input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0 4px}
 .blkbar button:disabled{opacity:.4}
 .txon .ctl{display:none}
+.toast{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:92vw;background:#1f2328;color:#fff;border-radius:10px;padding:9px 14px;font-size:13.5px;line-height:1.5;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.toast.ok{background:#1d5e3a}.toast.ng{background:#8a2a22}.toast[hidden]{display:none}
+.tsheet{position:fixed;left:0;right:0;bottom:0;z-index:45;background:var(--bar);border-top:2px solid var(--barline);box-shadow:0 -4px 16px rgba(0,0,0,.18);padding:6px 10px 10px;overflow:auto;max-height:44vh;font-size:13px}
+.tsheet[data-sz="0"]{max-height:92px}.tsheet[data-sz="2"]{max-height:88vh}
+.tsheet .th{display:flex;align-items:center;gap:6px;position:sticky;top:-6px;background:var(--bar);padding:4px 0;z-index:3}.tsheet .th .sp{flex:1}
+.tsheet .trow input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0}
+.tsheet .tbar{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0;align-items:center}.tsheet .tbar .lab{font-size:11.5px;color:var(--sub)}
+.tsheet .tbar button.on,.tbar button.go{background:#2b6cb0;border-color:#2b6cb0;color:#fff}
+.tsheet button,.blkbar button{font:inherit;font-size:13px;white-space:nowrap}.tsheet .th b{font-size:13px;line-height:1.3}
+.tmsg{margin:4px 0;padding:5px 8px;border-radius:8px;background:rgba(43,108,176,.1);font-size:12.5px;line-height:1.5}
+.tmsg.ok{background:rgba(47,133,90,.16)}.tmsg.ng{background:rgba(192,57,43,.14)}
+body.sheeton{padding-bottom:46vh}body.sheeton[data-tsz="0"]{padding-bottom:100px}body.sheeton .ctl,body.txon .ctl{display:none}
+#treeTop.on{background:#2b6cb0;color:#fff;border-color:#2b6cb0}
+.selshow{margin:3px 0 5px;padding:5px 8px;border-radius:8px;background:rgba(128,128,128,.12);font-size:12.5px;line-height:1.5}
+.selshow.ok{background:rgba(47,133,90,.18)}.selshow.ng{background:rgba(192,57,43,.14)}
+#treeList{--tb:#2b6cb0;--to:#b7791f;--tw:#7b3fb0;--te:#c0392b;padding:2px 0 6px}
+#treeList ul{list-style:none;margin:0;padding:0}#treeList ul.kids{margin-left:13px}
+#treeList li.rootli{margin:4px 0 10px}
+#treeList li.kid{position:relative;padding-left:20px}
+#treeList li.kid::before{content:'';position:absolute;left:0;top:17px;width:16px;border-top:2px solid var(--btnline)}
+#treeList li.kid::after{content:'';position:absolute;left:0;top:0;bottom:0;border-left:2px solid var(--btnline)}
+#treeList li.kid:last-child::after{bottom:auto;height:17px}
+#treeList li.kid.exc::before{border-top:2px dashed var(--te)}
+#treeList li.andkid::before{border-top:3px solid var(--tb);width:17px}#treeList li.andkid::after{border-left:3px solid var(--tb);left:-1px}
+#treeList li.orkid::before{border-top:3px solid var(--to);width:17px}#treeList li.orkid::after{border-left:3px solid var(--to);left:-1px}
+#treeList li.wgkid::before{border-top:3px solid var(--tw);width:17px}#treeList li.wgkid::after{border-left:3px solid var(--tw);left:-1px}
+#treeList li.sep,#treeList li.ghead{position:relative;padding-left:20px}#treeList li.sep{height:19px}
+#treeList li.sep::after,#treeList li.ghead::after{content:'';position:absolute;top:0;bottom:0;left:-1px;border-left:3px solid var(--btnline)}
+#treeList li.sep.and::after,#treeList li.ghead.and::after{border-left-color:var(--tb)}#treeList li.sep.any::after,#treeList li.ghead.any::after{border-left-color:var(--to)}#treeList li.ghead.total::after{border-left-color:var(--tw)}
+#treeList li.sep span{margin-left:30px;font-size:11.5px;font-weight:700;line-height:19px}#treeList li.sep.and span{color:var(--tb)}#treeList li.sep.any span{color:var(--to)}
+#treeList li.ghead{padding-top:1px;padding-bottom:1px}#treeList li.ghead span{margin-left:8px;font-size:11.5px;font-weight:700;padding:1px 9px;border-radius:99px}
+#treeList li.ghead.and span{background:rgba(43,108,176,.15);color:var(--tb)}#treeList li.ghead.any span{background:rgba(183,121,31,.17);color:var(--to)}#treeList li.ghead.total span{background:rgba(123,63,176,.15);color:var(--tw)}
+#treeList .r{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-height:34px;padding:2px 7px;border-radius:8px;border:1px solid transparent;cursor:pointer}
+#treeList li.andkid>.r{border-left:3px solid var(--tb);border-radius:0 8px 8px 0}#treeList li.orkid>.r{border-left:3px solid var(--to);border-radius:0 8px 8px 0}#treeList li.wgkid>.r{border-left:3px solid var(--tw);border-radius:0 8px 8px 0}
+#treeList .r.sel{background:rgba(232,198,74,.25);border-color:#d6aa1f}
+#treeList .r.flash{animation:tflash 1.6s}@keyframes tflash{0%,60%{background:rgba(110,200,120,.5)}100%{background:transparent}}
+#treeList .bd{font-size:11px;padding:1px 7px;border-radius:99px;font-weight:700;white-space:nowrap;background:rgba(128,128,128,.2)}
+#treeList .bd.j{background:rgba(232,198,74,.5)}#treeList .bd.req{background:rgba(43,108,176,.18);color:var(--tb)}#treeList .bd.or{background:rgba(183,121,31,.2);color:var(--to)}#treeList .bd.wg{background:rgba(123,63,176,.18);color:var(--tw)}#treeList .bd.exc{background:rgba(192,57,43,.16);color:var(--te)}
+#treeList .ttl{font-weight:600}#treeList .ttl.blank{color:var(--sub);font-weight:400}#treeList .rootli>.r .ttl,#treeList .rootli>.r .tin{font-size:15px}
+#treeList .tin{flex:1;min-width:6em;border:none;border-bottom:1px dashed var(--tb);background:transparent;color:var(--ink);font:inherit;font-weight:600;padding:2px 0;outline:none;border-radius:0}
+#treeList .jmp{font-size:11px;padding:0 6px;border-radius:99px;border:1px solid var(--tb);color:var(--tb);background:none}
+#treeList .pu{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #2f855a;font-size:12px;color:#2f6f4f;background:rgba(47,133,90,.08);border-radius:0 8px 8px 0}
+#treeList .pu a{margin-left:6px;color:var(--te)}#treeList .src{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #d6aa1f;font-size:12px;color:var(--sub)}
+#treeList a.pl{color:var(--tb);text-decoration:underline;font-size:11.5px}#treeList .un{font-size:11px;color:var(--sub)}
 .pt.pick{outline:2px solid #e8c64a;outline-offset:2px;border-radius:4px}
 details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding:2px 10px}details.sub>summary{cursor:pointer;font-weight:600;padding:8px 0}
 #editTxt{width:100%;height:90px;margin-top:8px;font-size:12px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
@@ -281,6 +325,7 @@ body{padding-bottom:215px}
 </style>
 </head>
 <body>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
 <main>
   <div class="panel empty" id="empty" hidden>
     <b>まだカードが入っていません</b>
@@ -294,7 +339,7 @@ body{padding-bottom:215px}
   </div>
 
   <div id="app" hidden>
-    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><span class="small" id="gMsg"></span></div>
+    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="gMsg"></span></div>
     <div class="srch">
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="qX" hidden>解除</button></div>
       <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
@@ -354,20 +399,23 @@ body{padding-bottom:215px}
       <p class="small" id="editMsg"></p>
       <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkUndo">このカードの直しを全部取り消す</button><button class="go" id="blkEnd">編集を終わる</button></div>
     </div>
-    <details class="panel tree" id="treeBox" hidden open>
-      <summary id="treeSum">ツリー（このカード）</summary>
+    <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
+      <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
       <div class="trow"><input type="text" id="treeField" list="dbFields" placeholder="分野（例：法律/刑法　「/」で階層）" autocomplete="off" aria-label="分野"><datalist id="dbFields"></datalist></div>
+      <div class="tbar"><button data-op="addroot">＋ 判断を足す（文なし）</button><button class="go" id="treeSend">📤 DBに送る</button><button id="treeFile">💾 ファイルで保存</button></div>
+      <p class="tmsg" id="treeMsg">ツリーはまだありません。</p>
       <div class="small" id="treeFormula"></div>
-      <div id="treeList"></div>
-      <div class="trow" id="treeNameRow" hidden><input type="text" id="treeName" placeholder="選んだノードの名前" autocomplete="off" aria-label="ノードの名前"></div>
       <div class="tbar" id="treeTools" hidden>
-        <button data-op="up">↑ 前へ</button><button data-op="down">↓ 後ろへ</button><button data-op="out">← 一段上へ</button><button data-op="in">→ 一段下へ</button><span class="sp"></span>
-        <button data-op="mode">子の組み方を切替（⋀ すべて／∨ どれか／＋ 総合考慮）</button><span class="sp"></span>
-        <button data-op="group">（ ）次の要件と括弧でまとめる</button><button data-op="ungroup">括弧を解く</button><button data-op="role">ただし（例外）切替</button><button data-op="del">消す</button>
+        <span class="lab" id="treeSelName"></span>
+        <button data-op="up">↑</button><button data-op="down">↓</button><button data-op="out">← 上の階層へ</button><button data-op="in">→ 下の階層へ</button>
+        <span class="lab">子の組み方</span><button data-op="m:all">⋀ すべて</button><button data-op="m:any">∨ どれか</button><button data-op="m:total">＋ 総合考慮</button>
+        <button data-op="group">（ ）括弧でまとめる</button><button data-op="ungroup">括弧を解く</button><button data-op="role">ただし</button>
+        <button data-op="addkid">＋子の要件</button><button data-op="addsib">＋並列の要件</button><button data-op="del">消す</button>
       </div>
-      <p class="small" id="treeMsg"></p>
+      <div id="treeList" class="tv"></div>
+      <div class="small" id="treeSent"></div>
       <div class="act"><button class="grad" id="treeClr">このカードのツリーを全部消す</button></div>
-    </details>
+    </section>
     <div class="board" id="board"></div>
 
     <details class="panel" id="setup">
@@ -513,7 +561,7 @@ const bundles = new Map();
 async function bundle(i){ if (!bundles.has(i)) bundles.set(i, await get(DATA.bundles[i])); return bundles.get(i); }
 
 async function importFiles(files){
-  const msg = t => { $("impMsg").textContent = t; $("info").textContent = t; };
+  const msg = t => { $("impMsg").textContent = t; $("info").textContent = t; toast(t, /できません|失敗|エラー|足りません/.test(t) ? "ng" : "", /終わ|完了|できません|失敗|エラー|足りません/.test(t) ? 9000 : 0); };
   try {
     let n = 0;
     let back = 0;
@@ -537,7 +585,7 @@ async function importFiles(files){
     msg(ok ? "取り込みが終わりました。" : "data.json が見つかりません。「スマホに入れるファイル」の中身を全部選んでください。");
   } catch(e){ msg("取り込みに失敗しました。空き容量を確認してください。（" + e + "）"); }
 }
-$("fi").onchange = e => { if (e.target.files.length) importFiles([...e.target.files]); e.target.value = ""; };
+$("fi").onchange = e => { if (e.target.files.length){ toast("取り込みを始めました（" + e.target.files.length + " 個のファイル）。しばらくお待ちください…", "", 0); importFiles([...e.target.files]); } e.target.value = ""; };
 $("imp1").onclick = $("imp2").onclick = () => $("fi").click();
 function mergeStudy(st){
   Object.keys(st.rev || {}).forEach(id => { const a = S.rev[id], b = st.rev[id]; if (b && (!a || (b.d || "") > (a.d || ""))) S.rev[id] = b; });
@@ -546,7 +594,7 @@ function mergeStudy(st){
 }
 
 /* ---------- 図を組み立てる ---------- */
-function el(tag, cls){ const e = document.createElement(tag); if (cls) e.className = cls; return e; }
+function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function makeBlock(b){
   const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : ""));
   if (b.c){ const c = el("div", "cond"); c.textContent = b.c; d.append(c); }
@@ -614,7 +662,7 @@ function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({},
    文字は1文字ずつ { ch:文字, c:文字色, m:マーカー, b:太字 } の並び（runs）にしてから扱う。
    refs[u] = u番目の文が、図のどこにあるか { p:文, b:ブロック, row:行, sec:区切り } */
 let secEd = -1;
-let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0;
+let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0, treeOpen = false, treeSz = 1, treeFlash = 0;
 let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
 function edited(c){ return !!S.cv[c.id]; }
 function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.s) out.push(nows(plainOf(p.h))); })))); return out.join("|"); }
@@ -788,7 +836,7 @@ function blkMenu(u){
 }
 function blkGo(level){
   $("editMsg").textContent = "";
-  if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
+  if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; treeOpen = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
   if (level === "0"){ if (edEl) closeEd(); dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = "0"; blkDraw(); renderTree(); return; }
   if (!edEl) openEd(blkU);
   if (!edEl) return; blkLevel = level; blkDraw();
@@ -808,9 +856,11 @@ function blkDraw(){
     return; }
   if (blkLevel === "tree"){
     ttl.textContent = "ツリー作成：文の一部を選んでから、押してください（分野は、下のツリー欄に入れます）";
+    const ss = el("div", "selshow"); ss.id = "selShow"; body.before(ss);
     const nm = el("input"); nm.type = "text"; nm.id = "blkName"; nm.placeholder = "名前（判断・要件のとき。空なら、選んだ文字の先頭）"; nm.setAttribute("aria-label", "名前"); body.before(nm);
-    body.dataset.n = "1";
-    add("判断にする", () => tMark("判断")); add("子の要件にする", () => tMark("子")); add("並列の要件にする", () => tMark("並")); add("趣旨にする", () => tMark("趣旨")); add("← 戻る", () => blkGo("0"));
+    [["判断にする", "判断"], ["子の要件にする", "子"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
+    add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => blkGo("0"));
+    selShowUpdate();
     return; }
   const BT = { text: [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"],["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","マーカーなし"],["b","太字"]],
     aud: [["n","選んだ範囲の音声なし：切替"],["nall","この文ぜんぶの音声なし：切替"]] };
@@ -821,7 +871,16 @@ function blkDraw(){
   } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
 }
-function blkDrawClean(){ const n = $("blkName"); if (n) n.remove(); }
+function blkDrawClean(){ ["blkName", "selShow"].forEach(i => { const n = $(i); if (n) n.remove(); }); }
+function selShowUpdate(){
+  const s = $("selShow"); if (!s) return;
+  const c = card(), t = c && S.tree[c.id], cur = t && tGet(t.nodes, treeSel), ok = dbLastSel && dbLastSel !== "many";
+  const l1 = ok ? "✔ 選んでいる文字：「" + (dbLastSel.text.replace(/\s+/g, "").slice(0, 36)) + (strip(dbLastSel.text).length > 36 ? "…" : "") + "」（" + strip(dbLastSel.text).length + "文字）"
+    : dbLastSel === "many" ? "⚠ 複数のブロックにまたがっています。1つのブロックの中だけを選んでください。" : "まだ文字を選んでいません。文字を長押しして、両端をずらして範囲を選んでください。";
+  s.className = "selshow" + (ok ? " ok" : dbLastSel === "many" ? " ng" : "");
+  s.textContent = l1 + "　／　追加先：" + (cur ? (cur.kind === "group" ? "括弧" : "「" + (cur.title || "名前なし") + "」") + "（下のツリーで変えられます）" : "なし（最初は「判断」を作ります）");
+  document.querySelectorAll("#blkBody button[data-mk]").forEach(b => { const k = b.dataset.mk; b.disabled = !ok || (k !== "判断" && !cur) || (k === "趣旨" && cur && cur.kind === "group"); });
+}
 $("selEdAu").onchange = e => { S.edAu = e.target.value; save(); load(false, true); };
 /* 取り込み直したとき：PCに入った直しは片付ける。前の版の「文字の直し」（S.tx）は、新しい形（S.cv）に移す */
 function tidyTx(){
@@ -1187,6 +1246,7 @@ function renderRec(){
 }
 $("rec").addEventListener("toggle", () => { if ($("rec").open) renderRec(); });
 $("recOut").onclick = () => $("editOut").click();
+{ const eo = $("editOut").onclick; $("editOut").onclick = async () => { await eo(); const m = $("outMsg").textContent; if (m) toast(m, /ありません/.test(m) ? "" : "ok", 7000); }; }
 $("recIn").onclick = () => $("fi").click();
 
 /* ---------- 音声 ---------- */
@@ -1556,7 +1616,7 @@ function mergeSnap(o){
   Object.keys(lg).forEach(d => { const a = S.log[d] || (S.log[d] = { h:0, o:0, d:0, x:0 }); ["h", "o", "d", "x"].forEach(f => { if ((lg[d][f] || 0) > a[f]){ a[f] = lg[d][f]; n++; } }); });
   return n;
 }
-function gMsg(t){ $("gMsg").textContent = t; }
+function gMsg(t){ $("gMsg").textContent = t; toast(t, /できません|失敗|エラー/.test(t) ? "ng" : "", 7000); }
 function gStatus(){
   const mx = Math.max(0, ...Object.values(S.ts)), z = n => String(n).padStart(2, "0"), d = new Date(S.gLast);
   gMsg(S.gLast ? "最後の同期 " + (d.getMonth() + 1) + "/" + d.getDate() + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + (mx > S.gLast ? "（そのあとに直した分あり）" : "") : (S.gcid ? "まだ同期していません" : "初めに「設定」でクライアントIDを入れてください"));
@@ -1622,13 +1682,20 @@ const DB_FILE = "DB送信.json";
 function plainOf(h){ const d = el("div"); d.innerHTML = h || ""; d.querySelectorAll(".n").forEach(x => x.remove()); d.querySelectorAll("br").forEach(b => b.replaceWith("\n")); return d.textContent.replace(/[ \t\u3000]+\n/g, "\n").trim(); }
 function cardTexts(c){ const out = []; (c.sections || []).forEach(sec => sec.rows.forEach(r => r.b.forEach(b => (b.p || [b]).forEach(p => { const t = plainOf(p.h); if (t) out.push(t); })))); return out; }
 const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.．、・\s]+/, "").slice(0, 16);
+let toastT = null;
+function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
+$("toast").onclick = () => { $("toast").hidden = true; };
+/* ボタンを押した瞬間に、「受け付けました」を画面の上に出す */
+[["editOut", "書き出しています…"], ["csvOut", "CSVを作っています…"], ["txtAll", "文章を書き出しています…"], ["txtChg", "文章を書き出しています…"], ["dbPlGet", "ドライブから置き場所を読み込んでいます…"], ["dbPlFile", "置き場所のファイルを選んでください"], ["gBtn", "Googleドライブと同期を始めます…"], ["csvFile", "CSVを選んでください"], ["treeClr", "確認しています…"]]
+  .forEach(([id, m]) => { const b = $(id); if (b) b.addEventListener("click", () => toast(m, "", id === "gBtn" ? 0 : 3000), true); });
 const MODE_LB = { all: "すべて", any: "どれか", total: "総合考慮" }, MODE_SY = { all: "⋀", any: "∨", total: "＋" };
 const strip = t => String(t || "").replace(/\s+/g, "");
 const tKids = (nodes, k) => nodes.filter(n => n.parent === k);
 const tRoots = nodes => nodes.filter(n => !n.parent);
 const tGet = (nodes, k) => nodes.find(n => n.k === k);
 function tSubtree(nodes, k){ const out = [], walk = kk => { const n = tGet(nodes, kk); if (!n) return; out.push(n); tKids(nodes, kk).forEach(c => walk(c.k)); }; walk(k); return out; }
-function tEnsure(cid, field){ if (!S.tree[cid]) S.tree[cid] = { field: field || S.dbLast || "", nodes: [], ts: Date.now() }; return S.tree[cid]; }
+function tEnsure(cid, field){ if (!S.tree[cid]) S.tree[cid] = { field: field || S.dbLast || "", nodes: [], salt: Math.random().toString(36).slice(2, 5), ts: Date.now() }; return S.tree[cid]; }
+const nextK = t => Math.max(0, ...t.nodes.map(n => n.k)) + 1;
 function tTouch(cid){ const t = S.tree[cid]; if (!t) return; if (!t.nodes.length) delete S.tree[cid]; else t.ts = Date.now(); st("tree", cid); save(); }
 function tFormula(nodes, n){
   const kids = tKids(nodes, n.k), inner = kids.map(x => tFormula(nodes, x)).join(" " + MODE_SY[n.mode || "all"] + " ");
@@ -1659,94 +1726,153 @@ function applyDbMarks(){
 document.addEventListener("selectionchange", () => {
   if (!dbMode) return; const sel = getSelection(); if (!sel || !sel.rangeCount || sel.isCollapsed) return;
   const r = sel.getRangeAt(0), up = n => (n.nodeType === 3 ? n.parentNode : n), a = up(r.startContainer).closest && up(r.startContainer).closest(".pt"), b = up(r.endContainer).closest && up(r.endContainer).closest(".pt");
-  if (!a || a !== b || !board.contains(a)){ dbLastSel = a && b && a !== b ? "many" : null; return; }
+  if (!a && !b) return;
+  if (!a || a !== b || !board.contains(a)){ dbLastSel = a && b && a !== b ? "many" : null; selShowUpdate(); return; }
   const pre = document.createRange(); pre.selectNodeContents(a); pre.setEnd(r.startContainer, r.startOffset);
   const text = sel.toString().replace(/[ \t　]*\n[ \t　]*/g, "\n").trim(); if (!strip(text)) return;
-  dbLastSel = { pt: a, text, s: strip(pre.toString()).length };
+  dbLastSel = { pt: a, text, s: strip(pre.toString()).length }; selShowUpdate();
 });
 function dbTap(e){
   const m = e.target.closest(".dbm"); if (!m || getSelection().toString()) return;
-  treeSel = +m.dataset.k; renderTree(); const n = $("blkName"); if (n) n.value = "";
+  treeSel = +m.dataset.k; treeOpen = true; renderTree(); selShowUpdate(); const n = $("blkName"); if (n) n.value = "";
   $("editMsg").textContent = "選んだ：" + m.dataset.t + "「" + shortOf(m.textContent) + "」（下のツリー欄で、並べ替えなどができます）";
 }
 /* ---- 選んだ範囲を、ツリーのノードにする ---- */
+function tmsg(x, kind){ const m = $("treeMsg"); m.textContent = x; m.className = "tmsg" + (kind ? " " + kind : ""); if (x) toast(x, kind === "ng" ? "ng" : kind === "ok" ? "ok" : "", 4500); }
 function tMark(kind){
-  const msg = t => { $("editMsg").textContent = t; };
+  const msg = t => { $("editMsg").textContent = t; toast(t, "ng", 5000); };
   if (dbLastSel === "many"){ msg("1つのブロックの中の1か所だけを選んでください。"); return; }
   if (!dbLastSel){ msg("先に、文の一部を指でなぞって選んでください（文字を長押しして、両端をずらします）。"); return; }
   const c = card(), field = $("treeField").value.trim();
-  if (!field){ msg("分野を、下のツリー欄に入れてください（例：法律/刑法）。"); $("treeBox").hidden = false; $("treeBox").open = true; $("treeField").focus(); return; }
+  if (!field){ msg("分野を、下のツリー欄に入れてください（例：法律/刑法）。"); treeOpen = true; renderTree(); $("treeField").focus(); return; }
   const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed")), pi0 = pts.indexOf(dbLastSel.pt), L = strip(dbLastSel.text).length;
   const t0 = S.tree[c.id], nodes0 = t0 ? t0.nodes : [];
   const over = tMarks({ nodes: nodes0 }).find(x => x.ref.pos && x.ref.pos[0] === pi0 && x.ref.pos[1] < dbLastSel.s + L && dbLastSel.s < x.ref.pos[1] + strip(x.text).length);
-  if (over){ msg("すでにマークした範囲と重なっています（" + over.tag + "）。先に、そのマークをタップして、下のツリー欄で消してください。"); return; }
+  if (over){ msg("すでにマークした範囲と重なっています（" + over.tag + "）。先に、そのマークをタップして、ツリーで消してください。"); return; }
   const cur = tGet(nodes0, treeSel), title = ($("blkName") && $("blkName").value.trim()) || shortOf(dbLastSel.text), pos = [pi0, dbLastSel.s];
+  treeOpen = true;
   if (kind === "趣旨"){
-    if (!cur || cur.kind === "group"){ msg("趣旨をつけたい判断・要件を、先にタップして選んでください（下のツリー欄、または色のついた文）。"); return; }
+    if (!cur || cur.kind === "group"){ msg("趣旨をつけたい判断・要件を、先にタップして選んでください（下のツリー、または色のついた文）。"); return; }
     cur.pur = cur.pur || []; cur.pur.push({ text: dbLastSel.text, pos });
-    t0.field = field; S.dbLast = field; tTouch(c.id); finishMark("趣旨を「" + cur.title + "」につけました。"); return; }
-  let parent = 0, afterK = 0;
+    t0.field = field; S.dbLast = field; treeFlash = cur.k; tTouch(c.id); finishMark("✔ 趣旨を「" + (cur.title || "名前なし") + "」につけました。", "ok"); return; }
+  let parent = 0, afterK = 0, note = "";
   if (kind === "判断"){ parent = 0; }
   else { if (!cur){ msg("先に「判断」を作ってください（判断は、いちばん上の親になります）。"); return; }
     if (kind === "子"){ parent = cur.k; }
-    else { if (!cur.parent){ parent = cur.k; msg("判断と並列の要件は作れないので、判断の下に作りました。"); } else { parent = cur.parent; afterK = cur.k; } } }
+    else { if (!cur.parent){ parent = cur.k; note = "（判断と並列の要件は作れないので、判断の下に作りました）"; } else { parent = cur.parent; afterK = cur.k; } } }
   const t = tEnsure(c.id, field); t.field = field; S.dbLast = field;
-  const k = Math.max(0, ...t.nodes.map(n => n.k)) + 1, n = { k, kind: "node", title, text: dbLastSel.text, pur: [], parent, mode: "all", role: "", pos };
-  const at = afterK ? t.nodes.findIndex(x => x.k === afterK) + 1 : t.nodes.length; t.nodes.splice(at, 0, n); treeSel = k; tTouch(c.id);
-  finishMark((parent ? "要件" : "判断") + "「" + title + "」を作りました。");
+  const k = nextK(t), n = { k, kind: "node", title, text: dbLastSel.text, pur: [], parent, mode: "all", role: "", pos };
+  const at = afterK ? t.nodes.findIndex(x => x.k === afterK) + 1 : t.nodes.length; t.nodes.splice(at, 0, n); treeSel = k; treeFlash = k; tTouch(c.id);
+  finishMark("✔ " + (parent ? "要件" : "判断") + "「" + title + "」を、ツリーに足しました。" + note, "ok");
 }
-function finishMark(t){ try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; const n = $("blkName"); if (n) n.value = ""; applyDbMarks(); renderTree(); $("editMsg").textContent = ($("editMsg").textContent && $("editMsg").textContent.startsWith("判断と並列") ? $("editMsg").textContent + " " : "") + t; }
-/* ---- ツリーの表示と編集 ---- */
+function finishMark(t, kind){ try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; const n = $("blkName"); if (n) n.value = ""; applyDbMarks(); renderTree(); selShowUpdate(); $("editMsg").textContent = t; tmsg(t, kind); }
+/* ---- ツリーの表示（DBのツリーと同じ見た目）と編集 ---- */
+const LET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", circ = n => (n <= 20 ? String.fromCharCode(0x2460 + n - 1) : n + ".");
+const treeSig = t => t.field + "¦" + JSON.stringify(t.nodes.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text)]));
+function treeFormulaText(c){ const t = S.tree[c.id], nodes = t ? t.nodes : []; return tRoots(nodes).map(r => "判断「" + (r.title || "（名前なし）") + "」" + (tKids(nodes, r.k).length ? " ＝ " + tKids(nodes, r.k).map(x => tFormula(nodes, x)).join(" " + MODE_SY[r.mode || "all"] + " ") : "")).join("　／　"); }
+function bdg(text, cls){ const b = el("span", "bd " + (cls || ""), text); return b; }
+function jumpToMark(k, pur){ const m = board.querySelector('.dbm[data-k="' + k + '"]' + (pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])')); if (!m){ tmsg("カードの文の中に、この場所が見つかりません（文が変わった可能性があります）。", "ng"); return; } m.scrollIntoView({ block: "center", behavior: "auto" }); m.classList.add("dbhl"); setTimeout(() => m.classList.remove("dbhl"), 2500); }
+function tLi(nodes, n, par, bi, ids, c){
+  const kids = tKids(nodes, n.k), li = el("li", par ? "kid" + (n.role === "ただし" ? " exc" : "") : "rootli");
+  const row = el("div", "r" + (n.k === treeSel ? " sel" : "") + (n.k === treeFlash ? " flash" : "")); row.dataset.k = n.k;
+  if (!par) row.append(bdg("判断", "j")); else if (n.role === "ただし") row.append(bdg("ただし", "exc")); else if (bi) row.append(bdg(bi.text, bi.cls));
+  if (n.kind === "group") row.append(bdg("括弧", "or"));
+  if (n.k === treeSel && n.kind !== "group"){
+    const inp = el("input", "tin"); inp.type = "text"; inp.value = n.title || ""; inp.placeholder = "名前を入力（そのまま打ち直せます）"; inp.setAttribute("aria-label", "名前");
+    inp.addEventListener("input", () => { n.title = inp.value; tTouch(c.id); $("treeFormula").textContent = treeFormulaText(c); });
+    inp.addEventListener("click", e => e.stopPropagation()); row.append(inp);
+  } else { const tt = el("span", "ttl" + (n.title || n.kind === "group" ? "" : " blank"), n.kind === "group" ? "（" + MODE_LB[n.mode || "any"] + "）" : (n.title || "（名前なし）")); row.append(tt); }
+  if (n.kind === "group" && n.k === treeSel) row.append(el("span", "un", "括弧の中の組み方を変えるには、下の「子の組み方」を押します"));
+  if (n.text){ const j = el("button", "jmp", "⌖ 本文"); j.title = "カードの中の、この文へ移る"; j.onclick = e => { e.stopPropagation(); jumpToMark(n.k, false); }; row.append(j); }
+  if (n.lost) row.append(el("span", "un", "⚠文が変わって見つかりません"));
+  const e0 = ids[n.k], pl = e0 && placeOf(e0.id);
+  if (pl && pl.path){ const a = el("a", "pl", "📍" + pl.path); a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e0.id); a.target = "_blank"; a.rel = "noopener"; a.onclick = e => e.stopPropagation(); row.append(a); }
+  row.onclick = e => { if (e.target.closest("a,button,input")) return; treeSel = n.k; renderTree(); selShowUpdate(); };
+  li.append(row);
+  if (n.k === treeSel && n.text){ const sd = el("div", "src", "カードの文：「" + (n.text.replace(/\s+/g, " ").length > 70 ? n.text.replace(/\s+/g, " ").slice(0, 70) + "…" : n.text.replace(/\s+/g, " ")) + "」"); li.append(sd); }
+  (n.pur || []).forEach((pp, j) => { const u = el("div", "pu", "趣旨：" + (pp.text.replace(/\s+/g, " ").length > 60 ? pp.text.replace(/\s+/g, " ").slice(0, 60) + "…" : pp.text.replace(/\s+/g, " "))); 
+    const g = el("a", "", "⌖"); g.href = "#"; g.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); jumpToMark(n.k, true); }; u.append(g);
+    if (n.k === treeSel){ const x = el("a", "", "×消す"); x.href = "#"; x.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); n.pur.splice(j, 1); tTouch(c.id); applyDbMarks(); renderTree(); tmsg("趣旨を1つ消しました。"); }; u.append(x); }
+    li.append(u); });
+  if (kids.length){
+    const ul = el("ul", "kids"), mode = n.mode || "all", rc = kids.filter(k => k.role !== "ただし").length;
+    if (rc > 0 && (mode !== "all" || rc > 1)){ const g = el("li", "ghead " + mode); g.append(el("span", null, mode === "any" ? "次のどれか1つを満たせばよい" : mode === "total" ? "次を、比重をつけて総合考慮する" : "次のすべてを満たす")); ul.append(g); }
+    let ri = 0;
+    kids.forEach(k => {
+      let b = null;
+      if (k.role !== "ただし"){
+        ri++;
+        b = mode === "total" ? { text: "考慮", cls: "wg" } : rc < 2 ? { text: "要件", cls: "req" } : mode === "any" ? { text: LET[ri - 1] || String(ri), cls: "or" } : { text: circ(ri), cls: "req" };
+        if (ri > 1 && (mode === "any" || mode === "all")){ const sp = el("li", "sep " + mode); sp.append(el("span", null, mode === "any" ? "または" : "かつ")); ul.append(sp); }
+      }
+      const cl = tLi(nodes, k, n, b, ids, c);
+      if (k.role !== "ただし"){ if (mode === "any" && rc > 1) cl.classList.add("orkid"); else if (mode === "total") cl.classList.add("wgkid"); else if (mode === "all" && rc > 1) cl.classList.add("andkid"); }
+      ul.append(cl);
+    });
+    li.append(ul);
+  }
+  return li;
+}
 function renderTree(){
-  const c = card(), box = $("treeBox"); if (!c){ box.hidden = true; return; }
-  const t = S.tree[c.id], nodes = t ? t.nodes : [], show = nodes.length || blkLevel === "tree";
-  box.hidden = !show; if (!show) return;
+  const c = card(), box = $("treeBox"), top = $("treeTop"); if (!c){ box.hidden = true; return; }
+  const t = S.tree[c.id], nodes = t ? t.nodes : [];
+  const nj = tRoots(nodes).length, ny = nodes.filter(n => n.parent && n.kind !== "group").length, np = nodes.reduce((a, n) => a + (n.pur || []).length, 0);
+  top.textContent = "🌳 ツリー" + (nodes.length ? "（判断" + nj + "・要件" + ny + "）" : ""); top.classList.toggle("on", treeOpen);
+  box.hidden = !treeOpen; document.body.classList.toggle("sheeton", treeOpen); document.body.dataset.tsz = treeSz; box.dataset.sz = treeSz;
+  if (!treeOpen) return;
+  $("treeSize").textContent = treeSz === 1 ? "大きく" : treeSz === 2 ? "たたむ" : "ひらく";
   if (!tGet(nodes, treeSel)) treeSel = 0;
   const fl = $("dbFields"); fl.innerHTML = ""; [...new Set(Object.values(S.tree).map(x => x && x.field).filter(Boolean))].forEach(f => { const o = el("option"); o.value = f; fl.append(o); });
   if (document.activeElement !== $("treeField")) $("treeField").value = (t && t.field) || S.dbLast || "";
-  const roots = tRoots(nodes); $("treeSum").textContent = "ツリー（このカード）　判断 " + roots.length + "・要件 " + nodes.filter(n => n.parent && n.kind !== "group").length;
+  $("treeSum").textContent = "ツリー（このカード）　判断 " + nj + "・要件 " + ny + "・趣旨 " + np;
+  $("treeFormula").textContent = treeFormulaText(c);
+  if (!$("treeMsg").textContent || /^ツリーはまだありません/.test($("treeMsg").textContent)) $("treeMsg").textContent = nodes.length ? "行をタップして選ぶと、並べ替え・かつ/または・括弧などの操作が出ます。" : "ツリーはまだありません。文を長押し →「ツリー作成」で、文を選んで「判断にする」を押すと、ここに出ます。";
   const ids = {}; treeIds(c.id).forEach(e => { if (!e.pur) ids[e.n.k] = e; });
-  $("treeFormula").textContent = roots.map(r => "判断「" + (r.title || "（名前なし）") + "」" + (tKids(nodes, r.k).length ? " ＝ " + tKids(nodes, r.k).map(x => tFormula(nodes, x)).join(" " + MODE_SY[r.mode || "all"] + " ") : "")).join("　／　");
   const list = $("treeList"); list.innerHTML = "";
-  const row = (n, depth, idx, par) => {
-    const d = el("div", "tn" + (n.k === treeSel ? " on" : "")); d.style.marginLeft = depth * 14 + "px"; d.dataset.k = n.k;
-    if (idx > 0 && par){ const lg = el("span", "lg"); lg.textContent = MODE_SY[par.mode || "all"]; d.append(lg); }
-    const bd = el("span", "bd" + (n.kind === "group" ? "" : n.parent ? " y" : " j")); bd.textContent = n.kind === "group" ? "（ ）" : n.parent ? "要件" : "判断"; d.append(bd);
-    const nm = el("span"); nm.textContent = (n.role === "ただし" ? "ただし " : "") + (n.kind === "group" ? "いずれか／すべて…" : (n.title || "（名前なし）")); if (n.kind === "group") nm.textContent = (n.role === "ただし" ? "ただし " : "") + "グループ"; d.append(nm);
-    const kids = tKids(nodes, n.k); if (kids.length){ const m = el("span", "un"); m.textContent = "子の組み方：" + MODE_SY[n.mode || "all"] + " " + MODE_LB[n.mode || "all"]; d.append(m); }
-    if (n.lost){ const w = el("span", "un"); w.textContent = "⚠カードの文が変わって見つかりません"; d.append(w); }
-    const e = ids[n.k], pl = e && placeOf(e.id);
-    if (pl && pl.path){ const a = el("a"); a.textContent = "📍" + pl.path; a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e.id); a.target = "_blank"; a.rel = "noopener"; d.append(a); }
-    (n.pur || []).forEach((p, j) => { const u = el("div", "pu"); u.textContent = "趣旨：" + (p.text.length > 50 ? p.text.slice(0, 50) + "…" : p.text) + "　"; const x = el("a"); x.textContent = "×消す"; x.href = "#"; x.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); n.pur.splice(j, 1); tTouch(c.id); applyDbMarks(); renderTree(); }; u.append(x); d.append(u); });
-    d.onclick = ev => { if (ev.target.closest("a")) return; treeSel = n.k; renderTree(); const m = board.querySelector('.dbm[data-k="' + n.k + '"]'); if (m){ m.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" }); } };
-    list.append(d); kids.forEach((x, i) => row(x, depth + 1, i, n));
-  };
-  roots.forEach((r, i) => row(r, 0, 0, null));
-  const sel = tGet(nodes, treeSel); $("treeTools").hidden = !sel; $("treeNameRow").hidden = !sel || sel.kind === "group";
-  if (sel){ if (document.activeElement !== $("treeName")) $("treeName").value = sel.title || "";
-    const T = $("treeTools"); T.querySelector('[data-op="ungroup"]').hidden = sel.kind !== "group"; T.querySelector('[data-op="mode"]').textContent = "子の組み方：" + MODE_SY[sel.mode || "all"] + " " + MODE_LB[sel.mode || "all"] + "（押すと切替）"; }
+  if (!nodes.length) list.append(el("div", "un", "まだ何もありません。文を長押し →「ツリー作成」で、文を選んで「判断にする」を押すと、ここに出ます。"));
+  tRoots(nodes).forEach(r => { const ul = el("ul", "roots"); ul.append(tLi(nodes, r, null, null, ids, c)); list.append(ul); });
+  const sel = tGet(nodes, treeSel), T = $("treeTools"); T.hidden = !sel;
+  if (sel){
+    $("treeSelName").textContent = "選択中：" + (sel.kind === "group" ? "（括弧）" : "「" + (sel.title || "名前なし") + "」");
+    const q = o => T.querySelector('[data-op="' + o + '"]');
+    ["all", "any", "total"].forEach(m => q("m:" + m).classList.toggle("on", (sel.mode || (sel.kind === "group" ? "any" : "all")) === m));
+    q("ungroup").hidden = sel.kind !== "group"; q("group").hidden = sel.kind === "group" || !sel.parent; q("role").hidden = !sel.parent || sel.kind === "group"; q("role").classList.toggle("on", sel.role === "ただし");
+    q("addsib").textContent = sel.parent ? "＋並列の要件" : "＋別の判断";
+  }
+  const sd = t && t.sent; $("treeSent").textContent = !nodes.length ? "" : sd ? "最後にDBへ送ったのは " + new Date(sd.at).toTimeString().slice(0, 5) + "（" + (sd.sig === treeSig(t) ? "その後の変更なし" : "その後に変更あり：もう一度送ってください") + "）" : "このカードは、まだDBに送っていません。";
+  if (treeFlash){ const f = list.querySelector(".r.flash"); if (f) f.scrollIntoView({ block: "nearest" }); treeFlash = 0; }
 }
 function tOp(op){
-  const c = card(), t = S.tree[c.id]; if (!t) return; const nodes = t.nodes, n = tGet(nodes, treeSel); if (!n) return; const msg = x => { $("treeMsg").textContent = x; }; msg("");
+  const c = card();
+  if (op === "addroot"){
+    const field = $("treeField").value.trim(); if (!field){ tmsg("先に、分野を入れてください（例：法律/刑法）。", "ng"); $("treeField").focus(); return; }
+    const t = tEnsure(c.id, field); t.field = field; S.dbLast = field; const k = nextK(t);
+    t.nodes.push({ k, kind: "node", title: "新しい判断", text: "", pur: [], parent: 0, mode: "all", role: "", pos: null }); treeSel = k; treeFlash = k; tTouch(c.id); renderTree(); selShowUpdate(); tmsg("✔ 判断「新しい判断」を足しました。名前は、選ばれた行で、そのまま打ち直せます。", "ok"); return; }
+  const t = S.tree[c.id]; if (!t){ tmsg("先にツリーを作ってください。", "ng"); return; }
+  const nodes = t.nodes, n = tGet(nodes, treeSel); if (!n){ tmsg("先に、ツリーの行をタップして選んでください。", "ng"); return; }
+  const msg = (x, k) => tmsg(x, k); let done = "";
   const sibs = nodes.filter(x => x.parent === n.parent), si = sibs.indexOf(n), ai = nodes.indexOf(n);
-  if (op === "up" || op === "down"){ const o = sibs[si + (op === "up" ? -1 : 1)]; if (!o){ msg("これ以上、動かせません。"); return; } const bi = nodes.indexOf(o); nodes[ai] = o; nodes[bi] = n; }
-  else if (op === "in"){ const prev = sibs[si - 1]; if (!prev){ msg("上に同じ階層のノードがないので、下げられません（前のノードの子になります）。"); return; }
-    nodes.splice(ai, 1); n.parent = prev.k; nodes.push(n); if (prev.kind !== "group" || true) {} }
-  else if (op === "out"){ if (!n.parent){ msg("判断は、これ以上、上げられません。"); return; } const par = tGet(nodes, n.parent); nodes.splice(ai, 1); n.parent = par.parent; nodes.splice(nodes.indexOf(par) + 1, 0, n); }
-  else if (op === "mode"){ if (!tKids(nodes, n.k).length){ msg("子の要件がまだないので、組み方は切り替えられません。"); return; } n.mode = n.mode === "all" ? "any" : n.mode === "any" ? "total" : "all"; }
-  else if (op === "role"){ if (!n.parent){ msg("判断には、「ただし」は付けられません。"); return; } n.role = n.role === "ただし" ? "" : "ただし"; }
-  else if (op === "group"){ const nx = sibs[si + 1]; if (!nx){ msg("まとめる相手（次の要件）がありません。まとめたい2つを、続けて並べてください。"); return; }
-    const k = Math.max(0, ...nodes.map(x => x.k)) + 1, g = { k, kind: "group", title: "", text: "", pur: [], parent: n.parent, mode: "any", role: "" };
-    nodes.splice(ai, 0, g); n.parent = k; nx.parent = k; treeSel = k; msg("括弧のグループを作りました（中の組み方は「∨ どれか」。変えるには、グループを選んで「子の組み方」を押します）。"); }
-  else if (op === "ungroup"){ if (n.kind !== "group") return; tKids(nodes, n.k).forEach(x => { x.parent = n.parent; }); nodes.splice(nodes.indexOf(n), 1); treeSel = 0; }
-  else if (op === "del"){ const sub = tSubtree(nodes, n.k); if (sub.length > 1 && !confirm("下にある " + (sub.length - 1) + " 個のノードも、いっしょに消えます。よろしいですか？")) return; t.nodes = nodes.filter(x => !sub.includes(x)); treeSel = 0; }
-  tTouch(c.id); applyDbMarks(); renderTree();
+  if (op === "up" || op === "down"){ const o = sibs[si + (op === "up" ? -1 : 1)]; if (!o){ msg("これ以上、動かせません。", "ng"); return; } const bi = nodes.indexOf(o); nodes[ai] = o; nodes[bi] = n; done = "並び順を変えました。"; }
+  else if (op === "in"){ const prev = sibs[si - 1]; if (!prev){ msg("すぐ上に同じ階層のノードがないので、下げられません。", "ng"); return; } nodes.splice(ai, 1); n.parent = prev.k; nodes.push(n); done = "「" + (prev.title || "上のノード") + "」の下に入れました。"; }
+  else if (op === "out"){ if (!n.parent){ msg("判断は、これ以上、上げられません。", "ng"); return; } const par = tGet(nodes, n.parent); nodes.splice(ai, 1); n.parent = par.parent; nodes.splice(nodes.indexOf(par) + 1, 0, n); done = "一つ上の階層に出しました。"; }
+  else if (op.startsWith("m:")){ n.mode = op.slice(2); done = "子の組み方を「" + MODE_SY[n.mode] + " " + MODE_LB[n.mode] + "」にしました。" + (tKids(nodes, n.k).length ? "" : "（子の要件ができると、ツリーに表れます）"); }
+  else if (op === "role"){ if (!n.parent){ msg("判断には、「ただし」は付けられません。", "ng"); return; } n.role = n.role === "ただし" ? "" : "ただし"; done = n.role ? "「ただし（例外）」にしました。" : "「ただし」を外しました。"; }
+  else if (op === "group"){ const nx = sibs[si + 1]; if (!nx){ msg("まとめる相手（すぐ下の要件）がありません。まとめたい2つを、続けて並べてください。", "ng"); return; }
+    const k = nextK(t), g = { k, kind: "group", title: "", text: "", pur: [], parent: n.parent, mode: "any", role: "" };
+    nodes.splice(ai, 0, g); n.parent = k; nx.parent = k; treeSel = k; done = "括弧のグループを作りました（中は「∨ どれか」。変えるには、下の「子の組み方」を押します）。"; }
+  else if (op === "ungroup"){ if (n.kind !== "group") return; tKids(nodes, n.k).forEach(x => { x.parent = n.parent; }); nodes.splice(nodes.indexOf(n), 1); treeSel = 0; done = "括弧を解きました。"; }
+  else if (op === "addkid"){ const k = nextK(t); nodes.push({ k, kind: "node", title: "新しい要件", text: "", pur: [], parent: n.k, mode: "all", role: "" , pos: null }); treeSel = k; treeFlash = k; done = "子の要件「新しい要件」を足しました。名前は、選ばれた行で打ち直せます。"; }
+  else if (op === "addsib"){ const k = nextK(t); if (!n.parent){ nodes.push({ k, kind: "node", title: "新しい判断", text: "", pur: [], parent: 0, mode: "all", role: "", pos: null }); done = "別の判断を足しました。"; } else { nodes.splice(ai + 1, 0, { k, kind: "node", title: "新しい要件", text: "", pur: [], parent: n.parent, mode: "all", role: "", pos: null }); done = "並列の要件を足しました。"; } treeSel = k; treeFlash = k; }
+  else if (op === "del"){ const sub = tSubtree(nodes, n.k); if (sub.length > 1 && !confirm("下にある " + (sub.length - 1) + " 個のノードも、いっしょに消えます。よろしいですか？")) return; t.nodes = nodes.filter(x => !sub.includes(x)); treeSel = 0; done = "消しました。"; }
+  tTouch(c.id); applyDbMarks(); renderTree(); selShowUpdate(); msg("✔ " + done, "ok");
 }
 $("treeTools").addEventListener("pointerdown", e => { if (e.target.closest("button")) e.preventDefault(); });
-$("treeTools").onclick = e => { const b = e.target.closest("button[data-op]"); if (b) tOp(b.dataset.op); };
-$("treeName").addEventListener("change", () => { const c = card(), t = S.tree[c.id], n = t && tGet(t.nodes, treeSel); if (!n) return; n.title = $("treeName").value.trim(); tTouch(c.id); renderTree(); });
-$("treeField").addEventListener("change", () => { const c = card(), v = $("treeField").value.trim(); if (!v) return; S.dbLast = v; const t = S.tree[c.id]; if (t){ t.field = v; tTouch(c.id); } save(); });
-$("treeClr").onclick = () => { const c = card(); if (!S.tree[c.id] || !confirm("このカードのツリーを、全部消します。よろしいですか？")) return; delete S.tree[c.id]; st("tree", c.id); save(); treeSel = 0; applyDbMarks(); renderTree(); };
+$("treeBox").addEventListener("click", e => { const b = e.target.closest("button[data-op]"); if (b) tOp(b.dataset.op); });
+$("treeField").addEventListener("change", () => { const c = card(), v = $("treeField").value.trim(); if (!v) return; S.dbLast = v; const t = S.tree[c.id]; if (t){ t.field = v; tTouch(c.id); } save(); tmsg("分野を「" + v + "」にしました。", "ok"); });
+$("treeClr").onclick = () => { const c = card(); if (!S.tree[c.id]){ tmsg("このカードには、ツリーがありません。"); return; } if (!confirm("このカードのツリーを、全部消します。よろしいですか？")) return; delete S.tree[c.id]; st("tree", c.id); save(); treeSel = 0; applyDbMarks(); renderTree(); selShowUpdate(); tmsg("このカードのツリーを消しました。", "ok"); };
+$("treeTop").onclick = () => { treeOpen = !treeOpen; if (treeOpen && treeSz === 0) treeSz = 1; renderTree(); if (treeOpen){ const c = card(); toast("このカードのツリーを表示しました（画面の下）。", "", 2000); } };
+$("treeClose").onclick = () => { treeOpen = false; renderTree(); };
+$("treeSize").onclick = () => { treeSz = treeSz === 1 ? 2 : treeSz === 2 ? 0 : 1; renderTree(); };
 /* 前の方式（要件・規範・趣旨のマーク）で作ったものを、新しい形（判断・要件のツリー）に直す */
 function migrateDbq(){
   let ch = false;
@@ -1754,7 +1880,7 @@ function migrateDbq(){
     const items = dq.items.slice().sort((a, b) => (a.pos ? a.pos[0] : 1e9) - (b.pos ? b.pos[0] : 1e9) || (a.pos ? a.pos[1] : 0) - (b.pos ? b.pos[1] : 0) || a.k - b.k), nodes = []; let lastReq = 0, lastAny = 0;
     items.forEach(x => { if (x.tag === "趣旨"){ const p = tGet(nodes, lastAny); if (p) p.pur.push({ text: x.text, pos: x.pos || null }); return; }
       const n = { k: x.k, kind: "node", title: x.title || "", text: x.text, pur: [], parent: x.tag === "要件" ? 0 : lastReq, mode: "all", role: "", pos: x.pos || null };
-      if (x.tag === "要件"){ lastReq = x.k; const g = dq.g && dq.g[x.k]; if (g && g.v > 1) n.gv = g.v; } lastAny = x.k; nodes.push(n); });
+      if (x.tag === "要件"){ lastReq = x.k; const g = dq.g && dq.g[x.k]; n.gv = ((g && g.v) || 1) + 1; } lastAny = x.k; nodes.push(n); });
     if (nodes.length && nodes[0].parent === 0){ S.tree[cid] = { field: dq.field || "", nodes, ts: Date.now() }; st("tree", cid); ch = true; } });
   if (ch) save();
 }
@@ -1783,7 +1909,7 @@ const TREE_URL = "https://gitwallaby.github.io/decisions/decisions.html";
 const DB_PLACE_FILE = "DB配置.json";
 /* 送るidと同じ計算（バージョンは動かさない）。判断1つのまとまりごとに、末尾が -v2 などになる */
 function treeIds(cid){
-  const t = S.tree[cid]; if (!t) return []; const base = "fc-" + hashId(cid), out = [];
+  const t = S.tree[cid]; if (!t) return []; const base = "fc-" + hashId(cid) + (t.salt || ""), out = [];
   tRoots(t.nodes).forEach(r => { const suf = (r.gv || 1) > 1 ? "-v" + r.gv : "";
     tSubtree(t.nodes, r.k).forEach(n => { const b = base + "-" + n.k;
       out.push({ n, x: { tag: n.parent ? "要件" : "判断", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, text: n.text || "" }, base: b, id: b + suf });
@@ -1828,7 +1954,8 @@ function applyHash(){
   if (!hit){ $("dbPlMsg").textContent = "ツリーから指定されたブロック（" + want + "）が、この端末のカードの中に見つかりません。ドライブと同期してから、もう一度開いてください。"; return; }
   let i = list.findIndex(n => CARDS[n].id === hit.cd.id);
   if (i < 0){ const n = CARDS.indexOf(hit.cd); list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
-  pi = i; stop(); load(false).then(() => { const t = [...board.querySelectorAll(".pt")].find(x => plainOf(x.innerHTML) === hit.o.x.text); if (t){ t.scrollIntoView({ block: "center" }); t.classList.add("dbhl"); setTimeout(() => t.classList.remove("dbhl"), 3500); } });
+  pi = i; stop(); load(false).then(() => { treeSel = hit.o.n.k; renderTree(); const t = board.querySelector('.dbm[data-k="' + hit.o.n.k + '"]' + (hit.o.pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])'));
+    if (t){ t.scrollIntoView({ block: "center" }); t.classList.add("dbhl"); setTimeout(() => t.classList.remove("dbhl"), 4000); } else { const tb = $("treeBox"); if (!tb.hidden) tb.scrollIntoView({ block: "center" }); } });
   history.replaceState(null, "", location.pathname + location.search);
 }
 window.addEventListener("hashchange", applyHash);
@@ -1841,16 +1968,32 @@ async function gPut(name, body){
     await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
       body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
 }
-$("dbSend").onclick = async () => {
-  const out = $("dbSendMsg"), rows = dbRows();
-  if (!rows.length){ out.textContent = "送る部分がありません。カードを開いて「DBに送る部分を選ぶ」で、要件・規範・趣旨を選んでください。"; return; }
+async function dbSendRun(toFile){
+  const out = (t, k, ms) => { $("dbSendMsg").textContent = t; if (!$("treeBox").hidden){ const m = $("treeMsg"); m.textContent = t; m.className = "tmsg" + (k ? " " + k : ""); } toast(t, k === "ng" ? "ng" : k === "ok" ? "ok" : "", ms === undefined ? 0 : ms); };
+  out("送る内容を集めています…");
+  const rows = dbRows();
+  if (!rows.length){ out("送る内容がありません。カードの文を長押しして「ツリー作成」で、判断・要件を作ってから、もう一度押してください。", "ng", 8000); return; }
+  const cnt = tg => rows.filter(r => r.tag === tg).length, cards = new Set(rows.map(r => r.card)).size;
+  const sum = "判断" + cnt("判断") + "・要件" + cnt("要件") + "・趣旨" + cnt("趣旨") + "（" + cards + "枚のカード、" + rows.length + "行）";
   const text = JSON.stringify({ format: "decisions-inbox", version: 2, source: "flowchart", exportedAt: new Date().toISOString(), rows }, null, 1);
-  if (S.gcid){
-    try { out.textContent = "Googleに接続中…"; await gToken(); S.gOk = 1; out.textContent = "ドライブに書き込み中…"; await gPut(DB_FILE, text); save();
-      out.textContent = rows.length + " 行を、ドライブの「" + G_FOLDER + "」フォルダの「" + DB_FILE + "」に書きました。ツリー側で、このファイルを読み込んでください。"; return;
-    } catch(e){ out.textContent = "ドライブに書けませんでした（" + (e && e.message || e) + "）。代わりに、ファイルとして保存します。"; } }
-  await dlText(DB_FILE, text, "application/json"); out.textContent += "　" + rows.length + " 行を「" + DB_FILE + "」として保存しました（ツリー側で読み込めます）。";
-};
+  const mark = () => { const now = Date.now(); Object.values(S.tree).forEach(t => { if (t && t.nodes && t.nodes.length) t.sent = { at: now, sig: treeSig(t) }; }); save(); renderTree(); };
+  if (!toFile && S.gcid){
+    try {
+      out("Googleに接続しています…"); await gToken(); S.gOk = 1;
+      out("ドライブに書き込んでいます…（" + sum + "）"); await gPut(DB_FILE, text); save();
+      out("書き込めたか、確かめています…"); let back = null; try { back = await gGet(DB_FILE); } catch(e){}
+      mark();
+      if (back != null && back.length === text.length) out("✔ 送りました：" + sum + "。ドライブの「" + G_FOLDER + "」フォルダの「" + DB_FILE + "」に書き込み、読み戻して確かめました。ツリー側で、このファイルを読み込んでください。", "ok", 15000);
+      else out("書き込みました：" + sum + "。（ただし、読み戻しでの確認はできませんでした。ドライブの「" + G_FOLDER + "」フォルダの「" + DB_FILE + "」を開いて確かめてください。うまくいかないときは「💾 ファイルで保存」を使ってください）", "", 15000);
+      return;
+    } catch(e){ out("ドライブに書けませんでした（" + (e && e.message || e) + "）。代わりに、ファイルとして保存します…", "ng"); }
+  } else if (!toFile) out("Googleドライブの設定が、まだ入っていないので、ファイルとして保存します…");
+  try { await dlText(DB_FILE, text, "application/json"); mark(); out("✔ 「" + DB_FILE + "」として、この端末に保存しました：" + sum + "。（ダウンロードフォルダなど）。PCに移して、ツリー側で読み込んでください。", "ok", 15000); }
+  catch(e){ out("保存できませんでした（" + (e && e.message || e) + "）", "ng", 9000); }
+}
+$("dbSend").onclick = () => dbSendRun(false);
+$("treeSend").onclick = () => dbSendRun(false);
+$("treeFile").onclick = () => dbSendRun(true);
 
 /* ---------- 起動 ---------- */
 async function init(){
