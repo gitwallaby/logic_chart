@@ -1,0 +1,2182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>論証フローチャート 再生ページ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#e6e8ec; --ink:#1f2328; --sub:#5d6470; --bar:#f7f8fa; --barline:#cfd3da; --btn:#ffffff; --btnline:#c5cad2;
+  /* 図解の盤面はAnkiと同じ暗い背景で固定（シアン・黄色を読めるようにするため） */
+  --board:#262a31; --cell:#2e333b; --edge:#4a525e; --trace:#56606e; --current:#f3ecd2;
+  --w:#ecebe6; --gray:#aeb3bb; --outbg:#3d3449; --cyan:#55ffff; --yellow:#ffff7f; --m1:#550000; --m2:#005500; --rule:#5b6472;
+  --g:8px;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#1d2026; --ink:#e6e7ea; --sub:#9aa1ac; --bar:#272b32; --barline:#3a404a; --btn:#2f343c; --btnline:#454c57;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#1d2026; --ink:#e6e7ea; --sub:#9aa1ac; --bar:#272b32; --barline:#3a404a; --btn:#2f343c; --btnline:#454c57;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--page);color:var(--ink);
+  font-family:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  font-size:15px;line-height:1.6;padding-bottom:150px}
+main{max-width:46rem;margin:0 auto;padding:14px 12px 0}
+header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
+.meta{font-size:13px;color:var(--sub);display:flex;gap:12px;flex-wrap:wrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 12px;font-size:12.5px;color:var(--sub)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend [hidden]{display:none}
+.sw{width:22px;height:14px;border-radius:3px;background:var(--board);display:inline-grid;place-items:center;font-size:10px;font-weight:700}
+.board{background:var(--board);color:var(--w);border-radius:10px;padding:14px 10px 18px;overflow-x:auto;position:relative}
+.frm{position:absolute;box-sizing:border-box;border:2px solid #7fd0c8;border-radius:12px;pointer-events:none;z-index:1}
+.frm.l1{border-color:#e8c64a}.frm.l2{border-color:#c58ae8}.frm.l3{border-color:#f08a6b}
+.frm .frl{position:absolute;left:12px;top:-11px;background:var(--board);color:#7fd0c8;font-size:11.5px;font-weight:700;padding:0 7px;line-height:20px;border-radius:6px;white-space:nowrap;max-width:85%;overflow:hidden;text-overflow:ellipsis}
+.frm.l1 .frl{color:#e8c64a}.frm.l2 .frl{color:#c58ae8}.frm.l3 .frl{color:#f08a6b}
+.row.frsel{outline:2px dashed #ff9a3c;outline-offset:3px}
+
+/* 攻撃防御の流れ（全体図） */
+.flow{margin:0 0 16px}
+.flow-lab{font-size:12px;color:var(--gray);margin:0 2px 6px}
+.flow-h{display:flex;align-items:stretch;gap:6px}
+.flow-h>.step{flex:1 1 0;min-width:0}
+.arr{align-self:center;color:var(--gray);font-size:13px}
+.cols{display:flex;gap:8px}
+.col{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+.col-lab{font-size:12px;font-weight:700;color:var(--w);margin:0 2px 5px}
+.varr{text-align:center;color:var(--gray);font-size:12px;line-height:1;margin:3px 0}
+.step{background:var(--cell);border:1px solid var(--edge);border-radius:6px;padding:6px 8px;font-size:12.5px;line-height:1.5}
+.step .who{display:block;font-size:11px;color:var(--gray)}
+.step .what{font-weight:700}
+.step.here{border:2px solid var(--current)}
+.here-tag{display:inline-block;margin-left:4px;padding:0 4px;border-radius:3px;background:var(--current);color:var(--board);font-size:10.5px;font-weight:700;vertical-align:1px}
+.say{font-size:11px;margin-top:4px}
+.say.yes{color:var(--w)} .say.no{color:var(--gray)}
+.step ul{margin:1px 0 0;padding-left:1.1em}
+.step li{font-size:12px}
+.step ul.no li{color:var(--gray)}
+.diff{margin-top:8px;font-size:12.5px;line-height:1.65;background:var(--cell);border-radius:6px;padding:7px 9px}
+.diff b{color:var(--current)}
+
+/* 区切り */
+.sec+.sec{border-top:1px solid var(--rule);margin-top:20px;padding-top:12px}
+.sec-hd{display:flex;align-items:baseline;gap:8px;margin:0 2px 10px;font-size:12.5px;color:var(--gray)}
+.sec-hd b{color:var(--w);font-size:13.5px}
+
+/* 配線 */
+.wire{position:relative;width:2px;height:20px;margin:0 auto;background:var(--trace)}
+.wire::after{content:"";position:absolute;left:-4px;bottom:-1px;border:5px solid transparent;border-top-color:var(--trace);border-bottom:0}
+.wire.via{height:30px}
+.wire .lbl{position:absolute;left:10px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:12px;color:var(--gray)}
+.wire.lit{background:var(--current)} .wire.lit::after{border-top-color:var(--current)}
+.yk .wire{margin-left:9px}
+
+.row{display:flex;justify-content:center;position:relative}
+.row.one>.blk{width:100%;max-width:34rem}
+.yk .row.one>.blk{max-width:none}
+.yk .row{justify-content:flex-start}
+.row.one>.blk.t-subj{width:auto;max-width:none}
+.t-subj{font-size:13px;font-weight:700;border-radius:999px;padding:3px 12px}
+.top{margin-bottom:14px}
+
+/* 横並び（並列・分岐） */
+.row.par,.row.branch{gap:var(--g);padding-top:14px}
+.row.par{padding-bottom:14px}
+.row.par::before,.row.branch::before,.row.par::after{content:"";position:absolute;height:2px;background:var(--trace);
+  left:calc((100% - (var(--n) - 1) * var(--g)) / (2 * var(--n)));
+  right:calc((100% - (var(--n) - 1) * var(--g)) / (2 * var(--n)))}
+.row.par::before,.row.branch::before{top:0}
+.row.par::after{bottom:0}
+.row.par>.blk,.row.branch>.blk{flex:1 1 0;min-width:0;position:relative;font-size:13.5px}
+.row.par>.blk::before,.row.branch>.blk::before,.row.par>.blk::after{content:"";position:absolute;left:50%;width:2px;height:15px;margin-left:-1px;background:var(--trace)}
+.row.par>.blk::before,.row.branch>.blk::before{top:-15px}
+.row.par>.blk::after{bottom:-15px}
+.row.lit::before,.row.lit::after,.row.lit>.blk::before,.row.lit>.blk::after{background:var(--current)}
+
+/* 縦並び（はしご：すべて必要） */
+.row.ladder{flex-direction:column;align-items:stretch;gap:8px;padding-left:26px}
+.lad-lab{font-size:12px;color:var(--gray);margin:0 0 2px -17px;padding-left:0}
+.row.ladder>.blk{position:relative;font-size:14px}
+.row.ladder>.blk::after{content:"";position:absolute;left:-17px;width:2px;top:-4px;bottom:-4px;background:var(--trace)}
+.row.ladder>.blk:first-of-type::after{top:-6px}
+.row.ladder>.blk:last-child::after{bottom:auto;height:24px}
+.row.ladder>.blk::before{content:"";position:absolute;left:-17px;top:18px;width:17px;height:2px;background:var(--trace)}
+.row.ladder>.blk.out::before{display:none}
+.row.ladder>.blk.on::after,.row.ladder>.blk.past::after,
+.row.ladder>.blk.on:not(.out)::before,.row.ladder>.blk.past:not(.out)::before{background:var(--current)}
+
+/* ブロック */
+.blk{background:var(--cell);border:1px solid var(--edge);border-radius:6px;padding:8px 10px;line-height:1.7;cursor:pointer;
+  transition:box-shadow .2s, opacity .2s}
+.blk:focus-visible{outline:2px solid var(--current);outline-offset:2px}
+.t-fact{color:var(--gray);border-style:dashed}
+.t-issue{font-weight:700}
+.t-reason{color:var(--cyan);border-color:rgba(85,255,255,.4)}
+.t-norm{color:var(--yellow);border-color:rgba(255,255,127,.4)}
+.t-concl{border:2px solid var(--w)}
+.t-extra{background:transparent;color:var(--gray);cursor:default}
+.blk.out{background:var(--outbg)}
+.pt.q{font-size:13px}
+.c{color:var(--cyan)} .y{color:var(--yellow)}
+.pick{width:100%;margin:8px 0 2px;padding:8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:14px}
+.flag{font-size:12.5px;color:#b3261e;margin:4px 0}
+.pt.y{color:var(--yellow)}
+.pt.c{color:var(--cyan)}
+.pt.w{color:var(--w)}
+.pt+.pt{margin-top:2px}
+.blk.multi .pt{border-radius:3px}
+.blk.multi .pt.on{background:rgba(243,236,210,.11);box-shadow:0 0 0 3px rgba(243,236,210,.11)}
+.to{display:inline-block;margin-top:6px;font-size:11.5px;color:var(--w);border:1px solid var(--gray);border-radius:999px;padding:0 8px}
+.cond{font-size:11.5px;color:var(--w);font-weight:700;margin-bottom:2px}
+.note{display:block;font-size:11px;color:var(--gray);margin-top:4px}
+.m1{background:var(--m1);border-radius:2px;padding:0 1px}
+.m2{background:var(--m2);border-radius:2px;padding:0 1px}
+.blk.on{box-shadow:0 0 0 2px var(--current),0 0 16px rgba(243,236,210,.28)}
+.board.playing .blk:not(.on):not(.past){opacity:.72}
+
+/* 操作バー */
+.ctl{position:fixed;left:0;right:0;bottom:0;background:var(--bar);border-top:1px solid var(--barline);
+  padding:8px 10px calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.ctl-in{max-width:46rem;margin:0 auto}
+.now{font-size:12.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px}
+.btns{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.btns button{flex:1;min-width:0;height:46px;border-radius:10px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);
+  font:inherit;font-size:12px;line-height:1.2;cursor:pointer}
+.btns button.main{flex:1.4;font-size:15px;font-weight:700;background:var(--ink);color:var(--page);border-color:var(--ink)}
+.btns button:focus-visible,.speed button:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.sub{display:flex;justify-content:space-between;align-items:center;margin-top:7px;font-size:12px;color:var(--sub);gap:8px}
+.speed{display:flex;gap:4px}
+.speed button{border:1px solid var(--btnline);background:var(--btn);color:var(--ink);border-radius:999px;padding:3px 9px;font:inherit;font-size:12px;cursor:pointer}
+.speed button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.blk{transition:none}}
+
+.seek{width:100%;margin:0 0 6px;accent-color:var(--ink)}
+.btns button{font-size:13px;padding:0}
+.btns button.main{font-size:14px}
+.tm{font-variant-numeric:tabular-nums}
+.grad{border:1px solid var(--btnline);background:var(--btn);color:var(--ink);border-radius:999px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer}
+.grad[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.panel{background:var(--bar);border:1px solid var(--barline);border-radius:10px;padding:10px 12px;margin:10px 0}
+.panel summary{cursor:pointer;font-size:14px;font-weight:700}
+.panel h3{font-size:13px;margin:12px 0 4px}
+.chk{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:14px}
+.chk label{display:inline-flex;align-items:center;gap:4px}
+.act{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px}
+.act button,.big{border:1px solid var(--btnline);background:var(--btn);color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+.big{background:var(--ink);color:var(--page);border-color:var(--ink);font-weight:700;font-size:15px;padding:12px 16px;margin-top:8px}
+.empty ol{padding-left:1.3em;margin:8px 0}
+.empty li{margin:4px 0}
+.small{font-size:12.5px;color:var(--sub)}
+.board.editing .pt[data-e]{cursor:text;outline:1px dashed rgba(243,236,210,.35);outline-offset:2px}
+.board.editing .ubr::before{content:"↵";display:inline-block;margin-left:3px;padding:0 5px;border-radius:4px;background:var(--current);color:var(--board);font-size:12px;font-weight:700;cursor:pointer}
+.board.editing .ubr.gone::before{content:"↵ 消す予定";background:var(--gray)}
+.ubr.gone + br{display:none}
+.editbar{margin:0 0 10px}
+.mini{border:1px solid var(--btnline);background:var(--btn);color:var(--ink);border-radius:999px;padding:3px 8px;font:inherit;font-size:12.5px}
+.mini.chg{border-color:var(--ink);font-weight:700}
+.meta{align-items:center}
+.editbar textarea{width:100%;height:90px;margin-top:8px;font-size:12px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
+/* 検索とタグ */
+.tgs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px;align-items:center}
+.tg{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--btnline);background:var(--btn);border-radius:999px;padding:2px 4px 2px 10px;font-size:12.5px}
+.tg button,.tgadd{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:3px 6px}
+.tgadd{border:1px dashed var(--btnline);border-radius:999px;font-size:12.5px;padding:3px 10px}
+#tgNew{margin:4px 0 6px}
+.n{color:var(--gray)!important;font-style:italic;border-bottom:1px dotted var(--gray)}
+.pt.mm{cursor:text}
+.board:not(.txm):not(.editing) .blk{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+dialog#ncDlg{border:1px solid var(--btnline);border-radius:14px;background:var(--bar);color:var(--ink);padding:14px;width:min(560px,94vw);max-height:92vh;overflow:auto}
+dialog#ncDlg::backdrop{background:rgba(0,0,0,.55)}
+#ncDlg h3{margin:0 0 8px;font-size:16px}#ncDlg label{display:block;margin:8px 0 0;font-size:12.5px;color:var(--sub)}
+#ncDlg input[type=text],#ncDlg select,#ncDlg textarea{width:100%;box-sizing:border-box;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:8px 10px;font:inherit;font-size:14px;margin-top:3px}
+#ncDlg textarea{min-height:90px;resize:vertical;line-height:1.5}#ncDlg textarea#ncBack{min-height:220px}
+#ncMsg{min-height:1.4em;font-size:12.5px;color:#e08a8a;margin:8px 0 0}
+.gr.need{outline:2px solid #e8c64a;outline-offset:3px;border-radius:12px}
+dialog#dbDlg{border:1px solid var(--btnline);border-radius:14px;background:var(--bar);color:var(--ink);padding:14px;width:min(620px,95vw);max-height:92vh;overflow:auto}
+dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
+#dbDlg h3{margin:0 0 6px;font-size:16px}#dbDlg input[type=text]{width:100%;box-sizing:border-box;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:7px 9px;font:inherit;font-size:14px}
+.dbr{border-top:1px solid var(--rule);padding:8px 0}.dbr .dbt{font-size:13px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-all}
+.dbr select{margin:6px 6px 0 0;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:5px 8px;font:inherit;font-size:13px}
+.dbr .dbn{margin-top:6px}.dbr.on{background:rgba(232,198,74,.08)}#dbMsg2{min-height:1.4em;font-size:12.5px;color:#e08a8a;margin:8px 0 0}
+.dbp{margin:6px 0 0;padding:7px 9px;border:1px solid var(--btnline);border-radius:10px;font-size:12.5px;line-height:1.6}
+.dbp b{color:var(--ink)}.dbp .it{margin-top:3px}.dbp .un{color:var(--sub)}.dbp a{color:var(--yellow);text-decoration:underline;margin-left:6px}
+.dbhl{outline:2px solid #e8c64a;outline-offset:3px;border-radius:6px;transition:outline-color .6s}
+.board.dbm .blk,.board.dbm .pt{-webkit-user-select:text!important;user-select:text!important;-webkit-touch-callout:default!important}
+.dbm[data-t]{border-radius:3px;padding:0 1px}.dbm[data-t]::before{content:attr(data-t);font-size:9px;vertical-align:super;margin-right:2px;color:var(--sub);font-style:normal}
+.dbm[data-t="要件"]{background:rgba(232,198,74,.30)}.dbm[data-t="規範"]{background:rgba(110,180,255,.28)}.dbm[data-t="趣旨"]{background:rgba(160,220,140,.28)}
+.dbm.sel{outline:2px solid #fff;outline-offset:1px}
+.dbbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
+.dbbar input{box-sizing:border-box;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;width:100%;margin-top:4px}
+.dbbar .act{margin-top:6px}.dbbar .tg{font-weight:600}
+.blkbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
+.blkbar .bt{font-weight:600;margin-bottom:5px}.blkbar .tbar{margin:4px 0 4px}.blkbar input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0 4px}
+.blkbar button:disabled{opacity:.4}
+.txon .ctl{display:none}
+.toast{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:90;max-width:92vw;background:#1f2328;color:#fff;border-radius:10px;padding:9px 14px;font-size:13.5px;line-height:1.5;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+.toast.ok{background:#1d5e3a}.toast.ng{background:#8a2a22}.toast[hidden]{display:none}
+.tsheet{position:fixed;left:0;right:0;bottom:0;z-index:45;background:var(--bar);border-top:2px solid var(--barline);box-shadow:0 -4px 16px rgba(0,0,0,.18);padding:6px 10px 10px;overflow:auto;max-height:44vh;font-size:13px}
+@media (hover:none){#treeKeys{display:none}}
+.tsheet[data-sz="0"]{max-height:92px}.tsheet[data-sz="2"]{max-height:88vh}
+.tsheet .th{display:flex;align-items:center;gap:6px;position:sticky;top:-6px;background:var(--bar);padding:4px 0;z-index:3}.tsheet .th .sp{flex:1}
+.tsheet .trow input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0}
+.tsheet .tbar{display:flex;flex-wrap:wrap;gap:5px;margin:5px 0;align-items:center}.tsheet .tbar .lab{font-size:11.5px;color:var(--sub)}
+.tsheet .tbar button.on,.tbar button.go{background:#2b6cb0;border-color:#2b6cb0;color:#fff}
+.tsheet button,.blkbar button{font:inherit;font-size:13px;white-space:nowrap}.tsheet .th b{font-size:13px;line-height:1.3}
+.tmsg{margin:4px 0;padding:5px 8px;border-radius:8px;background:rgba(43,108,176,.1);font-size:12.5px;line-height:1.5}
+.tmsg.ok{background:rgba(47,133,90,.16)}.tmsg.ng{background:rgba(192,57,43,.14)}
+body.sheeton{padding-bottom:46vh}body.sheeton[data-tsz="0"]{padding-bottom:100px}body.sheeton .ctl,body.txon .ctl{display:none}
+#treeTop.on{background:#2b6cb0;color:#fff;border-color:#2b6cb0}
+.selshow{margin:3px 0 5px;padding:5px 8px;border-radius:8px;background:rgba(128,128,128,.12);font-size:12.5px;line-height:1.5}
+.selshow.ok{background:rgba(47,133,90,.18)}.selshow.ng{background:rgba(192,57,43,.14)}
+#treeList{--tb:#2b6cb0;--to:#b7791f;--tw:#7b3fb0;--te:#c0392b;padding:2px 0 6px}
+#treeList ul{list-style:none;margin:0;padding:0}#treeList ul.kids{margin-left:13px}
+#treeList li.rootli{margin:4px 0 10px}
+#treeList li.kid{position:relative;padding-left:20px}
+#treeList li.kid::before{content:'';position:absolute;left:0;top:17px;width:16px;border-top:2px solid var(--btnline)}
+#treeList li.kid::after{content:'';position:absolute;left:0;top:0;bottom:0;border-left:2px solid var(--btnline)}
+#treeList li.kid:last-child::after{bottom:auto;height:17px}
+#treeList li.kid.exc::before{border-top:2px dashed var(--te)}
+#treeList li.andkid::before{border-top:3px solid var(--tb);width:17px}#treeList li.andkid::after{border-left:3px solid var(--tb);left:-1px}
+#treeList li.orkid::before{border-top:3px solid var(--to);width:17px}#treeList li.orkid::after{border-left:3px solid var(--to);left:-1px}
+#treeList li.wgkid::before{border-top:3px solid var(--tw);width:17px}#treeList li.wgkid::after{border-left:3px solid var(--tw);left:-1px}
+#treeList li.sep,#treeList li.ghead{position:relative;padding-left:20px}#treeList li.sep{height:19px}
+#treeList li.sep::after,#treeList li.ghead::after{content:'';position:absolute;top:0;bottom:0;left:-1px;border-left:3px solid var(--btnline)}
+#treeList li.sep.and::after,#treeList li.ghead.and::after{border-left-color:var(--tb)}#treeList li.sep.any::after,#treeList li.ghead.any::after{border-left-color:var(--to)}#treeList li.ghead.total::after{border-left-color:var(--tw)}
+#treeList li.sep span{margin-left:30px;font-size:11.5px;font-weight:700;line-height:19px}#treeList li.sep.and span{color:var(--tb)}#treeList li.sep.any span{color:var(--to)}
+#treeList li.ghead{padding-top:1px;padding-bottom:1px}#treeList li.ghead span{margin-left:8px;font-size:11.5px;font-weight:700;padding:1px 9px;border-radius:99px}
+#treeList li.ghead.and span{background:rgba(43,108,176,.15);color:var(--tb)}#treeList li.ghead.any span{background:rgba(183,121,31,.17);color:var(--to)}#treeList li.ghead.total span{background:rgba(123,63,176,.15);color:var(--tw)}
+#treeList .r{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-height:34px;padding:2px 7px;border-radius:8px;border:1px solid transparent;cursor:pointer}
+#treeList li.andkid>.r{border-left:3px solid var(--tb);border-radius:0 8px 8px 0}#treeList li.orkid>.r{border-left:3px solid var(--to);border-radius:0 8px 8px 0}#treeList li.wgkid>.r{border-left:3px solid var(--tw);border-radius:0 8px 8px 0}
+#treeList .r.sel{background:rgba(232,198,74,.25);border-color:#d6aa1f}
+#treeList .r.flash{animation:tflash 1.6s}@keyframes tflash{0%,60%{background:rgba(110,200,120,.5)}100%{background:transparent}}
+#treeList .bd{font-size:11px;padding:1px 7px;border-radius:99px;font-weight:700;white-space:nowrap;background:rgba(128,128,128,.2)}
+#treeList .bd.j{background:rgba(232,198,74,.5)}#treeList .bd.req{background:rgba(43,108,176,.18);color:var(--tb)}#treeList .bd.or{background:rgba(183,121,31,.2);color:var(--to)}#treeList .bd.wg{background:rgba(123,63,176,.18);color:var(--tw)}#treeList .bd.exc{background:rgba(192,57,43,.16);color:var(--te)}
+#treeList .ttl{font-weight:600}#treeList .ttl.blank{color:var(--sub);font-weight:400}#treeList .rootli>.r .ttl,#treeList .rootli>.r .tin{font-size:15px}
+#treeList .tin{flex:1;min-width:6em;border:none;border-bottom:1px dashed var(--tb);background:transparent;color:var(--ink);font:inherit;font-weight:600;padding:2px 0;outline:none;border-radius:0}
+#treeList .jmp{font-size:11px;padding:0 6px;border-radius:99px;border:1px solid var(--tb);color:var(--tb);background:none}
+#treeList .pu{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #2f855a;font-size:12px;color:#2f6f4f;background:rgba(47,133,90,.08);border-radius:0 8px 8px 0}
+#treeList .pu a{margin-left:6px;color:var(--te)}#treeList .src{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #d6aa1f;font-size:12px;color:var(--sub)}
+#treeList a.pl{color:var(--tb);text-decoration:underline;font-size:11.5px}#treeList .un{font-size:11px;color:var(--sub)}
+.pt.pick{outline:2px solid #e8c64a;outline-offset:2px;border-radius:4px}
+details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding:2px 10px}details.sub>summary{cursor:pointer;font-weight:600;padding:8px 0}
+#editTxt{width:100%;height:90px;margin-top:8px;font-size:12px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
+.tree .trow{margin:6px 0}.tree .trow input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px}
+.tree .tn{padding:5px 7px;border-radius:8px;border:1px solid transparent;font-size:13px;line-height:1.55;cursor:pointer}.tree .tn.on{border-color:#e8c64a;background:rgba(232,198,74,.09)}
+.tree .tn .bd{display:inline-block;font-size:10.5px;padding:0 5px;border-radius:5px;margin-right:5px;background:#3a404a;color:var(--ink)}
+.tree .tn .bd.j{background:rgba(232,198,74,.35)}.tree .tn .bd.y{background:rgba(110,180,255,.35)}.tree .tn .lg{color:var(--yellow);margin-right:4px;font-weight:700}
+.tree .tn .pu{color:#9fd88f;font-size:12px;margin-top:2px}.tree .tn a{color:var(--yellow);text-decoration:underline;margin-left:6px}.tree .tn .un{color:var(--sub);font-size:11.5px;margin-left:6px}
+#treeFormula{line-height:1.7;margin:4px 0;word-break:break-all}
+.dbm[data-t="判断"]{background:rgba(232,198,74,.30)}.dbm[data-t="要件"]{background:rgba(110,180,255,.28)}
+.gsync{display:flex;align-items:center;gap:8px;margin:8px 0 0;flex-wrap:wrap}.gsync .small{margin:0}
+.srch{margin:8px 0 2px}.srch .small{margin:4px 0}
+.board.txm .sec-hd{outline:1px dashed rgba(243,236,210,.4);outline-offset:2px;cursor:pointer;border-radius:3px;min-height:22px}
+.sed{margin:0 2px 12px}
+.sed input{width:100%;box-sizing:border-box;height:38px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:0 10px;font:inherit;margin-bottom:6px}
+#tgNew .row{display:flex;gap:6px}
+#tgNew input{flex:1;min-width:0;height:36px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:0 10px;font:inherit}
+#tgNew button,.qrow button{height:36px;padding:0 12px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;cursor:pointer}
+#tgSug{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+#tgSug button{height:30px;font-size:12.5px;padding:0 10px;border-radius:999px}
+.qrow{display:flex;gap:6px}
+.qrow input{flex:1;min-width:0;height:38px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:0 10px;font:inherit}
+.tgrow{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.tgrow button{height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
+.tgrow button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.sres{margin:6px 0;max-height:320px;overflow:auto}
+.sres button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--barline);background:transparent;color:var(--ink);font:inherit;padding:7px 2px;cursor:pointer}
+.sres .sn{font-size:12px;color:var(--sub);display:block;margin-top:2px}
+/* 文字を直す */
+.blk .w{color:var(--w)}
+.pt.ed{white-space:pre-wrap;outline:2px solid var(--current);outline-offset:3px;background:#1b1e23;cursor:text;border-radius:3px;-webkit-user-select:text;user-select:text}
+.board.txm .blk:not(.t-subj) .pt[data-u]:not(.ed),.board.txm .pt[data-vu]:not(.ed){outline:1px dashed rgba(243,236,210,.35);outline-offset:2px;cursor:text}
+.pt.chg{box-shadow:-3px 0 0 var(--current)}
+.tbar{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 9px}
+.tbar button{border:1px solid var(--edge);background:#3a404a;color:var(--w);border-radius:7px;padding:6px 9px;font:inherit;font-size:12.5px;cursor:pointer}
+.tbar button.go{background:var(--current);color:var(--board);font-weight:700;border-color:var(--current)}
+.tbar .sp{flex-basis:100%;height:0}
+/* 隠して再生・自己評価・記録 */
+body{padding-bottom:215px}
+.cv{background:rgba(236,235,230,.10);border-radius:4px;cursor:pointer}
+.cv,.cv *{color:transparent !important}
+.cv .m1,.cv .m2{background:transparent}
+.blk:has(.cv) .to,.blk:has(.cv) .cond{visibility:hidden}
+.pt.cm .m1{background:#7a3030;cursor:pointer}
+.pt.cm .m1,.pt.cm .m1 *{color:transparent !important}
+.board.veil .flow,.board.veil .t-extra{filter:blur(7px);cursor:pointer}
+.study{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.study label{display:inline-flex;align-items:center;gap:5px}
+.gr{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.gr span{font-size:12px;color:var(--sub);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gr button{height:36px;min-width:62px;padding:0 8px;border-radius:9px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.gr button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.sug{font-size:13px;margin-bottom:6px;padding:6px 8px;border:1px solid var(--ink);border-radius:8px}
+.sug button{margin:4px 6px 0 0;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);border-radius:8px;padding:5px 10px;font:inherit;font-size:13px;cursor:pointer}
+.log{border-collapse:collapse;font-size:13px;margin-top:6px;font-variant-numeric:tabular-nums}
+.log th,.log td{padding:3px 10px 3px 0;text-align:right;border-bottom:1px solid var(--barline)}
+.log th:first-child,.log td:first-child{text-align:left}
+[hidden]{display:none !important}
+#treeList .bd.int{background:rgba(20,160,150,.2);color:#0c8a80}
+#treeList li.kid.ty::before{border-top:2px dotted var(--btnline)}
+.dbm[data-t="考慮要素"]{background:rgba(190,140,255,.30)}.dbm[data-t="解釈基準"]{background:rgba(70,200,190,.30)}
+.sech{font-size:15px;margin:14px 0 4px;padding:4px 8px;background:rgba(120,160,150,.18);color:inherit;border-left:3px solid #6a9;border-radius:4px}
+.panel>.sech:first-of-type{margin-top:4px}
+#title .np{font-size:.62em;font-weight:500;color:var(--sub);margin-right:.35em}
+</style>
+</head>
+<body>
+<div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+<main>
+  <div class="panel empty" id="empty" hidden>
+    <b>まだカードが入っていません</b>
+    <ol>
+      <li>PCで「作る.bat」をダブルクリックする</li>
+      <li>できた「スマホに入れるファイル」フォルダの中身（data.json と audio_○○.bin）を、全部スマホに送る</li>
+      <li>下のボタンを押し、送ったファイルを全部選ぶ</li>
+    </ol>
+    <button class="big" id="imp1">ファイルを選んで取り込む</button>
+    <p class="small" id="impMsg"></p>
+  </div>
+
+  <div id="app" hidden>
+    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
+    <div class="srch">
+      <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="qX" hidden>解除</button></div>
+      <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
+      <div class="sres" id="sres" hidden></div>
+    </div>
+    <details class="panel" id="rec">
+      <summary>📒 学習の記録</summary>
+      <div id="recBody"></div>
+      <p class="small">学習の記録は、画面上の「☁ Googleドライブと同期」を押すと、ドライブの「編集データ.json」に自動で保存・復元されます（別の控えを取る必要はありません）。</p>
+      <p class="small" id="recMsg"></p>
+    </details>
+    <details class="panel" id="fltTop"><summary>🎚 カードの表示方法・絞り込み</summary>
+      <h2 class="sech">カードの表示方法</h2>
+      <h3>並べ方</h3>
+      <select class="pick" id="fMode" aria-label="並べ方">
+        <option value="imp">重要度1から順に（科目はまぜる）</option>
+        <option value="impdeck">重要度1から順に、その中で科目ごと</option>
+        <option value="deckimp">科目ごとに、その中で重要度1から順に</option>
+        <option value="deck">科目ごとに（重要度はまぜる）</option>
+      </select>
+      <div class="chk"><label><input type="checkbox" id="fShuf">同じまとまりの中でシャッフルする（外すとカードファイルの順）</label></div>
+      <div class="act"><button id="reshuf">並べ直す（まだ聞いていないカードを前に）</button></div>
+      <h3>自己評価</h3>
+      <div class="chk">
+        <label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label>
+        <label><input type="checkbox" id="fAuto">○△×を押したら次のカードへ進む</label>
+        <label><input type="checkbox" id="fGate">○△×を押さないと、次のカードへ進めない（自動で進むときも止まる）</label>
+      </div>
+      <p class="small" id="cnt"></p>
+      <p class="small" id="info"></p>
+      <h2 class="sech">カードの絞り込み</h2>
+      <h3>タグ　<select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select></h3>
+      <div class="tgrow" id="fTag"></div>
+      <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
+      <h3>科目　<button class="grad" id="dAll">全部選ぶ</button> <button class="grad" id="dNone">全部外す</button></h3><div class="chk" id="fDeck"></div>
+      <h3>重要度（数字はPCの「重要度一覧.txt」で決まります）</h3>
+      <div class="chk" id="fImp">
+        <label><input type="checkbox" value="1">1 丸暗記</label>
+        <label><input type="checkbox" value="2">2 要素</label>
+        <label><input type="checkbox" value="3">3 ざっくり</label>
+        <label><input type="checkbox" value="4">卒業</label>
+      </div>
+      <h3>音声</h3>
+      <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
+    </details>
+    <details class="panel" id="impTop"><summary>📥 インポート</summary>
+      <h3>カードと音声</h3>
+      <div class="act"><button class="grad" id="imp2">カードと音声を取り込み直す</button></div>
+      <h3>新規カード（CSV）</h3>
+      <p class="small">CSVの列：<b>題名・科目・重要度・表面・裏面</b>（必須）、タグ・ID（任意）。科目と重要度が空や一覧にない行は、取り込まれずに理由が出ます。書き方は 使い方.txt。</p>
+      <div class="act"><button class="grad" id="csvIn">CSVを取り込む</button> <button class="grad" id="csvSample">CSVの見本</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
+      <p class="small" id="csvMsg2"></p>
+      <p class="small">別の端末で直した内容（文字・図・タグ・重要度・科目・学習の記録・ツリー）は、「☁ Googleドライブと同期」で自動で入ります。</p>
+    </details>
+    <details class="panel" id="expTop"><summary>📤 エクスポート</summary>
+      <h3>直した内容（PC用）</h3>
+      <p class="small">文字・図・タグ・重要度・科目の直しを、PCに渡すファイルにします（Googleドライブと同期していれば、同期だけでも渡ります）。</p>
+      <div class="act"><button class="grad" id="editOut">直した内容を書き出す</button></div>
+      <div class="small" id="editCnt"></div><p class="small" id="outMsg"></p>
+      <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
+      <label class="small" id="edAuLab">直したカードの音声
+        <select class="mini" id="selEdAu" aria-label="文字を直したカードの音声">
+          <option value="vv">VOICEVOX（直す前の音声のまま）</option>
+          <option value="tts">端末の読み上げ（直した文のとおり）</option>
+        </select></label>
+      <h3>新規カード・文章</h3>
+      <div class="act"><button class="grad" id="csvOut">新規カードをCSVに書き出す</button>
+        <button class="grad" id="txtAll">全カードを文章で書き出す</button> <button class="grad" id="txtChg">直したカードだけ文章で</button></div>
+      <p class="small" id="csvMsg"></p>
+    </details>
+    <header>
+      <h1 id="title"></h1>
+      <div class="meta">
+        <select class="mini" id="selDeck" aria-label="このカードの科目"></select>
+        <select class="mini" id="selImp" aria-label="このカードの重要度">
+          <option value="1">重要度 1 丸暗記</option><option value="2">重要度 2 要素</option><option value="3">重要度 3 ざっくり</option><option value="4">卒業</option>
+        </select>
+        <span id="pos"></span>
+      </div>
+      <div class="tgs" id="tgs"></div>
+      <div id="tgNew" hidden>
+        <div class="row"><input id="tgIn" maxlength="40" placeholder="新しいタグ（「、」で区切ると複数）" aria-label="新しいタグ"><button id="tgAdd">追加</button></div>
+        <div id="tgSug"></div>
+      </div>
+      <select class="pick" id="pick" aria-label="カードを選ぶ"></select>
+      <div class="flag" id="flag" hidden></div>
+      <div class="small" id="src"></div>
+    </header>
+    <div class="legend" aria-label="色の意味">
+      <span><i class="sw" style="color:var(--cyan)">字</i>理由づけ</span>
+      <span><i class="sw" style="color:var(--yellow)">字</i>規範・具体化・要件</span>
+      <span><i class="sw" style="background:var(--m1)"></i>文言ごと暗記</span>
+      <span><i class="sw" style="background:var(--m2)"></i>要素は落とせない</span>
+      <span id="lgOut" hidden><i class="sw" style="background:var(--outbg)"></i>要件事実に入らない</span>
+    </div>
+    <div class="panel study">
+      <label class="small">隠し方
+        <select class="mini" id="selHide" aria-label="隠し方">
+          <option value="">隠さない</option>
+          <option value="all">裏面を隠す（読まれたら出る）</option>
+          <option value="m1">文言ごと暗記の部分だけ隠す</option>
+        </select></label>
+      <label class="small">考える時間
+        <select class="mini" id="selThink" aria-label="表面の後に止まる時間">
+          <option value="0">追加しない</option><option value="3">＋3秒</option><option value="5">＋5秒</option>
+          <option value="10">＋10秒</option><option value="20">＋20秒</option><option value="-1">押すまで待つ</option>
+        </select></label>
+      <button class="grad" id="showAll" hidden>答えを全部見る</button>
+    </div>
+    <div hidden>
+      <button id="edit" hidden></button>
+      <div id="editBox" hidden>
+        <p class="small">文の中をタップすると、そこで改行します（近くの「。」「、」「※」などに寄せます）。↵ をタップすると取り消します。灰色の点線で囲まれた事実のブロックは直せません。</p>
+        <div class="act">
+          <button id="editUndo">このカードの改行の直しを取り消す</button>
+        </div>
+      </div>
+    </div>
+    <div class="blkbar" id="blkBar" hidden>
+      <div class="bt" id="blkTitle"></div>
+      <div class="tbar" id="blkBody"></div>
+      <p class="small" id="editMsg"></p>
+      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkUndo">このカードの直しを全部取り消す</button><button class="go" id="blkEnd">編集を終わる</button></div>
+    </div>
+    <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
+      <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeDb" title="このカードのツリーを、DB（判断ロジックツリー）の画面で開きます">🌳 DBで開く ↗</button><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
+      <div class="tbar"><button data-op="undo" title="Ctrl+Z">↶ 元に戻す</button><button data-op="redo" title="Ctrl+Y">↷ やり直す</button><button data-op="addroot">＋ 判断を足す（文なし）</button></div>
+      <div class="tbar"><span class="lab">DB</span><button class="go" id="treeSend">📤 DBに送る（全カード）</button><button id="treeFile">💾 ファイルで保存</button><button id="dbPlGet">📍 置き場所を読み込む（ドライブ）</button><button id="dbPlFile">📍 置き場所をファイルから</button><input type="file" id="dbPlIn" accept=".json,application/json" hidden></div>
+      <p class="small" id="dbPlMsg"></p><p class="small" id="dbSendMsg" hidden></p>
+      <p class="tmsg" id="treeMsg">ツリーはまだありません。</p>
+      <div class="small" id="treeFormula"></div>
+      <div class="tbar" id="treeTools" hidden>
+        <span class="lab" id="treeSelName"></span>
+        <button data-op="fill" class="go">✎ 選んだ文字を入れる</button>
+        <button data-op="up">↑</button><button data-op="down">↓</button><button data-op="out">← 上の階層へ</button><button data-op="in">→ 下の階層へ</button>
+        <span class="lab">子の組み方</span><button data-op="m:all">⋀ すべて</button><button data-op="m:any">∨ どれか</button><button data-op="m:total">＋ 総合考慮</button>
+        <button data-op="group">（ ）括弧でまとめる</button><button data-op="ungroup">括弧を解く</button><button data-op="role">ただし</button><span class="lab" id="tyLab">種類</span><button data-op="ty:">要件</button><button data-op="ty:考慮要素">考慮要素</button><button data-op="ty:解釈基準">解釈基準</button>
+        <button data-op="addkid">＋子の要件</button><button data-op="addsib">＋並列の要件</button><button data-op="del">消す</button>
+      </div>
+      <p class="small" id="treeKeys" hidden>PCのキー：Enter＝同じ階層の空の行を下に／Shift+Enter＝上に／Tab＝子の空の行／Shift+Tab＝一つ上の階層に空の行／Ctrl+Enter＝選んだ文字を入れる／Delete＝消す／Esc＝選択を外す／Ctrl+Z・Ctrl+Y＝元に戻す・やり直す（行をタップして選んでから）</p>
+      <div id="treeList" class="tv"></div>
+      <div class="small" id="treeSent"></div>
+      <div class="act"><button class="grad" id="treeClr">このカードのツリーを全部消す</button></div>
+    </section>
+    <div class="board" id="board"></div>
+
+    <details class="panel" id="setup">
+      <summary>🔑 クライアントID（Googleドライブ同期の設定）</summary>
+      <p class="small">直した文字・図・タグ・重要度・科目・学習の記録を、Googleドライブの「logic_chart_sync」フォルダの「編集データ.json」と1回のタップで入れ替えます（直した時刻が新しい方が残ります）。使う前に、Googleで「クライアントID」を1回だけ作る必要があります（手順は 使い方.txt）。</p>
+      <div class="qrow"><input type="text" id="gcid" placeholder="クライアントID（….apps.googleusercontent.com）" aria-label="クライアントID" autocomplete="off"><button id="gSave">保存</button></div>
+    </details>
+  </div>
+</main>
+
+<div class="ctl" id="ctl" hidden>
+  <div class="ctl-in">
+    <div class="sug" id="sug" hidden>○が、日をあけて3回続きました。卒業にしますか？<br>
+      <button id="sugYes">卒業にして次へ</button><button id="sugNo">まだ残して次へ</button></div>
+    <div class="gr" id="gr"><span id="grInfo"></span>
+      <button data-g="x" aria-label="だめだった">× だめ</button><button data-g="d" aria-label="あやしい">△ 微妙</button><button data-g="o" aria-label="言えた">○ 言えた</button></div>
+    <div class="now" id="now">再生を押すと、音声に合わせてブロックが光ります</div>
+    <input class="seek" id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="再生位置">
+    <div class="btns">
+      <button id="prevCard" aria-label="前のカード">⏮</button>
+      <button id="b10" aria-label="10秒戻る">−10</button>
+      <button id="b5" aria-label="5秒戻る">−5</button>
+      <button id="play" class="main" aria-label="再生">▶ 再生</button>
+      <button id="f5" aria-label="5秒進む">+5</button>
+      <button id="f10" aria-label="10秒進む">+10</button>
+      <button id="nextCard" aria-label="次のカード">⏭</button>
+    </div>
+    <div class="sub">
+      <span><span class="tm" id="tm">0:00 / 0:00</span>　<button class="grad" id="grad" aria-pressed="false">卒業にする</button></span>
+      <div class="speed" id="speed">
+        <button data-r="0.8">0.8</button><button data-r="1" aria-pressed="true">1.0</button><button data-r="1.25">1.25</button><button data-r="1.5">1.5</button><button data-r="2">2.0</button>
+      </div>
+    </div>
+  </div>
+</div>
+<audio id="au" preload="auto"></audio>
+<input type="file" id="fi" multiple hidden>
+
+<dialog id="ncDlg">
+  <h3 id="ncH">新しいカードを作る</h3>
+  <label>題名（必須）<input type="text" id="ncTitle" autocomplete="off"></label>
+  <label>科目（必須・1つ選ぶ）<select id="ncDeck"></select></label>
+  <label>重要度（必須・1つ選ぶ）<select id="ncImp"><option value="">選んでください</option><option value="1">1　丸暗記必須</option><option value="2">2　要素は落とせない</option><option value="3">3　ざっくりでよい</option><option value="4">4　卒業</option></select></label>
+  <label>表面（問い・必須）<textarea id="ncFront" placeholder="例：違法な捜査で集めた証拠は、当然に証拠能力が否定されるのか"></textarea></label>
+  <label>裏面（必須）。ブロックの区切りは「↓」だけの行。色は {c|理由づけ} {y|規範} {m1|丸暗記} {m2|落とせない要素} {n|音声にしないメモ} **太字**<textarea id="ncBack"></textarea></label>
+  <label>タグ（空白かカンマで区切る・任意）<input type="text" id="ncTags" autocomplete="off"></label>
+  <p id="ncMsg"></p>
+  <div class="act"><button class="grad" id="ncSave">保存</button> <button class="grad" id="ncSample">見本を入れる</button> <button class="grad" id="ncCancel">やめる</button> <button class="grad" id="ncDel" hidden>このカードを削除</button></div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const board = $("board"); let au = $("au");
+let au2 = document.createElement("audio"); au2.preload = "auto"; au2.id = "au2"; document.body.append(au2);
+const A1 = au, A2 = au2;
+function wire(n, f){ [A1, A2].forEach(a => a.addEventListener(n, e => { if (a === au) f(e); })); }
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
+
+/* ---------- 設定（この端末に保存） ---------- */
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
+if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
+function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
+/* 「いつ直したか」の記録：S.ts["種類:カード番号"] = 直した時刻。Googleドライブの同期で、時刻が新しい方を残すのに使う */
+function st(kind, id){ S.ts[kind + ":" + id] = Date.now(); }
+
+/* ---------- ファイルの保管（この端末のブラウザの中） ---------- */
+function db(){ return new Promise((res, rej) => { const r = indexedDB.open("ronshoPlayer", 1);
+  r.onupgradeneeded = () => r.result.createObjectStore("f"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+async function put(name, blob){ const d = await db(); return new Promise((res, rej) => { const t = d.transaction("f", "readwrite"); t.objectStore("f").put(blob, name); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+async function get(name){ const d = await db(); return new Promise((res, rej) => { const q = d.transaction("f").objectStore("f").get(name); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+const bundles = new Map();
+async function bundle(i){ if (!bundles.has(i)) bundles.set(i, await get(DATA.bundles[i])); return bundles.get(i); }
+
+async function importFiles(files){
+  const msg = t => { $("impMsg").textContent = t; $("info").textContent = t; toast(t, /できません|失敗|エラー|足りません/.test(t) ? "ng" : "", /終わ|完了|できません|失敗|エラー|足りません/.test(t) ? 9000 : 0); };
+  try {
+    let n = 0;
+    let back = 0;
+    for (const f of files){ n++; msg("取り込み中… " + n + " / " + files.length + "（" + f.name + "）");
+      if (f.name !== "data.json" && /\.json$/i.test(f.name)){            /* 「編集_日時.json」＝学習の記録の控え */
+        try { const o = JSON.parse(await f.text()); if (o && (o.study || o.figs || o.tags)){ mergeStudy(o.study || {});
+          Object.keys(o.tags || {}).forEach(id => { if (!S.tags[id]) S.tags[id] = o.tags[id]; });
+          /* 別の置き場所に引っ越したとき用：まだPCに入れていない直し（図・重要度・科目）も戻す */
+          Object.keys(o.figs || {}).forEach(id => { if (!S.cv[id]) S.cv[id] = o.figs[id]; });
+          Object.keys(o.levels || {}).forEach(id => { if (!S.imp[id]) S.imp[id] = o.levels[id]; });
+          Object.keys(o.decks || {}).forEach(id => { if (!S.deckOv[id]) S.deckOv[id] = o.decks[id]; });
+          save(); back++; } } catch(e){}
+        continue; }
+      await put(f.name, f); }
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+    bundles.clear();
+    /* 新しいカードを取り込んだら、書き出し済みの直しは（カードに入ったはずなので）片付ける */
+    if (files.some(f => f.name === "data.json")){ S.edits = S.edits.filter(e => !e.sent); save(); }
+    const ok = await init();
+    if (back){ $("recMsg").textContent = "学習の記録と、まだPCに入れていない直しを戻しました。"; if (ok && back === files.length){ msg("学習の記録と、まだPCに入れていない直しを戻しました。"); return; } }
+    msg(ok ? "取り込みが終わりました。" : "data.json が見つかりません。「スマホに入れるファイル」の中身を全部選んでください。");
+  } catch(e){ msg("取り込みに失敗しました。空き容量を確認してください。（" + e + "）"); }
+}
+$("fi").onchange = e => { if (e.target.files.length){ toast("取り込みを始めました（" + e.target.files.length + " 個のファイル）。しばらくお待ちください…", "", 0); importFiles([...e.target.files]); } e.target.value = ""; };
+$("imp1").onclick = $("imp2").onclick = () => $("fi").click();
+function mergeStudy(st){
+  Object.keys(st.rev || {}).forEach(id => { const a = S.rev[id], b = st.rev[id]; if (b && (!a || (b.d || "") > (a.d || ""))) S.rev[id] = b; });
+  Object.keys(st.log || {}).forEach(k => { if (!S.log[k]) S.log[k] = st.log[k]; });
+  save();
+}
+
+/* ---------- 図を組み立てる ---------- */
+function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function makeBlock(b){
+  const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : ""));
+  if (b.c){ const c = el("div", "cond"); c.textContent = b.c; d.append(c); }
+  const parts = b.p || [{ h: b.h, s: b.s, e: b.e, x: b.x }];
+  const u0 = utts.length;
+  parts.forEach(p => {
+    const x = el("div", "pt" + (p.c ? " " + p.c : "")); x.innerHTML = p.h; if (p.e) x.dataset.e = 1;
+    if (!p.s && p.h){ x.dataset.af = utts.length; if (txMode && !card().draft){ const vu = 1000000 + (vk++); x.dataset.vu = vu; refs[vu] = { p: b.p ? p : b, b, row: curRow, sec: curSec, after: utts.length }; x.classList.add("mm"); } }
+    if (p.s){ const u = utts.length; x.dataset.u = u; refs[u] = { p: b.p ? p : b, b, row: curRow, sec: curSec };
+      if (p.x){ x.classList.add("chg"); delete x.dataset.e; }
+      utts.push({ text: p.s, el: x }); }
+    d.append(x);
+  });
+  const u1 = utts.length - 1;
+  if (u1 >= u0){
+    d.dataset.u0 = u0; d.dataset.u1 = u1; if (u1 > u0) d.classList.add("multi");
+    d.tabIndex = 0; d.setAttribute("role", "button");
+    d.onclick = e => { if (dbMode){ dbTap(e); return; } if (lpFired){ lpFired = false; return; } if (txMode){ txTap(e); return; } if (editing){ editTap(e); return; } const t = e.target.closest(".pt[data-u]");
+      if (t && covered(+t.dataset.u)){ opened.add(+t.dataset.u); update(); return; }
+      jump(t ? +t.dataset.u : u0); };
+    d.onkeydown = e => { if (txMode || dbMode) return; if (e.key === "Enter" || e.key === " "){ e.preventDefault(); jump(u0); } };
+  }
+  else if (d.querySelector(".pt[data-vu]")) d.onclick = e => { if (txMode) txTap(e); };    /* 音声のないメモだけのブロックも、直すときはタップできる */
+  if (b.to){ const t = el("span", "to"); t.textContent = "→ " + b.to; d.append(t); }
+  return d;
+}
+function makeStep(st){
+  const d = el("div", "step" + (st.here ? " here" : ""));
+  const who = el("span", "who"); who.textContent = st.who; d.append(who);
+  const w = el("span", "what"); w.textContent = st.h; d.append(w);
+  if (st.here){ const t = el("span", "here-tag"); t.textContent = "このカード"; d.append(t); }
+  [["yes", "主張する"], ["no", "主張しない"]].forEach(([k, lab]) => {
+    if (!st[k]) return;
+    const l = el("div", "say " + k); l.textContent = lab; d.append(l);
+    const ul = el("ul", k); st[k].forEach(x => { const li = el("li"); li.textContent = x; ul.append(li); }); d.append(ul);
+  });
+  return d;
+}
+function makeFlow(f){
+  const w = el("div", "flow");
+  const l = el("div", "flow-lab"); l.textContent = f.lab; w.append(l);
+  /* 主張する・しないの中身があって3段以上のときは、スマホで読めるように縦に並べる */
+  if (!f.cols && f.steps.length > 2 && f.steps.some(x => x.yes || x.no)) f = Object.assign({}, f, { cols:[{ lab:"", steps:f.steps }] });
+  if (f.cols){
+    const cs = el("div", "cols");
+    f.cols.forEach(c => { const col = el("div", "col"); if (c.lab){ const cl = el("div", "col-lab"); cl.textContent = c.lab; col.append(cl); }
+      c.steps.forEach((st, i) => { if (i > 0){ const a = el("div", "varr"); a.textContent = "↓"; col.append(a); } col.append(makeStep(st)); });
+      cs.append(col); });
+    w.append(cs);
+  } else {
+    const h = el("div", "flow-h");
+    f.steps.forEach((st, i) => { if (i > 0){ const a = el("span", "arr"); a.textContent = "→"; h.append(a); } h.append(makeStep(st)); });
+    w.append(h);
+  }
+  if (f.diff){ const d = el("div", "diff"); d.innerHTML = f.diff; w.append(d); }
+  return w;
+}
+function card(){ return CARDS[list[pi]]; }
+/* 直したカードは、直した後の図（S.cv）を重ねて使う */
+function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({}, c, { sections: v.sections, qa: v.qa }) : c; }
+
+/* ---------- 文字と図を直す（この端末に覚えておき、書き出してPCで音声を作り直す） ----------
+   直したカードは、図の全体（sections）を写し取って S.cv[カードの識別番号] に入れ、そちらを書き換える。
+     S.cv[id] = { sections:直した後の図, qa:表面が何番目の文までか, sig:直す前の文の並び（PCでの照合用）, stamp:最後に直した時刻 }
+   文字は1文字ずつ { ch:文字, c:文字色, m:マーカー, b:太字 } の並び（runs）にしてから扱う。
+   refs[u] = u番目の文が、図のどこにあるか { p:文, b:ブロック, row:行, sec:区切り } */
+let secEd = -1;
+let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0, treeOpen = false, treeSz = 1, treeFlash = 0;
+let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
+function edited(c){ return !!S.cv[c.id]; }
+function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.s) out.push(nows(plainOf(p.h))); })))); return out.join("|"); }
+function ensureCv(){ const c = card();
+  if (!S.cv[c.id]){ S.cv[c.id] = { sig: sigOf(c.sections), qa: qaOf(c), sections: JSON.parse(JSON.stringify(c.sections)) }; render(); }
+  return S.cv[c.id]; }
+function touch(){ S.cv[card().id].stamp = String(Date.now()); st("cv", card().id); save(); }
+function sayOf(runs){ return runs.filter(r => !r.n).map(r => r.ch).join("").replace(/\n/g, "、").replace(/[→↓]+/g, "、").replace(/、{2,}/g, "、").replace(/([。（「])、/g, "$1").replace(/^[、\s]+|[、\s]+$/g, ""); }
+function hasText(runs){ return runs.some(r => /[^\s]/.test(r.ch)); }
+function colOf(r){ return (r.b.p && r.p.c) || ({ reason:"c", norm:"y" })[r.b.t] || ""; }
+function setPart(p, runs){ p.h = htmlOf(runs, false); p.s = sayOf(runs); p.x = 1; delete p.e; }
+function qaFix(cv, pos, was, now){ if (!!was !== !!now && pos < cv.qa) cv.qa += now ? 1 : -1; }
+const posOf = u => u >= 1000000 ? (refs[u] ? refs[u].after : 1e9) : u;
+function esc(t){ return t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+function runsOf(root){
+  const out = [];
+  (function walk(n, a){
+    n.childNodes.forEach(k => {
+      if (k.nodeType === 3){ for (let i = 0; i < k.data.length; i++) out.push({ ch:k.data[i], c:a.c, m:a.m, b:a.b, n:a.n }); return; }
+      if (k.nodeType !== 1 || k.classList.contains("ubr") || k.classList.contains("tbar")) return;
+      if (k.tagName === "BR"){ if (!(k.parentNode !== root && k.parentNode.childNodes.length === 1)) out.push({ ch:"\n" }); return; }
+      const b = { c:a.c, m:a.m, b:a.b, n:a.n }, cl = k.classList; if (cl.contains("n")) b.n = 1;
+      if (cl.contains("c")) b.c = "c"; if (cl.contains("y")) b.c = "y"; if (cl.contains("w")) b.c = "w";
+      if (cl.contains("m1")) b.m = "m1"; if (cl.contains("m2")) b.m = "m2";
+      if (k.tagName === "B" || k.tagName === "STRONG") b.b = 1;
+      if ((k.tagName === "DIV" || k.tagName === "P") && out.length && out[out.length - 1].ch !== "\n") out.push({ ch:"\n" });
+      walk(k, b);
+    });
+  })(root, { c:"", m:"", b:0, n:0 });
+  return out;
+}
+function htmlOf(runs, forEdit){
+  let out = "", i = 0;
+  while (i < runs.length){
+    const r = runs[i];
+    if (r.ch === "\n"){ out += forEdit ? "\n" : "<br>"; i++; continue; }
+    let j = i, t = "";
+    while (j < runs.length && runs[j].ch !== "\n" && runs[j].c === r.c && runs[j].m === r.m && !runs[j].b === !r.b && !runs[j].n === !r.n) t += runs[j++].ch;
+    t = esc(t);
+    if (r.n) t = "<span class='n'>" + t + "</span>";
+    if (r.m) t = "<span class='" + r.m + "'>" + t + "</span>";
+    if (r.b) t = "<b>" + t + "</b>";
+    if (r.c) t = "<span class='" + r.c + "'>" + t + "</span>";
+    out += t; i = j;
+  }
+  return out;
+}
+function normH(h){ const d = el("div"); d.innerHTML = h; return htmlOf(trimRuns(runsOf(d)), false); }
+function plainOf(h){ const d = el("div"); d.innerHTML = h; return runsOf(d).map(r => r.ch).join("").replace(/\n/g, ""); }
+function trimRuns(r){ let a = 0, b = r.length; while (a < b && /\s/.test(r[a].ch)) a++; while (b > a && /\s/.test(r[b - 1].ch)) b--; return r.slice(a, b); }
+function posIn(node, off){ const r = document.createRange(); r.setStart(edEl, 0); r.setEnd(node, off); const d = el("div"); d.append(r.cloneContents()); return runsOf(d).length; }
+function selNow(){ const s = getSelection(); if (!edEl || !s.rangeCount) return null; const r = s.getRangeAt(0);
+  if (!edEl.contains(r.startContainer) || !edEl.contains(r.endContainer)) return null;
+  return [posIn(r.startContainer, r.startOffset), posIn(r.endContainer, r.endOffset)]; }
+document.addEventListener("selectionchange", () => { const v = selNow(); if (v) lastSel = v; });
+function setCaret(a, b){
+  const w = document.createTreeWalker(edEl, NodeFilter.SHOW_TEXT); let n, acc = 0, sa = null, sb = null;
+  while ((n = w.nextNode())){ const L = n.data.length;
+    if (!sa && a <= acc + L) sa = [n, a - acc]; if (!sb && b <= acc + L) sb = [n, b - acc]; acc += L; }
+  const r = document.createRange();
+  if (sa){ r.setStart(sa[0], sa[1]); r.setEnd((sb || sa)[0], (sb || sa)[1]); } else { r.selectNodeContents(edEl); r.collapse(false); }
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+}
+function redraw(runs, a, b){ edEl.innerHTML = htmlOf(runs, true); edEl.focus(); setCaret(a, b); lastSel = [a, b]; }
+function openEd(u){
+  const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (!pt) return;
+  if (playing) stop();
+  edEl = pt; edU = u; lastSel = null;
+  pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.focus();
+  pt.addEventListener("beforeinput", e => {                            /* 改行キー：その場に改行の文字を入れる */
+    if (e.inputType !== "insertParagraph" && e.inputType !== "insertLineBreak") return;
+    e.preventDefault(); const v = selNow() || lastSel; if (!v) return;
+    const runs = runsOf(edEl), a = Math.min(v[0], v[1]), b = Math.max(v[0], v[1]);
+    runs.splice(a, b - a, { ch:"\n" }); redraw(runs, a + 1, a + 1); });
+  pt.addEventListener("input", () => { if (edEl && edEl.querySelector("br,div,p")){ const v = selNow(), runs = runsOf(edEl); redraw(runs, v ? v[0] : runs.length, v ? v[1] : runs.length); } });
+}
+function edAct(a){
+  if (a === "save"){ commit(); return; }
+  if (a === "cancel"){ closeEd(); return; }
+  if (a === "hr" || a === "hr1"){
+    const u = edU, runs = trimRuns(runsOf(edEl));
+    if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return; }
+    if (htmlOf(runs, false) !== normH(refs[u].p.h)){ ensureCv(); setPart(refs[u].p, runs); }
+    const cv = ensureCv(), r = refs[u], ri = r ? r.sec.rows.indexOf(r.row) : -1;
+    if (ri < 1){ closeEd(); $("editMsg").textContent = "この行は、すでに区切りの最初です。"; return; }
+    const ns = { label: "", rows: r.sec.rows.splice(ri) }; if (a === "hr1") ns.nn = 1; delete ns.rows[0].via;
+    cv.sections.splice(cv.sections.indexOf(r.sec) + 1, 0, ns); touch(); secEd = cv.sections.indexOf(ns); $("editMsg").textContent = ""; closeEd(); return;
+  }
+  if (a === "split"){
+    const v = selNow() || lastSel, runs = runsOf(edEl), at = v ? Math.min(v[0], v[1]) : -1;
+    const L = trimRuns(runs.slice(0, Math.max(at, 0))), R = trimRuns(runs.slice(Math.max(at, 0)));
+    if (at < 0 || !hasText(L) || !hasText(R)){ $("editMsg").textContent = "分けたい位置に、先にカーソルを置いてください（文の途中をタップ）。"; return; }
+    const u = edU, cv = ensureCv(), { p, b, row, sec } = refs[u], wasS = p.s;
+    setPart(p, L); const np = {}; setPart(np, R); qaFix(cv, posOf(u), wasS, p.s);
+    if (b.p){ if (p.c) np.c = p.c; b.p.splice(b.p.indexOf(p) + 1, 0, np); }
+    else { if (b.t) np.t = b.t; if (b.out) np.out = b.out; if (b.to){ np.to = b.to; delete b.to; }
+      if (row.b.length > 1) row.b.splice(row.b.indexOf(b) + 1, 0, np); else sec.rows.splice(sec.rows.indexOf(row) + 1, 0, { b:[np] }); }
+    if (np.s && posOf(u) < cv.qa) cv.qa++;
+    touch(); $("editMsg").textContent = ""; closeEd(); return;
+  }
+  if (a === "merge"){
+    const u = edU, now = trimRuns(runsOf(edEl));
+    if (!hasText(now)){ $("editMsg").textContent = "文が空です。"; return; }
+    if (u < 2 || u >= 1000000 || u === qaIdx || !refs[u - 1] || refs[u - 1].sec !== refs[u].sec){ $("editMsg").textContent = "この文は、前の文とつなげられません（表面と裏面の境目や、区切りの最初の文）。"; return; }
+    const cv = ensureCv(), A = refs[u - 1], B = refs[u];
+    const d = el("div"); d.innerHTML = A.p.h; const pr = trimRuns(runsOf(d)), ca = colOf(A), cb = colOf(B);
+    if (ca !== cb) now.forEach(r => { if (!r.c && r.ch !== "\n") r.c = cb || "w"; });      /* つなげても、もとの色が変わらないようにする */
+    const wasA = A.p.s, wasB = B.p.s; setPart(A.p, pr.concat([{ ch:"\n" }], now)); qaFix(cv, u - 1, wasA, A.p.s); if (wasB && u < cv.qa) cv.qa--;
+    if (B.b.p && B.b.p.length > 1) B.b.p.splice(B.b.p.indexOf(B.p), 1);
+    else { if (B.b.to && !A.b.to && A.b !== B.b) A.b.to = B.b.to;
+      B.row.b.splice(B.row.b.indexOf(B.b), 1); if (!B.row.b.length) B.sec.rows.splice(B.sec.rows.indexOf(B.row), 1); }
+    touch(); $("editMsg").textContent = ""; closeEd(); return;
+  }
+  const v = selNow() || lastSel;
+  if (a === "nall"){ const runs = runsOf(edEl), all = runs.filter(r => r.ch !== "\n"), on = !all.every(r => r.n); all.forEach(r => r.n = on ? 1 : 0); $("editMsg").textContent = on ? "この文ぜんぶを「音声なし」にしました（保存すると反映されます）。" : "この文の「音声なし」を戻しました（保存すると反映されます）。"; redraw(runs, 0, 0); return; }
+  if (!v || v[0] === v[1]){ $("editMsg").textContent = "色や太字、音声なしを変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
+  const runs = runsOf(edEl), lo = Math.min(v[0], v[1]), hi = Math.max(v[0], v[1]), part = runs.slice(lo, hi).filter(r => r.ch !== "\n");
+  if (a === "b"){ const on = !part.every(r => r.b); part.forEach(r => r.b = on ? 1 : 0); }
+  else if (a === "n"){ const on = !part.every(r => r.n); part.forEach(r => r.n = on ? 1 : 0); }
+  else { const [k, val] = a.split(":"); part.forEach(r => r[k] = val); }
+  $("editMsg").textContent = ""; redraw(runs, lo, hi);
+}
+function commit(){
+  if (!edEl) return true;
+  const runs = trimRuns(runsOf(edEl)), u = edU;
+  if (!hasText(runs)){ $("editMsg").textContent = "文を空にはできません。消したいときは「前の文とつなげる」でまとめてから、いらない文字を消してください。"; return false; }
+  if (htmlOf(runs, false) !== normH(refs[u].p.h)){ const cv = ensureCv(), was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); touch(); }
+  $("editMsg").textContent = ""; closeEd(); return true;
+}
+function closeEd(){ edEl = null; edU = -1; if (txMode){ blkLevel = blkU != null ? "0" : ""; blkDraw(); } load(false, true); }
+function txTap(ev){
+  if (blkLevel === "tree") return;
+  if (blkLevel === "frame"){ frTap(ev); return; }
+  const pt = ev.target.closest(".pt[data-u],.pt[data-vu]");
+  if (edEl && pt === edEl) return;
+  if (!pt || +pt.dataset.u === 0){ if (!edEl && !ev.target.closest(".sec-hd")) $("editMsg").textContent = "このブロックは直せません。"; return; }
+  blkMenu(+(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu));
+}
+/* 見出し（帰結）と横線：S.cv[id].sections[番号] = { label:見出し, nn:1なら「帰結 N」の番号を出さない（横線だけ）, rows:[...] }。
+   音声の文は変わらないので、光る位置と音声はずれない。 */
+function secOp(si, fn){
+  const cv = ensureCv(); fn(cv.sections, cv.sections[si]); touch(); secEd = -1; $("editMsg").textContent = ""; render();
+}
+function secEditor(si){
+  const c = ecard(), sec = c.sections[si], box = el("div", "sed"), inp = el("input");
+  inp.value = sec.label || ""; inp.maxLength = 40; inp.placeholder = "見出し（空でもよい）"; inp.setAttribute("aria-label", "見出し"); box.append(inp);
+  const bar = el("div", "tbar");
+  const add = (t, f, k) => { const b = el("button", k || ""); b.textContent = t; b.onclick = e => { e.stopPropagation(); f(); }; bar.append(b); };
+  add("保存", () => { const v = inp.value.trim(); if (v !== (sec.label || "")) secOp(si, (a, x) => { x.label = v; }); else { secEd = -1; render(); } }, "go");
+  if (c.kind !== "yk") add(sec.nn ? "「帰結」の番号を出す" : "横線だけにする（番号なし）", () => secOp(si, (a, x) => { if (x.nn) delete x.nn; else x.nn = 1; }));
+  if (si > 0) add("この横線を消す（前の区切りとつなぐ）", () => secOp(si, (a, x) => { a[si - 1].rows.push(...x.rows); a.splice(si, 1); }));
+  add("やめる", () => { secEd = -1; render(); });
+  box.append(bar); return box;
+}
+function setTx(v){
+  if (!v && edEl && !commit()) return;
+  if (!v){ secEd = -1; blkLevel = ""; blkU = null; dbMode = false; }
+  txMode = v; if (v){ dbMode = false; blkLevel = ""; blkU = null; if (playing) stop(); }
+  $("blkBar").hidden = !v; document.body.classList.toggle("txon", v); blkDraw(); render(); renderTree();
+}
+$("blkEnd").onclick = () => setTx(false);
+$("blkUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
+  delete S.cv[c.id]; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの直しを取り消しました。"; load(false, true); };
+/* 長押し（PCは右クリック）：編集を始めて、そのブロックのメニューを出す */
+function blkMenu(u){
+  if (!txMode) setTx(true);
+  if (edEl && !commit()) return;
+  blkU = u; blkLevel = "0"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
+  board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick"));
+  const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (pt) pt.classList.add("pick");
+  blkDraw(); renderTree();
+}
+function blkGo(level){
+  $("editMsg").textContent = "";
+  if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; treeOpen = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
+  if (level === "frame"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "frame"; frU1 = frU2 = blkU; frWho = "end"; frNameV = ""; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); frMark(); return; }
+  if (level === "0"){ if (edEl) closeEd(); dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = "0"; blkDraw(); renderTree(); return; }
+  if (!edEl) openEd(blkU);
+  if (!edEl) return; blkLevel = level; blkDraw();
+}
+function blkDraw(){
+  blkDrawClean(); const body = $("blkBody"); body.innerHTML = ""; const add = (t, f, k, dis) => { const b = el("button", k || ""); b.textContent = t; if (dis) b.disabled = true; else b.onclick = e => { e.stopPropagation(); f(); }; body.append(b); return b; };
+  const c = card(); if (!c || !txMode){ return; }
+  const draft = !!c.draft, ttl = $("blkTitle");
+  body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
+  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。"; return; }
+  const q = blkU != null && refs[blkU] ? "" : "";
+  const sample = (() => { const pt = board.querySelector(".pt.pick,.pt.ed"); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 18) : ""; })();
+  if (blkLevel === "0"){
+    ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
+    add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft);
+    if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
+    return; }
+  if (blkLevel === "frame"){
+    const R = frRange(), n = R ? R.hi - R.lo + 1 : 0;
+    ttl.textContent = "枠でまとめる：オレンジの点線の行が、枠に入ります（いま " + n + " 行）。" + (frWho === "start" ? "始まりにしたい行の文を、タップしてください。" : "終わりにしたい行の文を、タップしてください。");
+    const nm = el("input"); nm.type = "text"; nm.id = "frName"; nm.maxLength = 30; nm.placeholder = "枠の名前（空でもよい。例：結論Aの理由づけ）"; nm.setAttribute("aria-label", "枠の名前"); nm.value = frNameV; nm.oninput = () => { frNameV = nm.value; }; body.before(nm);
+    add("● 終わりの行を、タップで選ぶ", () => { frWho = "end"; blkDraw(); }, frWho === "end" ? "go" : ""); add("● 始まりの行を、タップで選ぶ", () => { frWho = "start"; blkDraw(); }, frWho === "start" ? "go" : "");
+    add("この範囲を枠にする", () => frApply(), "go");
+    { const a = refs[frU1], all = a ? flatRows(ecard().sections) : [], sets = frSets(all); const mine = a && a.row.fr ? a.row.fr.slice().reverse() : [];
+      mine.forEach(id => { const f = sets[id]; if (f) add("枠を外す：" + (f.label || "名前なし") + "（" + f.idx.size + "行）", () => frRemove(id)); }); }
+    add("← 戻る", () => { blkGo("0"); });
+    return; }
+  if (blkLevel === "tree"){
+    ttl.textContent = "ツリー作成：文の一部を選んで、押してください（分野は決めません。骨格だけ作って、DBに送ります）";
+    const ss = el("div", "selshow"); ss.id = "selShow"; body.before(ss);
+    [["判断にする", "判断"], ["子の要件にする", "子"], ["子の考慮要素にする", "子考"], ["子の解釈基準にする", "子解"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
+    add("選んだ文字を、選択中の行に入れる", () => tFill()).dataset.mk = "入";
+    add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => blkGo("0"));
+    selShowUpdate();
+    return; }
+  const BT = { text: [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"],["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","マーカーなし"],["b","太字"]],
+    aud: [["n","選んだ範囲の音声なし：切替"],["nall","この文ぜんぶの音声なし：切替"]] };
+  ttl.textContent = blkLevel === "text" ? "文字の変更：書き換えたい文字を選んで、色・マーカー・太字（文字はそのまま打ち直せます）" : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたり、区切りを入れます" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  if (blkLevel === "fig"){
+    const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
+    [["split","ここで分ける"],["merge","前の文とつなげる"]].concat(first ? [] : yk ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
+  } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
+  add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
+}
+/* ---- 枠でまとめる：行（row）に fr:[枠の印…]、最初の行に fl:{枠の印:名前} を持たせる。図（S.cv）の一部なので、同期・書き出しにそのまま乗る ---- */
+let frU1 = null, frU2 = null, frWho = "end", frNameV = "";
+const flatRows = secs => { const o = []; secs.forEach(sec => sec.rows.forEach(r => o.push(r))); return o; };
+function frRange(){ const c = ecard(), a = refs[frU1], b = refs[frU2]; if (!a || !b) return null; const all = flatRows(c.sections), i = all.indexOf(a.row), j = all.indexOf(b.row); if (i < 0 || j < 0) return null; return { all, lo: Math.min(i, j), hi: Math.max(i, j) }; }
+function frMark(){
+  const R = txMode && blkLevel === "frame" ? frRange() : null;
+  board.querySelectorAll(".row").forEach(e => { const on = !!(R && e._row && (() => { const k = R.all.indexOf(e._row); return k >= R.lo && k <= R.hi; })()); e.classList.toggle("frsel", on); });
+}
+function frTap(ev){
+  const pt = ev.target.closest(".pt[data-u],.pt[data-vu]"); if (!pt || +pt.dataset.u === 0) return;
+  const u = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu);
+  if (frWho === "start") frU1 = u; else frU2 = u;
+  blkDraw(); frMark();
+}
+function frSets(all){ const f = {}; all.forEach((r, i) => (r.fr || []).forEach(id => { (f[id] = f[id] || { id, idx: new Set(), label: "" }).idx.add(i); if (r.fl && r.fl[id]) f[id].label = r.fl[id]; })); return f; }
+function frApply(){
+  const R = frRange(); if (!R){ $("editMsg").textContent = "範囲が見つかりません。もう一度、ブロックを選び直してください。"; return; }
+  const name = ($("frName") && $("frName").value.trim()) || "", mine = new Set(); for (let i = R.lo; i <= R.hi; i++) mine.add(i);
+  const ex = Object.values(frSets(R.all));
+  for (const f of ex){ const inter = [...mine].filter(i => f.idx.has(i)).length; if (!inter) continue; const sub = inter === mine.size, sup = inter === f.idx.size;
+    if (sub && sup){ $("editMsg").textContent = "同じ範囲の枠が、すでにあります。"; toast("同じ範囲の枠が、すでにあります。", "ng"); return; }
+    if (!sub && !sup){ $("editMsg").textContent = "すでにある枠と、半分だけ重なっています。枠は、ぴったり中か、ぴったり外になるように範囲を選んでください。"; toast("すでにある枠と、半分だけ重なっています。", "ng", 6000); return; } }
+  const lo = R.lo, hi = R.hi, cv = ensureCv(), rows = flatRows(cv.sections), id = "f" + Date.now().toString(36);
+  for (let i = lo; i <= hi; i++){ const r = rows[i]; r.fr = (r.fr || []).concat(id); if (i === lo && name) r.fl = Object.assign({}, r.fl, { [id]: name }); }
+  touch(); blkLevel = "0"; render(); blkDraw();
+  $("editMsg").textContent = "✔ " + (hi - lo + 1) + " 行を、枠でまとめました" + (name ? "（" + name + "）" : "") + "。"; toast("✔ 枠でまとめました（" + (hi - lo + 1) + " 行）", "ok");
+}
+function frRemove(id){
+  const cv = ensureCv(); flatRows(cv.sections).forEach(r => { if (r.fr && r.fr.includes(id)){ r.fr = r.fr.filter(x => x !== id); if (!r.fr.length) delete r.fr; if (r.fl){ delete r.fl[id]; if (!Object.keys(r.fl).length) delete r.fl; } } });
+  touch(); render(); blkDraw(); $("editMsg").textContent = "枠を外しました。"; toast("枠を外しました。", "ok");
+}
+function drawFrames(){
+  board.querySelectorAll(".frm").forEach(x => x.remove());
+  const mem = {}; board.querySelectorAll(".row").forEach(e => { if (e._row && e._row.fr) e._row.fr.forEach(id => { const f = mem[id] || (mem[id] = { id, els: [], label: "" }); f.els.push(e); if (e._row.fl && e._row.fl[id]) f.label = e._row.fl[id]; }); });
+  const L = Object.values(mem); if (!L.length){ board.style.removeProperty("padding-left"); board.style.removeProperty("padding-right"); return; }
+  L.forEach(f => { f.set = new Set(f.els); });
+  const inside = (A, B) => A !== B && [...B.set].every(x => A.set.has(x)) && (A.set.size > B.set.size || A.id > B.id);
+  const lv = {}; const level = f => { if (lv[f.id] != null) return lv[f.id]; let m = -1; L.forEach(g => { if (inside(f, g)) m = Math.max(m, level(g)); }); return (lv[f.id] = m + 1); };
+  L.forEach(level);
+  const maxLv = Math.max(...L.map(f => lv[f.id])), padX = 10 + 8 + 8 * maxLv + 2;
+  board.style.paddingLeft = padX + "px"; board.style.paddingRight = padX + "px";
+  const br = board.getBoundingClientRect();
+  L.sort((a, b) => lv[b.id] - lv[a.id]).forEach(f => {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; f.els.forEach(e => { const r = e.getBoundingClientRect(); x0 = Math.min(x0, r.left); y0 = Math.min(y0, r.top); x1 = Math.max(x1, r.right); y1 = Math.max(y1, r.bottom); });
+    const pad = 8 + 8 * lv[f.id], d = el("div", "frm l" + Math.min(lv[f.id], 3));
+    d.style.left = (x0 - br.left + board.scrollLeft - pad) + "px"; d.style.top = (y0 - br.top + board.scrollTop - pad - (f.label ? 4 : 0)) + "px";
+    d.style.width = (x1 - x0 + pad * 2) + "px"; d.style.height = (y1 - y0 + pad * 2 + (f.label ? 4 : 0)) + "px";
+    if (f.label) d.append(el("span", "frl", f.label)); board.append(d); });
+}
+try { new ResizeObserver(() => requestAnimationFrame(drawFrames)).observe(board); } catch(e){}
+window.addEventListener("resize", () => requestAnimationFrame(drawFrames));
+function blkDrawClean(){ ["blkName", "selShow", "frName"].forEach(i => { const n = $(i); if (n) n.remove(); }); }
+function selShowUpdate(){
+  const c = card(), t = c && S.tree[c.id], cur = t && tGet(t.nodes, treeSel), ok = dbLastSel && dbLastSel !== "many";
+  const fb = document.querySelector('#treeTools [data-op="fill"]'); if (fb){ fb.disabled = !(ok && cur && cur.kind !== "group"); fb.textContent = cur && !cur.text ? "✎ 選んだ文字を、この空の行に入れる" : "✎ 選んだ文字に差し替える"; }
+  const s = $("selShow"); if (!s) return;
+  const l1 = ok ? "✔ 選んでいる文字：「" + (dbLastSel.text.replace(/\s+/g, "").slice(0, 36)) + (strip(dbLastSel.text).length > 36 ? "…" : "") + "」（" + strip(dbLastSel.text).length + "文字）"
+    : dbLastSel === "many" ? "⚠ 複数のブロックにまたがっています。1つのブロックの中だけを選んでください。" : "まだ文字を選んでいません。文字を長押しして、両端をずらして範囲を選んでください。";
+  s.className = "selshow" + (ok ? " ok" : dbLastSel === "many" ? " ng" : "");
+  s.textContent = l1 + "　／　追加先：" + (cur ? (cur.kind === "group" ? "括弧" : cur.text ? "「" + fullOf(cur.text).slice(0, 14) + (fullOf(cur.text).length > 14 ? "…" : "") + "」（入れると差し替え）" : "空の行（選んだ文字が、ここに入ります）") + "　※別の行は、下のツリーでタップ" : "なし（最初は「判断」を作ります）");
+  document.querySelectorAll("#blkBody button[data-mk]").forEach(b => { const k = b.dataset.mk; b.disabled = !ok || (k !== "判断" && !cur) || ((k === "趣旨" || k === "入") && cur && cur.kind === "group"); });
+}
+$("selEdAu").onchange = e => { S.edAu = e.target.value; save(); load(false, true); };
+/* 取り込み直したとき：PCに入った直しは片付ける。前の版の「文字の直し」（S.tx）は、新しい形（S.cv）に移す */
+function tidyTx(){
+  const byId = {}; CARDS.forEach(c => byId[c.id] = c);
+  Object.keys(S.tags).forEach(id => { const c = byId[id]; if (!c || sameArr(S.tags[id], c.tags || [])) delete S.tags[id]; });
+  Object.keys(S.cv).forEach(id => { const c = byId[id]; if (c && c.ev && c.ev === S.cv[id].stamp) delete S.cv[id]; });
+  Object.keys(S.tx).forEach(id => { const c = byId[id]; if (!c || S.cv[id]){ delete S.tx[id]; return; }
+    const sections = JSON.parse(JSON.stringify(c.sections)); let u = 0, n = 0;
+    sections.forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (!p.s) return; u++;
+      const ov = S.tx[id][u]; if (ov && normH(p.h) !== ov.h){ p.h = ov.h; p.s = ov.s; p.x = 1; delete p.e; n++; } }))));
+    if (n) S.cv[id] = { sig: sigOf(c.sections), qa: qaOf(c), sections, stamp: String(Date.now()) };
+    delete S.tx[id]; });
+}
+
+/* ---------- 改行を直す（この端末に覚えておき、書き出してPCでカードに書き込む） ---------- */
+let editing = false;
+const nows = t => t.replace(/[\s\u00a0]/g, "");
+function ePts(){ return [...board.querySelectorAll(".pt[data-e]")]; }
+function textBefore(pt, node, off){ const r = document.createRange(); r.selectNodeContents(pt); r.setEnd(node, off); return r.toString().length; }
+function locate(pt, e){            /* 前後の文字から、ブロックの中の位置（文字数）を探す */
+  const full = pt.textContent; let t = ""; const map = [];
+  for (let i = 0; i < full.length; i++) if (!/[\s\u00a0]/.test(full[i])){ map.push(i); t += full[i]; }
+  const k = t.indexOf(e.before + e.after); if (k < 0) return -1;
+  const j = k + e.before.length; return j < map.length ? map[j] : -1;
+}
+function breakAt(pt, o){           /* 位置 o に改行を入れる */
+  const w = document.createTreeWalker(pt, NodeFilter.SHOW_TEXT); let n, acc = 0;
+  while ((n = w.nextNode())){ const L = n.data.length;
+    if (o > acc && o <= acc + L){ if (o - acc < L) n.splitText(o - acc);
+      const sp = el("span", "ubr new"), br = el("br"); n.after(sp); sp.after(br); return sp; }
+    acc += L; }
+  return null;
+}
+function myEdits(){ const id = card().id; return S.edits.filter(e => e.id === id); }
+function applyEdits(){
+  const pts = ePts();
+  myEdits().forEach(e => {
+    const order = [pts[e.n], ...pts].filter(Boolean);
+    for (const pt of order){ const o = locate(pt, e); if (o < 0) continue;
+      if (e.del){ const sp = [...pt.querySelectorAll(".ubr.k")].find(x => textBefore(pt, x, 0) === o); if (sp){ sp.classList.add("gone"); sp._e = e; } }
+      else { const sp = breakAt(pt, o); if (sp) sp._e = e; }
+      break; }
+  });
+  countLine();
+}
+function snap(full, o){            /* タップ位置を、近くの区切り（2文字以内）に寄せる */
+  let best = o, bd = 9;
+  for (let b = Math.max(1, o - 2); b <= Math.min(full.length - 1, o + 2); b++){
+    if ("。、，）」".includes(full[b - 1]) || "※（「①②③④⑤⑥⑦⑧⑨⑩・".includes(full[b])){ const d = Math.abs(b - o); if (d < bd){ bd = d; best = b; } } }
+  return best;
+}
+function editTap(ev){
+  const chip = ev.target.closest(".ubr");
+  if (chip){
+    if (chip._e) S.edits.splice(S.edits.indexOf(chip._e), 1);                    /* 自分の直しを取り消す */
+    else { const pt = chip.closest(".pt"); addEdit(pt, textBefore(pt, chip, 0), true); }   /* カードに入っている改行を消す */
+    save(); render(); return;
+  }
+  const pt = ev.target.closest(".pt[data-e]");
+  if (!pt){ $("editMsg").textContent = "このブロックは直せません。"; return; }
+  let node = null, off = 0;
+  if (document.caretPositionFromPoint){ const p = document.caretPositionFromPoint(ev.clientX, ev.clientY); if (p){ node = p.offsetNode; off = p.offset; } }
+  else if (document.caretRangeFromPoint){ const r = document.caretRangeFromPoint(ev.clientX, ev.clientY); if (r){ node = r.startContainer; off = r.startOffset; } }
+  if (!node || node.nodeType !== 3 || !pt.contains(node)) return;
+  const full = pt.textContent, o = snap(full, textBefore(pt, node, off));
+  if (addEdit(pt, o, false)){ save(); render(); }
+}
+function addEdit(pt, o, del){
+  const full = pt.textContent, c = card();
+  const before = nows(full.slice(0, o)).slice(-12), after = nows(full.slice(o)).slice(0, 12);
+  if (!before || !after){ $("editMsg").textContent = "ブロックの最初と最後には改行を入れられません。"; return false; }
+  /* 同じ言い回しがカードの中に何度も出るときのために、何番目かも覚えておく */
+  const pts = ePts(), all = pts.map(x => nows(x.textContent));
+  const gpos = all.slice(0, pts.indexOf(pt)).join("").length + nows(full.slice(0, o)).length - before.length;
+  const joined = all.join(""); let k = 0, i = joined.indexOf(before + after);
+  while (i >= 0 && i < gpos){ k++; i = joined.indexOf(before + after, i + 1); }
+  const e = { id: c.id, title: c.title, n: pts.indexOf(pt), before, after, k }; if (del) e.del = 1;
+  S.edits.push(e); $("editMsg").textContent = ""; return true;
+}
+function setEditing(v){ if (v && dbMode) dbMode = false; editing = v; $("edit").setAttribute("aria-pressed", v ? "true" : "false"); $("edit").textContent = v ? "改行を直す：オン（タップで終了）" : "改行を直す";
+  $("editBox").hidden = !v; if (v && txMode) setTx(false); if (v && playing) stop(); render(); }
+$("edit").onclick = () => setEditing(!editing);
+$("editUndo").onclick = () => { const id = card().id; S.edits = S.edits.filter(e => e.id !== id); save(); render(); };
+$("editOut").onclick = async () => {
+  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
+  const d = new Date(), z = n => String(n).padStart(2, "0");
+  const name = "編集_" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes()) + ".json";
+  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
+  /* claude.ai の中では保存の確認が出る。PCで再生ページ.htmlを直接開いたときは、そのままダウンロードする */
+  let dl = null;
+  try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch(e){}
+  if (dl){ try { await dl.save({ filename: name, data: text }); } catch(e){} }
+  else { try { const a = el("a"); a.href = URL.createObjectURL(new Blob([text], { type: "application/json" })); a.download = name; document.body.append(a); a.click(); a.remove(); } catch(e){} }
+  $("editTxt").hidden = false; $("editTxt").value = text;
+  try { navigator.clipboard.writeText(text).catch(() => {}); } catch(e){}
+  S.edits.forEach(e => e.sent = 1); save(); applyEdits();
+  $("recMsg").textContent = "「" + name + "」を書き出しました（学習の記録の控えも入っています）。";
+  $("outMsg").textContent = "「" + name + "」を書き出しました（学習の記録の控えも入っています）。直しをPCに入れるときは、PCの「編集」フォルダに入れて「作る.bat」を実行してください。ファイルが保存されなかったときは、下の文字を全部コピーして、PCで「編集」フォルダの中に " + name + " という名前で保存してください。";
+};
+/* 重要度：PCの「重要度一覧.txt」の数字が基本。この端末で「卒業にする／取り消す」を押したカードは、そちらを優先する */
+function baseImp(c){ return c.imp === 4 ? (c.imp0 || 3) : c.imp; }
+/* 科目と重要度も同じ。画面で変えた分はこの端末が覚えていて、「直した内容を書き出す」でPCの「重要度一覧.txt」に入る */
+function impOf(c){ return S.imp[c.id] || c.imp; }
+function deckOf(c){ return S.deckOv[c.id] || c.deck; }
+function setImp(v){ const c = card(); if (v === c.imp) delete S.imp[c.id]; else S.imp[c.id] = v; st("imp", c.id); save(); render(); }
+function setDeck(v){ const c = card(); if (v === c.deck) delete S.deckOv[c.id]; else S.deckOv[c.id] = v; S.decks[v] = S.decks[v] !== false; st("deck", c.id); save(); render(); }
+function countLine(){
+  const a = S.edits.length, b = Object.keys(S.imp).length, d = Object.keys(S.deckOv).length;
+  const t = Object.keys(S.cv).length, g = Object.keys(S.tags).length;
+  $("editCnt").textContent = (a || b || d || t || g) ? "PCにまだ入っていない直し：文字と図 " + t + " 枚" + (g ? "・タグ " + g + " 枚" : "") + (a ? "・改行 " + a + " 件" : "") + "・重要度 " + b + " 件・科目 " + d + " 件" : "";
+}
+
+function render(){
+  const c = ecard();
+  { const h = $("title"); h.textContent = ""; const np = document.createElement("span"); np.className = "np"; np.textContent = "再生中："; h.append(np, document.createTextNode(c.title)); }
+  $("selDeck").value = deckOf(c); $("selDeck").classList.toggle("chg", !!S.deckOv[c.id]);
+  $("selImp").value = String(impOf(c)); $("selImp").classList.toggle("chg", !!S.imp[c.id]);
+  renderTags();
+  $("pos").textContent = (pi + 1) + " / " + list.length + " 枚目";
+  $("lgOut").hidden = c.kind !== "yk"; $("ncEdit").hidden = !S.newCards[c.id] || !S.newCards[c.id].title;
+  $("pick").value = String(pi);
+  $("flag").hidden = !c.flags; if (c.flags) $("flag").textContent = "要確認：" + c.flags.join("、");
+  $("grad").setAttribute("aria-pressed", impOf(c) === 4 ? "true" : "false");
+  $("grad").textContent = impOf(c) === 4 ? "卒業を取り消す" : "卒業にする";
+  board.className = "board" + (c.kind ? " yk" : "") + (editing ? " editing" : "") + (txMode ? " txm" : "") + (dbMode ? " dbm" : "");
+  board.innerHTML = ""; utts = []; refs = []; vk = 0; curRow = curSec = null; edEl = null; edU = -1;
+  const top = el("div", "row one top"); top.append(makeBlock({ t:"subj", h:deckOf(c), s:deckOf(c) + "。" })); board.append(top);
+  if (c.flow) board.append(makeFlow(c.flow));
+  c.sections.forEach((sec, si) => {
+    const s = el("section", "sec"); const hd = el("div", "sec-hd");
+    if (c.kind !== "yk" && !sec.nn){ const n = el("span"); n.textContent = "帰結 " + c.sections.slice(0, si + 1).filter(x => !x.nn).length; hd.append(n); }
+    if (sec.label){ const lb = el("b"); lb.textContent = sec.label; hd.append(lb); }
+    if (txMode){ if (!hd.childNodes.length){ const e = el("span"); e.textContent = "（見出しなし。タップして直す）"; hd.append(e); }
+      hd.onclick = () => { if (edEl && !commit()) return; secEd = si; render(); }; }
+    s.append(hd);
+    if (txMode && secEd === si) s.append(secEditor(si));
+    sec.rows.forEach((row, ri) => {
+      if (ri > 0){ const w = el("div", "wire" + (row.via ? " via" : "")); w.dataset.w = utts.length;
+        if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
+      const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
+      if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
+      curRow = row; curSec = sec; row.b.forEach(b => r.append(makeBlock(b)));
+      s.append(r);
+    });
+    board.append(s);
+  });
+  synced = !!(c.t && c.t.length === utts.length);
+  qaIdx = qaOf(c);
+  if (!S.cv[c.id]) applyEdits(); else countLine();
+  renderGrade();
+  update();
+}
+/* ---------- 隠して再生 ---------- */
+let qaIdx = 1, shownTo = -1, opened = new Set(), allShown = false, thinking = false, thinkT = null;
+/* 表面（科目名と問い）が何番目の文までか。新しい data.json には印（qa）が入っている。古いものは図の形から数える */
+function qaOf(c){
+  if (c.qa) return c.qa;
+  const cnt = b => (b.p || [b]).filter(p => p.s).length, s0 = c.sections[0]; let n = 1;
+  if (!s0) return n;
+  if (c.kind){ if (s0.label === "問い") s0.rows.forEach(r => r.b.forEach(b => n += cnt(b))); }
+  else for (const r of s0.rows){ if (r.b.every(b => b.t === "fact")) r.b.forEach(b => n += cnt(b)); else break; }
+  return n;
+}
+function covered(i){ return !!S.hide && !editing && !txMode && !dbMode && !allShown && i >= qaIdx && i > shownTo && !opened.has(i); }
+function update(){
+  if (cur > shownTo) shownTo = cur;
+  board.querySelectorAll(".pt[data-u]").forEach(e => { const cv = covered(+e.dataset.u);
+    e.classList.toggle("cv", cv && S.hide === "all"); e.classList.toggle("cm", cv && S.hide === "m1"); });
+  board.classList.toggle("veil", S.hide === "all" && !editing && !txMode && !dbMode && !allShown && shownTo < utts.length - 1);
+  $("showAll").hidden = !S.hide; $("showAll").textContent = allShown ? "隠し直す" : "答えを全部見る";
+  board.querySelectorAll(".blk[data-u0]").forEach(e => { const a = +e.dataset.u0, b = +e.dataset.u1;
+    e.classList.toggle("on", cur >= a && cur <= b); e.classList.toggle("past", cur > b); });
+  board.querySelectorAll(".pt[data-u]").forEach(e => e.classList.toggle("on", +e.dataset.u === cur));
+  board.querySelectorAll(".pt[data-af]").forEach(e => e.classList.toggle("cv", covered(+e.dataset.af) && S.hide === "all"));
+  board.querySelectorAll("[data-w]").forEach(e => e.classList.toggle("lit", cur >= 0 && cur >= +e.dataset.w));
+  board.classList.toggle("playing", playing);
+  $("play").textContent = thinking ? "▶ 続き" : playing ? "⏸ 停止" : "▶ 再生";
+  $("play").setAttribute("aria-label", playing ? "停止" : "再生");
+  if (!thinking && cur >= 0 && cur < utts.length) $("now").textContent = (cur + 1) + "/" + utts.length + "　" + utts[cur].text;
+}
+function show(i){ if (document.hidden) return; if (i >= 0 && i < utts.length) utts[i].el.scrollIntoView({ block:"center", behavior: reduce ? "auto" : "smooth" }); }
+function fmt(s){ s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
+
+/* ---------- 並び順 ---------- */
+function shuffled(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+/* 並び順は重要度ごとに決めて、この端末に覚えておく（ページを開き直しても同じ順番で続きから聞ける）。
+   並べ直すときは、まだ聞き終わっていないカードを前に、聞き終わったカードを後ろにして、それぞれの中でシャッフルする。
+   → 途中で並べ直しても、毎回ちがうカードが前に来る。全部聞き終わっていたら、全体をシャッフルして最初から。 */
+const DECK_ORDER = ["憲法","行政法","民法","商法","民訴法","刑法","刑訴法","労働法","要件事実","民事実務","刑事実務"];
+function deckNo(d){ const n = DECK_ORDER.indexOf(d); return n < 0 ? 99 : n; }
+function lvName(k){ return k === 4 ? "卒業" : "重要度 " + k; }
+/* まとまり（この中でシャッフルする単位）と、その並び順・見出しを、選んだ並べ方から決める */
+function groupOf(c){
+  const lv = impOf(c), d = deckOf(c), dn = String(deckNo(d)).padStart(2, "0"), m = S.mode;
+  if (m === "impdeck") return { key: lv + "|" + d, sort: lv + dn, label: lvName(lv) + "・" + d };
+  if (m === "deckimp") return { key: d + "|" + lv, sort: dn + lv, label: d + "・" + lvName(lv) };
+  if (m === "deck") return { key: "D|" + d, sort: dn, label: d };
+  return { key: String(lv), sort: String(lv), label: lvName(lv) };
+}
+function buildList(keepId, reshuffle){
+  const groups = {};
+  CARDS.forEach((c, i) => { const g = groupOf(c); (groups[g.key] = groups[g.key] || { sort:g.sort, idx:[] }).idx.push(i); });
+  list = [];
+  Object.keys(groups).sort((a, b) => groups[a].sort < groups[b].sort ? -1 : 1).forEach(k => {
+    let g = groups[k].idx;
+    if (S.shuffle){
+      const ids = g.map(i => CARDS[i].id), at = {}; ids.forEach((id, n) => at[id] = g[n]);
+      let prev = (S.ord[k] || []).filter(id => id in at);
+      const seen = new Set(prev), fresh = ids.filter(id => !seen.has(id));
+      let order;
+      if (reshuffle || !prev.length){
+        const all = prev.concat(fresh);
+        if (all.every(id => S.heard[id])) all.forEach(id => delete S.heard[id]);
+        /* ×をつけたカード → まだ聞いていないカード → 聞いたカード の順 */
+        const pri = id => (S.rev[id] && S.rev[id].g === "x") ? 0 : !S.heard[id] ? 1 : 2;
+        order = [0, 1, 2].flatMap(p => shuffled(all.filter(id => pri(id) === p)));
+      } else order = shuffled(fresh).concat(prev);
+      S.ord[k] = order; g = order.map(id => at[id]);
+    }
+    list.push(...g.filter(i => { const c = CARDS[i]; return S.imps.includes(impOf(c)) && S.decks[deckOf(c)] !== false && (!S.auOnly || c.au) && (!S.weak || weak(c)) && tagOk(c) && qOk(c); }));
+  });
+  save();
+  const none = !list.length;
+  if (!list.length) list = CARDS.map((c, i) => i);
+  pi = Math.max(0, list.findIndex(i => CARDS[i].id === keepId));
+  fillPick();
+  const cnt = $("cnt"); if (cnt) cnt.textContent = none ? "いまの条件に合うカードがありません（かわりに全部のカードを出しています）" : "いまの条件で " + list.length + " 枚（うち音声つき " + list.filter(i => CARDS[i].au).length + " 枚）";
+  renderSearch(none);
+}
+
+/* ---------- 検索とタグ ----------
+   検索：S.q（検索する言葉）。題名・科目・タグ・本文を全部つなげた文字列（sidx）の中に、言葉が全部あるカードだけを聞く対象にする。
+   タグ：S.tags[カードの識別番号] = ["タグ", ...]。PCの「タグ一覧.json」→ data.json の c.tags にも入り、取り込み直しても消えない。 */
+const NOTAG = "\u0001";
+const sidx = {};
+function normQ(t){ return String(t || "").normalize("NFKC").toLowerCase(); }
+function plainQuick(h){ return String(h).replace(/<br>/g, " ").replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"); }
+function tagsOf(c){ return S.tags[c.id] || c.tags || []; }
+function sameArr(a, b){ return a.length === b.length && a.every((v, i) => v === b[i]); }
+function indexOf(c){
+  const v = S.cv[c.id], key = (v ? v.stamp : "") + "|" + deckOf(c) + "|" + tagsOf(c).join(","), e = sidx[c.id];
+  if (e && e.key === key) return e;
+  const sents = []; (v ? v.sections : c.sections).forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.h) sents.push(plainQuick(p.h)); }))));
+  const norm = normQ([c.title, deckOf(c), tagsOf(c).join(" ")].concat(sents).join("\u0002")).replace(/[\s\u3000]+/g, "");
+  return sidx[c.id] = { key, sents, norm };
+}
+function words(){ return normQ(S.q).split(/\s+/).filter(Boolean); }
+function qOk(c){ if (!S.q) return true; const w = words(), n = indexOf(c).norm; return w.every(x => n.includes(x)); }
+function tagOk(c){
+  if (!S.tagSel.length) return true; const t = tagsOf(c);
+  const has = k => k === NOTAG ? !t.length : t.includes(k);
+  return S.tagMode === "all" ? S.tagSel.every(has) : S.tagSel.some(has);
+}
+let sresOpen = false, lastNone = false;
+function renderSearch(none){
+  lastNone = !!none; const box = $("sres"); box.innerHTML = "";
+  $("qX").hidden = !S.q; $("qInfo").hidden = !S.q; box.hidden = !(S.q && sresOpen);
+  if (!S.q) return;
+  $("qCnt").textContent = "「" + S.q + "」で " + (none ? 0 : list.length) + " 枚が対象です"; $("qList").textContent = sresOpen ? "一覧を閉じる" : "一覧を開く";
+  const w = words()[0] || "", show = none ? [] : list.slice(0, 30);
+  show.forEach((ci, n) => { const c = CARDS[ci], b = el("button"); b.textContent = (n + 1) + ". [" + deckOf(c) + "] " + c.title;
+    const e = indexOf(c); let sn = "";
+    for (const s of e.sents){ const k = normQ(s).indexOf(w); if (k >= 0){ sn = (k > 12 ? "…" : "") + s.slice(Math.max(0, k - 12), k + 28) + "…"; break; } }
+    if (sn){ const x = el("span", "sn"); x.textContent = sn; b.append(x); }
+    b.onclick = () => { stop(); sresOpen = false; box.hidden = true; $("qList").textContent = "一覧を開く"; pi = n; load(false); window.scrollTo(0, 0); }; box.append(b); });
+  if (!none && list.length > 30){ const p = el("p", "small"); p.textContent = "ほか " + (list.length - 30) + " 枚（上の「いまの条件で…」の枚数は全部の数です）"; box.append(p); }
+}
+function refilter(){ const keep = card().id; buildList(keep); if (card().id !== keep){ stop(); load(false); } }
+function doSearch(){ S.q = $("qIn").value.trim(); sresOpen = !!S.q; save(); refilter(); renderSearch(lastNone); }
+$("qX").onclick = () => { S.q = ""; sresOpen = false; $("qIn").value = ""; save(); refilter(); renderSearch(false); };
+$("qList").onclick = () => { sresOpen = !sresOpen; renderSearch(lastNone); };
+$("qGo").onclick = doSearch;
+$("qIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); doSearch(); $("qIn").blur(); } };
+$("qIn").onchange = doSearch;
+$("qClr").onclick = () => { S.q = ""; sresOpen = false; S.tagSel = []; $("qIn").value = ""; save(); renderTagFilter(); refilter(); };
+$("tagMode").onchange = e => { S.tagMode = e.target.value; save(); refilter(); };
+function allTags(){ const n = {}; CARDS.forEach(c => tagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
+function renderTagFilter(){
+  const box = $("fTag"), n = allTags(), names = Object.keys(n).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
+  S.tagSel = S.tagSel.filter(t => t === NOTAG || t in n); box.innerHTML = "";
+  $("tagMode").hidden = !names.length;
+  if (!names.length){ const p = el("span", "small"); p.textContent = "まだタグがありません。カードの題名の下の「＋タグ」から付けられます。"; box.append(p); return; }
+  const none = CARDS.filter(c => !tagsOf(c).length).length;
+  [NOTAG].concat(names).forEach(t => { const b = el("button"); b.textContent = t === NOTAG ? "タグなし " + none : t + " " + n[t];
+    b.setAttribute("aria-pressed", S.tagSel.includes(t) ? "true" : "false");
+    b.onclick = () => { S.tagSel = S.tagSel.includes(t) ? S.tagSel.filter(v => v !== t) : S.tagSel.concat([t]); save(); renderTagFilter(); refilter(); };
+    box.append(b); });
+}
+function normTag(t){ return String(t || "").normalize("NFKC").replace(/[\s\u0001\u0002|]+/g, " ").trim().slice(0, 20); }
+function setTags(c, arr){
+  if (sameArr(arr, c.tags || [])) delete S.tags[c.id]; else S.tags[c.id] = arr;
+  st("tag", c.id); save(); renderTags(true); renderTagFilter(); countLine();
+}
+function addTags(raw){
+  const c = card(); let cur = tagsOf(c).slice(), over = false;
+  String(raw).split(/[,、，]/).map(normTag).filter(Boolean).forEach(t => { if (!cur.includes(t)){ if (cur.length >= 12) over = true; else cur.push(t); } });
+  if (!sameArr(cur, tagsOf(c))) setTags(c, cur);
+  if (over) $("editMsg").textContent = "1枚に付けられるタグは12個までです。";
+}
+function renderTags(keep){
+  const c = card(), box = $("tgs"); box.innerHTML = ""; if (!keep) $("tgNew").hidden = true;
+  tagsOf(c).forEach(t => { const x = el("span", "tg"); x.append(document.createTextNode(t));
+    const r = el("button"); r.textContent = "×"; r.setAttribute("aria-label", t + "を外す"); r.onclick = () => setTags(c, tagsOf(c).filter(v => v !== t)); x.append(r); box.append(x); });
+  const a = el("button", "tgadd"); a.textContent = "＋タグ";
+  a.onclick = () => { const h = $("tgNew").hidden = !$("tgNew").hidden; if (!h){ renderSug(); $("tgIn").focus(); } }; box.append(a);
+  if (!$("tgNew").hidden) renderSug();
+}
+function renderSug(){
+  const c = card(), have = tagsOf(c), n = allTags(), box = $("tgSug"); box.innerHTML = "";
+  Object.keys(n).filter(t => !have.includes(t)).sort((a, b) => n[b] - n[a]).slice(0, 14).forEach(t => { const b = el("button"); b.textContent = t; b.onclick = () => addTags(t); box.append(b); });
+}
+$("tgAdd").onclick = () => { addTags($("tgIn").value); $("tgIn").value = ""; $("tgIn").focus(); };
+$("tgIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); $("tgAdd").click(); } };
+const GMARK = { o:"○", d:"△", x:"×" };
+function weak(c){ const r = S.rev[c.id]; return !!r && (r.g === "x" || r.g === "d"); }
+function fillPick(){
+  const pk = $("pick"); pk.innerHTML = ""; let g = null, last = null;
+  list.forEach((ci, n) => { const c = CARDS[ci], key = groupOf(c).label;
+    if (key !== last){ g = document.createElement("optgroup"); g.label = key; pk.append(g); last = key; }
+    const o = document.createElement("option"); o.value = n; o.textContent = (n + 1) + ". [" + deckOf(c) + "・" + (impOf(c) === 4 ? "卒" : impOf(c)) + (S.rev[c.id] ? "・" + GMARK[S.rev[c.id].g] : "") + "] " + c.title; g.append(o); });
+  pk.value = String(pi);
+}
+
+/* ---------- 自己評価と記録（この端末に保存。控えは「直した内容を書き出す」のファイルに入る） ---------- */
+const z2 = n => String(n).padStart(2, "0");
+function dayKey(d){ d = d || new Date(); return d.getFullYear() + "-" + z2(d.getMonth() + 1) + "-" + z2(d.getDate()); }
+function logDay(){ const k = dayKey(); return S.log[k] || (S.log[k] = { h:0, o:0, d:0, x:0 }); }
+let counted = null;
+function countHeard(id){ if (counted === id) return; counted = id; logDay().h++; }
+function renderGrade(){
+  const c = card(), r = S.rev[c.id];
+  $("grInfo").textContent = r ? "前回 " + GMARK[r.g] + "（" + r.d.slice(5).replace("-", "/") + "）" + (r.s ? "　別の日に○ " + r.s + "回" : "") : "覚えていた？";
+  $("gr").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", r && r.d === dayKey() && r.g === b.dataset.g ? "true" : "false"));
+  if ($("rec").open) renderRec();
+}
+function grade(g){
+  const c = card(), r = S.rev[c.id] || (S.rev[c.id] = {}), today = dayKey();
+  r.g = g; r.d = today; r.n = (r.n || 0) + 1; st("rev", c.id);
+  /* ○は「別の日に」続いた回数を数える。△・×で0に戻る */
+  if (g === "o"){ if (r.od !== today){ r.s = (r.s || 0) + 1; r.od = today; } } else { r.s = 0; delete r.od; }
+  logDay()[g]++; countHeard(c.id); S.heard[c.id] = 1; save();
+  if (g === "x"){ list.splice(Math.min(list.length, pi + 7), 0, list[pi]); fillPick(); }     /* ×は6枚あとにもう一度出す */
+  if (g === "o" && r.s >= 3 && impOf(c) !== 4){ $("sug").hidden = false; renderGrade(); return; }
+  gradedNow = true; $("gr").classList.remove("need");
+  if (pendNext || S.auto) go(1, takePend()); else renderGrade();
+}
+$("gr").querySelectorAll("button").forEach(b => b.onclick = () => grade(b.dataset.g));
+$("sugYes").onclick = () => { $("sug").hidden = true; setImp(4); go(1, takePend()); };
+$("sugNo").onclick = () => { $("sug").hidden = true; go(1, takePend()); };
+function renderRec(){
+  const box = $("recBody"); box.innerHTML = "";
+  const n = { o:0, d:0, x:0 }; let grad = 0;
+  CARDS.forEach(c => { const r = S.rev[c.id]; if (r) n[r.g]++; if (impOf(c) === 4) grad++; });
+  const p = el("p", "small"); p.textContent = "全 " + CARDS.length + " 枚のうち、いちばん新しい評価が ○ " + n.o + " 枚・△ " + n.d + " 枚・× " + n.x + " 枚、まだ評価なし " + (CARDS.length - n.o - n.d - n.x) + " 枚。卒業 " + grad + " 枚。";
+  box.append(p);
+  const tb = el("table", "log"), hr = el("tr");
+  ["日付", "聞いた", "○", "△", "×"].forEach(t => { const th = el("th"); th.textContent = t; hr.append(th); }); tb.append(hr);
+  for (let i = 0; i < 14; i++){ const d = new Date(); d.setDate(d.getDate() - i); const k = dayKey(d), v = S.log[k];
+    if (!v && i > 0) continue;
+    const tr = el("tr"); [i === 0 ? "今日" : k.slice(5).replace("-", "/"), v ? v.h : 0, v ? v.o : 0, v ? v.d : 0, v ? v.x : 0].forEach(t => { const td = el("td"); td.textContent = t; tr.append(td); });
+    tb.append(tr); }
+  box.append(tb);
+}
+$("rec").addEventListener("toggle", () => { if ($("rec").open) renderRec(); });
+{ const eo = $("editOut").onclick; $("editOut").onclick = async () => { await eo(); const m = $("outMsg").textContent; if (m) toast(m, /ありません/.test(m) ? "" : "ok", 7000); }; }
+
+/* ---------- 音声 ---------- */
+let thinkDone = false, gradedNow = false, pendNext = null, pre = null, resumePos = null;
+try { resumePos = JSON.parse(localStorage.getItem("rp_pos") || "null"); } catch(e){}
+async function load(autoplay, keep, pre){
+  const my = ++tok; const c = card(), y0 = window.scrollY; if (!keep) secEd = -1;
+  S.last = c.id; save();
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  endThink(false); shownTo = -1; opened = new Set(); allShown = false; $("sug").hidden = true;
+  if (!pre) au.pause(); thinkDone = false; if (!keep){ treeSel = 0; gradedNow = false; pendNext = null; $("gr").classList.remove("need"); } cur = -1; render(); window.scrollTo(0, keep ? y0 : 0);
+  $("seek").value = 0; $("tm").textContent = "0:00 / " + fmt(c.dur);
+  $("now").textContent = c.title;
+  hasAudio = false; curBlob = null; triedData = false; let why = "";
+  try {
+    if (pre){ objUrl = pre.url; curBlob = pre.blob; hasAudio = true; au.defaultPlaybackRate = S.rate; au.playbackRate = S.rate; }
+    else if (edited(c) && S.edAu === "tts") why = "直したカードなので、直した文を端末の読み上げで読んでいます（PCで「作る.bat」を実行するとVOICEVOXの声になります）";
+    else if (!c.au || !DATA.bundles) why = "このカードの音声は、まだPCで作られていません";
+    else { const b = await bundle(c.au.b);
+      if (!b) why = "音声ファイル「" + DATA.bundles[c.au.b] + "」が取り込まれていません（「カードと音声を取り込み直す」で audio_○○.bin も全部選んでください）";
+      else if (my === tok){ if (objUrl) URL.revokeObjectURL(objUrl);
+        curBlob = b.slice(c.au.o, c.au.o + c.au.n, DATA.mime || "audio/mpeg");
+        objUrl = URL.createObjectURL(curBlob);
+        au.src = objUrl; au.defaultPlaybackRate = S.rate; au.playbackRate = S.rate; hasAudio = true;
+        if (resumePos && resumePos.id === c.id && resumePos.t > 2 && resumePos.t < (c.dur || 1e9) - 3){ const rp = resumePos.t; au.addEventListener("loadedmetadata", () => { try { au.currentTime = rp; } catch(e){} }, { once: true }); }
+        resumePos = null; } }
+  } catch(e){ hasAudio = false; why = "音声を読み込めませんでした（" + e + "）"; }
+  if (my !== tok) return;
+  setSrc(why);
+  if ("mediaSession" in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: c.title, artist: deckOf(c), album: "論証フローチャート" });
+  renderDbp();
+  if (autoplay) start();
+  if (hasAudio) prefetchNext();
+}
+let curBlob = null, triedData = false;
+function setSrc(why){ $("src").textContent = hasAudio ? (edited(card()) ? "音声：VOICEVOX（直す前の音声です" + (synced ? "" : "。文の数が変わったので、光る位置は音声と合いません") + "。PCで「作る.bat」を実行すると新しい音声になります）" : "音声：VOICEVOX") : "音声：端末の読み上げで代用中　理由：" + why; }
+/* 音声を開けなかったとき：別の渡し方でもう1回試し、だめなら理由を表示して端末の読み上げに切り替える */
+wire("error", async () => {
+  if (!curBlob) return;
+  const my = tok, was = playing;
+  if (!triedData){ triedData = true;
+    try { const u = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(curBlob); });
+      if (my !== tok) return; au.src = u; au.playbackRate = S.rate; if (was) au.play().catch(() => {}); return; } catch(e){} }
+  hasAudio = false; setSrc("この端末・ブラウザでは音声ファイルを再生できませんでした（コード " + (au.error ? au.error.code : "?") + "）");
+  if (was){ playing = true; speak(cur < 0 ? 0 : cur); }
+});
+/* 次のカードの音声を、あらかじめ2本目の再生部品に読み込んでおく。画面を消している間も、切れ目なくつなげるため */
+async function prefetchNext(){
+  const i = pi + 1; if (!DATA || i >= list.length) { dropPre(); return; }
+  const n = CARDS[list[i]]; if (pre && pre.id === n.id) return;
+  dropPre();
+  if (!n.au || !DATA.bundles || (edited(n) && S.edAu === "tts")) return;
+  try { const b = await bundle(n.au.b); if (!b || !list[pi + 1] || CARDS[list[pi + 1]].id !== n.id) return;
+    const blob = b.slice(n.au.o, n.au.o + n.au.n, DATA.mime || "audio/mpeg"), url = URL.createObjectURL(blob);
+    au2.src = url; au2.defaultPlaybackRate = S.rate; au2.playbackRate = S.rate; au2.load(); pre = { id: n.id, url, blob };
+  } catch(e){}
+}
+function dropPre(){ if (pre){ try { URL.revokeObjectURL(pre.url); } catch(e){} pre = null; try { au2.removeAttribute("src"); au2.load(); } catch(e){} } }
+function fastNext(){
+  const p = pre; pre = null; const old = au, nu = au2;
+  nu.defaultPlaybackRate = S.rate; nu.playbackRate = S.rate;
+  const pr = nu.play();                                   /* 待たずに、その場で次の音声を鳴らす（画面が消えていても止まらない） */
+  au = nu; au2 = old;
+  try { if (objUrl) URL.revokeObjectURL(objUrl); old.removeAttribute("src"); old.load(); } catch(e){}
+  pi++; load(true, false, p);
+  if (pr && pr.catch) pr.catch(() => { playing = false; update(); });
+}
+function start(){
+  playing = true;
+  if (hasAudio) au.play().catch(e => { playing = false; update(); if (hasAudio) $("src").textContent = "音声：VOICEVOX（再生を始められませんでした：" + (e && e.name) + "）"; });
+  else speak(cur < 0 ? 0 : cur);
+  update();
+}
+/* 考える時間：表面を読み終わったところで、選んだ秒数だけ止まる（画面を見ているときだけ。画面を消しているときは止まらない） */
+function think(){
+  if (!S.think || document.hidden || !playing) return false;
+  thinking = true; au.pause(); let left = S.think;
+  const msg = () => { $("now").textContent = S.think < 0 ? "考える時間：思い出せたら「続き」を押す" : "考える時間：あと " + left + " 秒（「続き」ですぐ進む）"; };
+  update(); msg();
+  if (S.think > 0) thinkT = setInterval(() => { left--; if (left <= 0) endThink(true); else msg(); }, 1000);
+  return true;
+}
+function endThink(resume){
+  if (!thinking) return; thinking = false; clearInterval(thinkT); thinkT = null;
+  if (resume && playing){ if (hasAudio) au.play().catch(() => {}); else speak(qaIdx); }
+  update();
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) endThink(true); });
+function stop(){ endThink(false); dropPreSoon(); playing = false; tok++; au.pause(); if (window.speechSynthesis) speechSynthesis.cancel(); update(); }
+function tick(){
+  if (!hasAudio) return;
+  const t = au.currentTime, c = card();
+  $("seek").max = au.duration || c.dur || 100; $("seek").value = t;
+  $("tm").textContent = fmt(t) + " / " + fmt(au.duration || c.dur);
+  if (!synced) return;
+  let i = 0; while (i + 1 < c.t.length && c.t[i + 1] <= t + 0.05) i++;
+  if (i !== cur){ cur = i; update(); show(i); }
+}
+wire("timeupdate", tick);
+setInterval(() => { if (playing && hasAudio && !document.hidden) tick(); }, 150);
+wire("ended", () => { countHeard(card().id); S.heard[card().id] = 1; save();
+  const nx = CARDS[list[pi + 1]];
+  if (playing && pre && nx && pre.id === nx.id && !(S.gate && !gradedNow)) fastNext(); else go(1, true); });
+wire("pause", () => { if (playing && hasAudio && !au.ended && !thinking){ playing = false; update(); } });
+wire("play", () => { if (!playing){ playing = true; update(); } if ("mediaSession" in navigator) navigator.mediaSession.playbackState = "playing"; });
+wire("pause", () => { if ("mediaSession" in navigator && !thinking) navigator.mediaSession.playbackState = "paused"; });
+
+function jump(i){
+  if (thinking) endThink(true);
+  i = Math.max(0, Math.min(i, utts.length - 1));
+  if (hasAudio && synced){ au.currentTime = card().t[i]; cur = i; update(); if (!playing) show(i); }
+  else if (playing) speak(i); else { cur = i; update(); show(i); }
+}
+function skip(d){
+  if (thinking) endThink(true);
+  if (hasAudio){ au.currentTime = Math.max(0, Math.min((au.duration || 1e9) - 0.2, au.currentTime + d)); tick(); }
+  else jump((cur < 0 ? 0 : cur) + (d > 0 ? 1 : -1));
+}
+function takePend(){ const p = pendNext; pendNext = null; return p ? p.play : undefined; }
+function go(d, autoplay){
+  if (d > 0 && S.gate && !gradedNow && list.length){
+    pendNext = { play: autoplay === undefined ? playing : autoplay }; stop();
+    $("grInfo").textContent = "↓ できばえ（○△×）を押すと、次のカードへ進みます"; $("gr").classList.add("need");
+    try { if (navigator.vibrate) navigator.vibrate(60); } catch(e){}
+    return; }
+  pi = (pi + d + list.length) % list.length;
+  if (d > 0 && pi === 0 && S.shuffle) buildList(null, true);
+  load(autoplay === undefined ? playing : autoplay);
+}
+/* 音声がまだ入っていないときは、端末の読み上げで代用する */
+function speak(i){
+  const my = ++tok; if (!window.speechSynthesis) return;
+  speechSynthesis.cancel(); cur = i; update(); show(i);
+  if (i >= utts.length){ countHeard(card().id); S.heard[card().id] = 1; save(); setTimeout(() => { if (my === tok && playing) go(1, true); }, 1000); return; }
+  const u = new SpeechSynthesisUtterance(utts[i].text); u.lang = "ja-JP"; u.rate = S.rate;
+  u.onend = () => { if (my === tok && playing){ if (i + 1 === qaIdx && think()) return; speak(i + 1); } };
+  speechSynthesis.speak(u);
+}
+
+function dropPreSoon(){ }
+/* 表面を読み終わったところで止まる：文と文の間の無音（3秒）の中で止める。裏面の1文字目がもれないよう、0.5秒手前で止める */
+setInterval(() => {
+  if (!S.think || !playing || thinking || !hasAudio || !synced || document.hidden || au.paused) return;
+  const c = card(); if (qaIdx < 1 || qaIdx >= c.t.length) return;
+  const T = c.t[qaIdx], t = au.currentTime;
+  if (t < T - 0.9) thinkDone = false;
+  else if (!thinkDone && t >= T - 0.5 && t < T + 0.3){ thinkDone = true; think(); }
+}, 40);
+/* 再生位置を覚えておく（Braveが落ちても、開き直せば同じカードの同じ位置から続けられる） */
+setInterval(() => { if (hasAudio && playing && !au.paused && card()){ try { localStorage.setItem("rp_pos", JSON.stringify({ id: card().id, t: Math.round(au.currentTime * 10) / 10 })); } catch(e){} } }, 3000);
+
+/* 長押し：盤面全体で受ける（ブロックの文・見出しの行）。PCは右クリック */
+let lpT = null, lpx = 0, lpy = 0;
+function lpTarget(e){ return e.target.closest && e.target.closest(".pt[data-u],.pt[data-vu],.sec-hd"); }
+function lpAct(t){ if (t.classList.contains("sec-hd")){ if (!txMode) setTx(true); } else blkMenu(+(t.dataset.u != null ? t.dataset.u : t.dataset.vu)); }
+board.addEventListener("pointerdown", e => { if (blkLevel === "tree" || blkLevel === "frame" || edEl || editing || e.button > 0) return; const t = lpTarget(e); if (!t || t.dataset.u === "0") return;
+  lpx = e.clientX; lpy = e.clientY; clearTimeout(lpT); lpT = setTimeout(() => { lpFired = true; setTimeout(() => { lpFired = false; }, 900); lpAct(t); }, 550); });
+["pointerup", "pointercancel"].forEach(n => board.addEventListener(n, () => clearTimeout(lpT)));
+board.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lpx, e.clientY - lpy) > 10) clearTimeout(lpT); });
+board.addEventListener("contextmenu", e => { if (blkLevel === "tree" || blkLevel === "frame" || edEl || editing) return; const t = lpTarget(e); if (t && t.dataset.u !== "0"){ e.preventDefault(); clearTimeout(lpT); lpAct(t); } });
+
+/* ---------- 操作 ---------- */
+$("play").onclick = () => thinking ? endThink(true) : playing ? stop() : start();
+$("selHide").onchange = e => { S.hide = e.target.value; allShown = false; save(); update(); };
+$("selThink").onchange = e => { S.think = +e.target.value; save(); };
+$("showAll").onclick = () => { if (allShown){ allShown = false; opened = new Set(); shownTo = Math.min(shownTo, qaIdx - 1); } else allShown = true; update(); };
+board.addEventListener("click", e => { if (board.classList.contains("veil") && e.target.closest(".flow,.t-extra")){ allShown = true; update(); } });
+$("fWeak").onchange = e => { S.weak = e.target.checked; save(); relist(); };
+$("fAuto").onchange = e => { S.auto = e.target.checked; save(); };
+$("fGate").onchange = e => { S.gate = e.target.checked; save(); };
+$("prevCard").onclick = () => go(-1); $("nextCard").onclick = () => go(1);
+$("b10").onclick = () => skip(-10); $("b5").onclick = () => skip(-5); $("f5").onclick = () => skip(5); $("f10").onclick = () => skip(10);
+$("seek").oninput = e => { if (hasAudio){ au.currentTime = +e.target.value; tick(); } };
+$("pick").onchange = e => { pi = +e.target.value; load(playing); };
+$("grad").onclick = () => { const c = card(); setImp(impOf(c) === 4 ? baseImp(c) : 4); };
+$("selImp").onchange = e => setImp(+e.target.value);
+$("selDeck").onchange = e => setDeck(e.target.value);
+function setRate(r){ S.rate = r; save(); au.defaultPlaybackRate = r; au.playbackRate = r;
+  $("speed").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.r === r ? "true" : "false")); }
+$("speed").querySelectorAll("button").forEach(b => b.onclick = () => setRate(+b.dataset.r));
+if ("mediaSession" in navigator){
+  const ms = navigator.mediaSession, h = (a, f) => { try { ms.setActionHandler(a, f); } catch(e){} };
+  h("play", start); h("pause", stop);
+  h("previoustrack", () => go(-1, true)); h("nexttrack", () => go(1, true));
+  h("seekbackward", e => skip(-(e.seekOffset || 10))); h("seekforward", e => skip(e.seekOffset || 10));
+}
+function relist(){ const keep = list.length ? card().id : null; buildList(keep); load(playing); }
+$("reshuf").onclick = () => { buildList(null, true); pi = 0; load(playing); };
+$("fShuf").onchange = e => { S.shuffle = e.target.checked; save(); relist(); };
+$("fMode").onchange = e => { S.mode = e.target.value; save(); relist(); };
+$("fAu").onchange = e => { S.auOnly = e.target.checked; save(); relist(); };
+function setDecks(v){ CARDS.forEach(c => { S.decks[c.deck] = v; S.decks[deckOf(c)] = v; }); $("fDeck").querySelectorAll("input").forEach(i => i.checked = v); save(); relist(); }
+$("dAll").onclick = () => setDecks(true); $("dNone").onclick = () => setDecks(false);
+$("fImp").querySelectorAll("input").forEach(x => x.onchange = () => {
+  S.imps = [...$("fImp").querySelectorAll("input:checked")].map(i => +i.value); save(); relist(); });
+
+/* ---------- 新規カード（この端末で作る。PCの「作る.bat」で、本物の図解とVOICEVOX音声になる） ----------
+   S.newCards[id] = { id, title, deck, imp, front, back, tags:[...], ts }。書き方：裏面は「↓」だけの行でブロックを区切る。
+   {c|理由づけ} {y|規範} {m1|丸暗記} {m2|落とせない要素} {n|音声にしないメモ} **太字**、★見出し の行で帰結を区切る。 */
+const NC_SAMPLE = { title: "サンプル：違法収集証拠の証拠能力", deck: "刑訴法", imp: 2, front: "違法な捜査で集められた証拠は、当然に証拠能力が否定されるのか",
+  back: "刑訴法には、違法に集めた証拠の扱いを定める明文がない\n→そこで、{c|適正手続の保障と真相解明の調和}という趣旨から解釈する\n↓\n{y|令状主義の精神を没却する重大な違法があり、証拠とすることが将来の違法捜査の抑止の見地から相当でないときは、証拠能力が否定される}\n↓\n★あてはめ\n本件では、令状なく自宅に立ち入った違法が、重大といえるか\n{n|メモ：判例の事案は、別のノートを見る}\n↓\n重大な違法があるので、証拠能力は否定される", tags: ["サンプル"] };
+const muHtml = t => { let h = esc(t); for (let k = 0; k < 4; k++) h = h.replace(/\{(c|y|m1|m2|n)\|([^{}]*)\}/g, "<span class='$1'>$2</span>"); return h.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>"); };
+function muSay(t){ let h = t; for (let k = 0; k < 4; k++) h = h.replace(/\{(c|y|m1|m2|n)\|([^{}]*)\}/g, (m, kd, x) => kd === "n" ? "" : x);
+  return h.replace(/\*\*/g, "").replace(/\n/g, "、").replace(/[→↓]+/g, "、").replace(/、{2,}/g, "、").replace(/([。（「])、/g, "$1").replace(/^[、\s]+|[、\s]+$/g, ""); }
+function muType(t){ let c = 0, y = 0; t.replace(/\{c\|([^{}]*)\}/g, (m, x) => { c += x.length; return m; }).replace(/\{y\|([^{}]*)\}/g, (m, x) => { y += x.length; return m; });
+  const tot = muSay(t).length || 1, plain = muSay(t);
+  return c / tot > .5 ? "reason" : y / tot > .5 ? "norm" : (/か[。？]?$/.test(plain) && !/(ではない|にすぎない)か/.test(plain)) ? "issue" : "plain"; }
+function draftCard(nc){
+  const secs = [{ label: "", rows: [{ b: [{ t: "fact", h: muHtml(nc.front), s: muSay(nc.front) }] }] }]; let cur = secs[0], buf = [];
+  const flush = () => { const txt = buf.join("\n").trim(); buf = []; if (txt) cur.rows.push({ b: [{ t: muType(txt), h: muHtml(txt), s: muSay(txt) }] }); };
+  String(nc.back || "").split(/\r?\n/).forEach(line => { const t = line.trim();
+    if (/^↓+$/.test(t)) flush();
+    else if (/^★/.test(t)){ flush(); cur = { label: t.replace(/^★\s*/, ""), rows: [] }; secs.push(cur); }
+    else if (/^【補足】/.test(t)){ flush(); cur.rows.push({ b: [{ t: "extra", h: esc(t.replace(/^【補足】\s*/, "")) }] }); }
+    else buf.push(line); });
+  flush();
+  return { id: nc.id, title: nc.title, deck: nc.deck, imp: nc.imp, imp0: nc.imp, draft: true, dur: 0, tags: nc.tags || [], sections: secs.filter((x, i) => i === 0 || x.rows.length) };
+}
+function draftList(){ const have = new Set((DATA ? DATA.cards : []).map(c => c.id)); return Object.values(S.newCards).filter(n => n && n.title && !have.has(n.id)).map(draftCard); }
+function subjectList(){ return [...new Set(DECK_ORDER.concat(CARDS.map(c => c.deck)))]; }
+function reloadCards(keepId){
+  CARDS = DATA.cards.concat(draftList()); stop();
+  buildList(keepId || (list.length ? card().id : null));
+  const i = keepId ? list.findIndex(n => CARDS[n].id === keepId) : -1; if (i >= 0) pi = i;
+  fillPick(); renderTagFilter(); load(false); return i >= 0;
+}
+let ncId = null;
+function ncMissing(){ const m = [];
+  if (!$("ncTitle").value.trim()) m.push("題名"); if (!$("ncDeck").value) m.push("科目"); if (!$("ncImp").value) m.push("重要度");
+  if (!$("ncFront").value.trim()) m.push("表面"); if (!$("ncBack").value.trim()) m.push("裏面"); return m; }
+function ncCheck(){ const m = ncMissing(); $("ncSave").disabled = !!m.length; $("ncMsg").textContent = m.length ? "まだ入っていない必須項目：" + m.join("・") + "（科目と重要度は、選ばないと保存できません）" : ""; }
+function ncOpen(id){
+  ncId = id || null; const nc = id ? S.newCards[id] : null;
+  const sd = $("ncDeck"); sd.innerHTML = ""; const o0 = el("option"); o0.value = ""; o0.textContent = "選んでください"; sd.append(o0);
+  subjectList().forEach(d => { const o = el("option"); o.value = d; o.textContent = d; sd.append(o); });
+  $("ncH").textContent = nc ? "元の文章を書き直す" : "新しいカードを作る";
+  $("ncTitle").value = nc ? nc.title : ""; sd.value = nc ? nc.deck : ""; $("ncImp").value = nc ? String(nc.imp) : "";
+  $("ncFront").value = nc ? nc.front : ""; $("ncBack").value = nc ? nc.back : ""; $("ncTags").value = nc ? (nc.tags || []).join(" ") : "";
+  $("ncDel").hidden = !nc; ncCheck(); $("ncDlg").showModal();
+}
+function parseTags(t){ return [...new Set(String(t || "").normalize("NFKC").split(/[\s,、;；]+/).map(x => x.trim()).filter(Boolean))]; }
+function putNew(o){ // o = { id?, title, deck, imp, front, back, tags } を保存（新しい時刻つき）
+  const id = o.id || "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  S.newCards[id] = { id, title: o.title, deck: o.deck, imp: +o.imp, front: o.front, back: o.back, tags: o.tags || [], ts: Date.now() }; st("new", id);
+  if (S.imp[id] !== undefined){ delete S.imp[id]; st("imp", id); } if (S.deckOv[id] !== undefined){ delete S.deckOv[id]; st("deck", id); }
+  return id;
+}
+$("ncBtn").onclick = () => ncOpen(null);
+$("ncEdit").onclick = () => { const c = card(); if (!c.draft && !confirm("PCで作ったあとのカードを書き直すと、このカードの「文字と図の直し」は作り直しで消えます。続けますか？")) return; ncOpen(c.id); };
+["ncTitle", "ncDeck", "ncImp", "ncFront", "ncBack"].forEach(i => { $(i).addEventListener("input", ncCheck); $(i).addEventListener("change", ncCheck); });
+$("ncCancel").onclick = () => $("ncDlg").close();
+$("ncSample").onclick = () => { $("ncTitle").value = NC_SAMPLE.title; $("ncDeck").value = NC_SAMPLE.deck; $("ncImp").value = String(NC_SAMPLE.imp); $("ncFront").value = NC_SAMPLE.front; $("ncBack").value = NC_SAMPLE.back; $("ncTags").value = NC_SAMPLE.tags.join(" "); ncCheck(); };
+$("ncSave").onclick = () => {
+  if (ncMissing().length){ ncCheck(); return; }
+  const id = putNew({ id: ncId, title: $("ncTitle").value.trim(), deck: $("ncDeck").value, imp: $("ncImp").value, front: $("ncFront").value.trim(), back: $("ncBack").value.replace(/\s+$/, ""), tags: parseTags($("ncTags").value) });
+  save(); $("ncDlg").close(); const shown = reloadCards(id);
+  gMsg(shown ? "カードを保存しました（PCで「作る.bat」を実行すると、図解とVOICEVOX音声になります）。" : "カードを保存しました。いまの絞り込み条件に合わないので、一覧には出ていません。");
+};
+$("ncDel").onclick = () => { if (!ncId || !confirm("このカードを削除します。よろしいですか？")) return; delete S.newCards[ncId]; st("new", ncId); save(); $("ncDlg").close(); reloadCards(null); };
+/* ファイルに保存（claude.ai の中では確認つき、GitHubのページではそのままダウンロード） */
+async function dlText(name, text, mime){
+  let dl = null; try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch(e){}
+  if (dl){ try { await dl.save({ filename: name, data: text }); return; } catch(e){} }
+  const a = el("a"); a.href = URL.createObjectURL(new Blob([text], { type: mime || "text/plain" })); a.download = name; document.body.append(a); a.click(); a.remove();
+}
+const csvQ = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+function csvParse(text){
+  text = text.replace(/^\uFEFF/, ""); const first = text.split(/\r?\n/)[0] || "", delim = first.split("\t").length > first.split(",").length ? "\t" : ",";
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++){ const ch = text[i];
+    if (q){ if (ch === '"'){ if (text[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"' && f === "") q = true;
+    else if (ch === delim){ row.push(f); f = ""; }
+    else if (ch === "\n" || ch === "\r"){ if (ch === "\r" && text[i + 1] === "\n") i++; row.push(f); f = ""; rows.push(row); row = []; }
+    else f += ch; }
+  if (f !== "" || row.length){ row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim() !== ""));
+}
+const CSV_HEAD = { id: ["id", "識別番号"], title: ["題名", "title", "タイトル"], deck: ["科目", "deck", "subject"], imp: ["重要度", "imp", "importance"], front: ["表面", "front", "問い", "問題"], back: ["裏面", "back", "答え"], tags: ["タグ", "tags", "tag"] };
+async function csvImport(file){
+  const out = $("csvMsg2"); out.textContent = "読み込み中…";
+  try {
+    const buf = await file.arrayBuffer(); let text;
+    try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e){ text = new TextDecoder("shift_jis").decode(buf); }
+    const rows = csvParse(text); if (rows.length < 2){ out.textContent = "データの行がありません（1行目は列の名前です）。"; return; }
+    const norm = x => String(x).normalize("NFKC").trim().toLowerCase(), head = rows[0].map(norm), col = {};
+    Object.keys(CSV_HEAD).forEach(k => { const i = head.findIndex(h => CSV_HEAD[k].map(norm).includes(h)); if (i >= 0) col[k] = i; });
+    const need = ["title", "deck", "imp", "front", "back"].filter(k => col[k] == null);
+    if (need.length){ out.textContent = "必須の列がありません：" + need.map(k => CSV_HEAD[k][0]).join("・") + "（1行目に列の名前を書いてください）"; return; }
+    const subs = subjectList().map(x => [norm(x), x]), errs = []; let add = 0, upd = 0;
+    rows.slice(1).forEach((r, n) => {
+      const g = k => (col[k] != null ? (r[col[k]] || "") : ""), at = (n + 2) + "行目" + (g("title").trim() ? "「" + g("title").trim().slice(0, 14) + "」" : "");
+      const title = g("title").trim(), front = g("front").trim(), back = g("back").replace(/\s+$/, ""), dk = norm(g("deck")), im = norm(g("imp")).replace(/[^0-9]/g, "");
+      const hit = subs.find(x => x[0] === dk), why = [];
+      if (!title) why.push("題名が空"); if (!front) why.push("表面が空"); if (!back.trim()) why.push("裏面が空");
+      if (!g("deck").trim()) why.push("科目が空（必須）"); else if (!hit) why.push("科目「" + g("deck").trim() + "」は一覧にありません（" + subs.map(x => x[1]).join("・") + "）");
+      if (!im) why.push("重要度が空（必須）"); else if (!/^[1-4]$/.test(im)) why.push("重要度は1〜4");
+      if (why.length){ errs.push(at + "：" + why.join("、")); return; }
+      let id = g("id").trim(); if (!(id && S.newCards[id])) id = (Object.values(S.newCards).find(x => x.title === title && x.deck === hit[1]) || {}).id || "";
+      if (id) upd++; else add++;
+      putNew({ id, title, deck: hit[1], imp: +im, front, back, tags: parseTags(g("tags")) });
+    });
+    save(); if (add + upd) reloadCards(null);
+    out.textContent = (add + upd) + " 枚を取り込みました（新規 " + add + "・更新 " + upd + "）。" + (errs.length ? "　取り込めなかった行 " + errs.length + " 件：" + errs.slice(0, 8).join(" ／ ") + (errs.length > 8 ? " ほか" : "") : "");
+  } catch(e){ out.textContent = "取り込めませんでした：" + e; }
+}
+$("csvIn").onclick = () => $("csvFile").click();
+$("csvFile").onchange = e => { if (e.target.files[0]) csvImport(e.target.files[0]); e.target.value = ""; };
+$("csvOut").onclick = async () => {
+  const L = Object.values(S.newCards).filter(x => x && x.title); if (!L.length){ $("csvMsg").textContent = "書き出す新規カードがありません。"; return; }
+  const head = ["ID", "題名", "科目", "重要度", "表面", "裏面", "タグ"], rows = L.map(x => [x.id, x.title, S.deckOv[x.id] || x.deck, S.imp[x.id] || x.imp, x.front, x.back, (S.tags[x.id] || x.tags || []).join(" ")]);
+  await dlText("新規カード.csv", "\uFEFF" + [head].concat(rows).map(r => r.map(csvQ).join(",")).join("\r\n") + "\r\n", "text/csv"); $("csvMsg").textContent = L.length + " 枚を書き出しました（Excelでも開けます）。";
+};
+$("csvSample").onclick = async () => {
+  const head = ["題名", "科目", "重要度", "表面", "裏面", "タグ"], r = [NC_SAMPLE.title, NC_SAMPLE.deck, NC_SAMPLE.imp, NC_SAMPLE.front, NC_SAMPLE.back, NC_SAMPLE.tags.join(" ")];
+  await dlText("新規カード_見本.csv", "\uFEFF" + [head, r].map(x => x.map(csvQ).join(",")).join("\r\n") + "\r\n", "text/csv"); $("csvMsg").textContent = "見本のCSVを書き出しました。";
+};
+function htmlToMu(h){
+  const d = el("div"); d.innerHTML = h; const runs = runsOf(d); let out = "", i = 0;
+  while (i < runs.length){ const r = runs[i]; if (r.ch === "\n"){ out += "\n"; i++; continue; }
+    let j = i, t = ""; while (j < runs.length && runs[j].ch !== "\n" && runs[j].c === r.c && runs[j].m === r.m && !runs[j].b === !r.b && !runs[j].n === !r.n) t += runs[j++].ch;
+    if (r.b) t = "**" + t + "**"; if (r.n) t = "{n|" + t + "}"; if (r.m) t = "{" + r.m + "|" + t + "}"; if (r.c === "c" || r.c === "y") t = "{" + r.c + "|" + t + "}"; out += t; i = j; }
+  return out.replace(/^\n+|\n+$/g, "");
+}
+function cardText(c){
+  const secs = (S.cv[c.id] && S.cv[c.id].sections) || c.sections, blockTxt = b => (b.p || [b]).map(p => htmlToMu(p.h || "")).filter(Boolean).join("\n");
+  const rowTxt = r => r.b.map(blockTxt).filter(Boolean).join("\n"), front = [], back = []; let inFront = true;
+  secs.forEach((sec, si) => { if (sec.label && !(si === 0 && c.kind && sec.label === "問い") && !inFront) back.push("★" + sec.label);
+    sec.rows.forEach(r => { const isFact = r.b.every(b => b.t === "fact"), t = rowTxt(r);
+      if (inFront && (isFact || (c.kind && si === 0 && sec.label === "問い"))) front.push(t); else { inFront = false; if (back.length && !/^★/.test(back[back.length - 1])) back.push("↓"); back.push(t); } });
+    if (c.kind && si === 0) inFront = false; });
+  return "■" + c.title + "\n科目：" + deckOf(c) + "　重要度：" + impOf(c) + "　タグ：" + tagsOf(c).join(" ") + "\n【表面】\n" + front.join("\n") + "\n【裏面】\n" + back.join("\n") + "\n\n";
+}
+async function exportCards(onlyChanged){
+  const L = CARDS.filter(c => !onlyChanged || S.cv[c.id] || S.imp[c.id] || S.deckOv[c.id] || S.tags[c.id] || c.draft || S.newCards[c.id]);
+  if (!L.length){ $("csvMsg").textContent = "直したカードがありません。"; return; }
+  await dlText(onlyChanged ? "直したカード.txt" : "全カード.txt", L.map(cardText).join(""), "text/plain");
+  $("csvMsg").textContent = L.length + " 枚を、読める文章として書き出しました（直した内容を含みます）。";
+}
+$("txtAll").onclick = () => exportCards(false); $("txtChg").onclick = () => exportCards(true);
+
+/* ---------- Googleドライブとの同期 ----------
+   しくみ：①Googleの「ログイン」の小窓で許可をもらう（このページが作ったファイルだけ触れる権限）→ ②ドライブの
+   「論証フローチャート同期」フォルダの「編集データ.json」を読む → ③カードごとに「直した時刻が新しい方」を残して混ぜる
+   → ④混ぜた結果をドライブに書き戻す。サーバーは使わず、ブラウザがGoogleと直接やり取りします。 */
+const G_FOLDER = "logic_chart_sync", G_FOLDER_OLD = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
+/* 名前を英語にそろえる前の名前。見つからないときは前の名前で探し、見つかったら新しい名前に直す（ドライブ側を先に直していなくても動く） */
+const OLD_NAME = { "decision_tree_inbox.json": "DB送信.json", "decision_tree_placement.json": "DB配置.json" };
+const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree]];
+let gTok = "", gExp = 0, gBusy = false;
+function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, study: { rev: S.rev, log: S.log } }; }
+function tsOf(kind, id, store, ts){ const k = kind + ":" + id; return ts && ts[k] ? ts[k] : ((kind === "cv" && store && store[id] && +store[id].stamp) || (kind === "new" && store && store[id] && +store[id].ts) || (kind === "dbq" && store && store[id] && +store[id].ts) || (kind === "tree" && store && store[id] && +store[id].ts) || 0); }
+/* 混ぜる：カード1枚ごとに、直した時刻が新しい方を採る（新しい方が「直しを消した」なら、消した方が勝つ）。戻り値＝この端末が書き換わった数 */
+function mergeSnap(o){
+  let n = 0;
+  G_KINDS.forEach(([kind, pickR, pickL]) => {
+    const R = pickR(o) || {}, L = pickL(), ids = new Set(Object.keys(R).concat(Object.keys(L)));
+    Object.keys(o.ts || {}).forEach(k => { if (k.startsWith(kind + ":")) ids.add(k.slice(kind.length + 1)); });
+    ids.forEach(id => {
+      const k = kind + ":" + id, lt = tsOf(kind, id, L, S.ts), rt = tsOf(kind, id, R, o.ts), hasL = id in L, hasR = id in R;
+      const adopt = rt > lt || (rt === lt && !hasL && hasR && !(k in S.ts));
+      if (!adopt) return;
+      if (hasR){ if (JSON.stringify(L[id]) !== JSON.stringify(R[id])){ L[id] = R[id]; n++; } }
+      else if (hasL){ delete L[id]; n++; }
+      if (rt) S.ts[k] = rt;
+    });
+  });
+  const lg = (o.study || {}).log || {};
+  Object.keys(lg).forEach(d => { const a = S.log[d] || (S.log[d] = { h:0, o:0, d:0, x:0 }); ["h", "o", "d", "x"].forEach(f => { if ((lg[d][f] || 0) > a[f]){ a[f] = lg[d][f]; n++; } }); });
+  return n;
+}
+let gQuiet = false;
+function gMsg(t){ $("gMsg").textContent = t; if (!gQuiet) toast(t, /できません|失敗|エラー/.test(t) ? "ng" : "", 7000); }
+function gStatus(){ gQuiet = true; try { gStatus0(); } finally { gQuiet = false; } }
+function gStatus0(){
+  const mx = Math.max(0, ...Object.values(S.ts)), z = n => String(n).padStart(2, "0"), d = new Date(S.gLast);
+  gMsg(S.gLast ? "最後の同期 " + (d.getMonth() + 1) + "/" + d.getDate() + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + (mx > S.gLast ? "（そのあとに直した分あり）" : "") : (S.gcid ? "まだ同期していません" : "初めに、いちばん下の「クライアントID」を入れてください"));
+}
+function loadGis(){ return new Promise((res, rej) => { if (window.google && google.accounts && google.accounts.oauth2) return res();
+  const x = document.createElement("script"); x.src = "https://accounts.google.com/gsi/client"; x.async = true; x.onload = () => res(); x.onerror = () => rej(new Error("Googleのログイン部品を読み込めません（ネット接続か、Braveのシールドを確認）"));
+  document.head.append(x); }); }
+function gToken(){
+  return new Promise((res, rej) => {
+    if (gTok && Date.now() < gExp - 60000) return res(gTok);
+    const ask = () => { try {
+      const tc = google.accounts.oauth2.initTokenClient({ client_id: S.gcid, scope: G_SCOPE,
+        callback: r => { if (r.error) rej(new Error(r.error_description || r.error)); else { gTok = r.access_token; gExp = Date.now() + (+r.expires_in || 3000) * 1000; res(gTok); } },
+        error_callback: e => rej(new Error("ログインの小窓が開かない／閉じられました（" + ((e && e.type) || "") + "）")) });
+      tc.requestAccessToken({ prompt: S.gOk ? "" : "consent" }); } catch(e){ rej(e); } };
+    if (window.google && google.accounts && google.accounts.oauth2) ask();       /* ボタンを押した直後に小窓を開く（遅れるとブロックされる） */
+    else loadGis().then(() => ask(), rej);
+  });
+}
+async function gApi(url, opt){
+  const r = await fetch(url, Object.assign({}, opt, { headers: Object.assign({ Authorization: "Bearer " + gTok }, (opt && opt.headers) || {}) }));
+  if (!r.ok){ const t = await r.text().catch(() => ""); throw new Error("Googleドライブの応答エラー " + r.status + " " + t.slice(0, 120)); }
+  return r;
+}
+const Q = s => encodeURIComponent(s);
+const FOLDER_Q = " and mimeType='application/vnd.google-apps.folder'";
+async function gFind(name, extra, old){
+  let f = await gFind0(name, extra);
+  if (!f && old){ f = await gFind0(old, extra);
+    if (f){ try { await gApi("https://www.googleapis.com/drive/v3/files/" + f.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }); } catch(e){} } }
+  return f;
+}
+const gFolder = () => gFind(G_FOLDER, FOLDER_Q, G_FOLDER_OLD);
+async function gFind0(name, extra){ const j = await (await gApi("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q=" + Q("name='" + name + "' and trashed=false" + extra))).json(); return (j.files || [])[0] || null; }
+async function gSync(){
+  if (gBusy) return;
+  if (!S.gcid){ $("setup").open = true; $("gcid").focus(); gStatus(); return; }
+  gBusy = true; $("gBtn").disabled = true;
+  try {
+    gMsg("Googleに接続中…"); await gToken(); S.gOk = 1;
+    gMsg("ドライブを確認中…");
+    let fo = await gFolder();
+    if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
+    const fl = await gFind(G_FILE, " and '" + fo.id + "' in parents");
+    let n = 0, remote = null;
+    if (fl){ gMsg("ドライブから読み込み中…"); remote = await (await gApi("https://www.googleapis.com/drive/v3/files/" + fl.id + "?alt=media")).json();
+      if (!remote || remote.app !== "ronsho-sync") throw new Error("「" + G_FILE + "」の中身がこのページのものではありません。ドライブ側のファイル名を変えてからやり直してください。");
+      try { localStorage.setItem("rp_bak", JSON.stringify(S)); } catch(e){}          /* 混ぜる前の状態を1回ぶん控える */
+      n = mergeSnap(remote); }
+    gMsg("ドライブへ書き込み中…");
+    const body = JSON.stringify(snapshot());
+    if (fl) await gApi("https://www.googleapis.com/upload/drive/v3/files/" + fl.id + "?uploadType=media", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+    else { const bd = "ronshoBoundary" + Date.now(), meta = JSON.stringify({ name: G_FILE, parents: [fo.id], mimeType: "application/json" });
+      await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
+        body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
+    S.gLast = Date.now(); save();
+    if (n){ migrateDbq(); tidyTx(); save(); try { CARDS = DATA.cards.concat(draftList()); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
+    try { const t = await gGet(DB_PLACE_FILE); if (t) dbPlaceAccept(t, "drive"); } catch(e){}
+    gStatus(); gMsg($("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。"));
+  } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e)); }
+  finally { gBusy = false; $("gBtn").disabled = false; }
+}
+$("gBtn").onclick = gSync;
+$("gSave").onclick = () => { S.gcid = $("gcid").value.trim(); S.gOk = 0; gTok = ""; save(); gStatus(); if (S.gcid) loadGis().catch(() => {}); };
+
+/* ---------- 判断ロジックツリー（DB）へ送る ----------
+   S.dbq[カードid] = { field:"法律/刑法", items:[{k, tag:"要件|規範|趣旨", title, text}], g:{ 要件のk: {v, sig} }, ts }
+   送るとき：要件ごとのまとまり（要件＋そのあとの規範・趣旨）を、{format:"decisions-inbox"} のJSONにする。
+   idは fc-<カードの印>-<k>。まとまりの中身を直して送り直すと、-v2, -v3 …と変わる（ツリー側は同じidを二重に取り込まないため）。 */
+const DB_FILE = "decision_tree_inbox.json";
+function plainOf(h){ const d = el("div"); d.innerHTML = h || ""; d.querySelectorAll(".n").forEach(x => x.remove()); d.querySelectorAll("br").forEach(b => b.replaceWith("\n")); return d.textContent.replace(/[ \t\u3000]+\n/g, "\n").trim(); }
+function cardTexts(c){ const out = []; (c.sections || []).forEach(sec => sec.rows.forEach(r => r.b.forEach(b => (b.p || [b]).forEach(p => { const t = plainOf(p.h); if (t) out.push(t); })))); return out; }
+const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.．、・\s]+/, "").slice(0, 16);
+const fullOf = t => String(t || "").replace(/\s+/g, "");
+function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
+function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
+const VER = "版 202611202259";
+$("verTag").textContent = VER;
+let toastT = null;
+function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
+$("toast").onclick = () => { $("toast").hidden = true; };
+/* ボタンを押した瞬間に、「受け付けました」を画面の上に出す */
+[["editOut", "書き出しています…"], ["csvOut", "CSVを作っています…"], ["txtAll", "文章を書き出しています…"], ["txtChg", "文章を書き出しています…"], ["dbPlGet", "ドライブから置き場所を読み込んでいます…"], ["dbPlFile", "置き場所のファイルを選んでください"], ["gBtn", "Googleドライブと同期を始めます…"], ["csvFile", "CSVを選んでください"], ["treeClr", "確認しています…"]]
+  .forEach(([id, m]) => { const b = $(id); if (b) b.addEventListener("click", () => toast(m, "", id === "gBtn" ? 0 : 3000), true); });
+const MODE_LB = { all: "すべて", any: "どれか", total: "総合考慮" }, MODE_SY = { all: "⋀", any: "∨", total: "＋" };
+const strip = t => String(t || "").replace(/\s+/g, "");
+const tKids = (nodes, k) => nodes.filter(n => n.parent === k);
+const tRoots = nodes => nodes.filter(n => !n.parent);
+const tGet = (nodes, k) => nodes.find(n => n.k === k);
+function tSubtree(nodes, k){ const out = [], walk = kk => { const n = tGet(nodes, kk); if (!n) return; out.push(n); tKids(nodes, kk).forEach(c => walk(c.k)); }; walk(k); return out; }
+function tEnsure(cid){ if (!S.tree[cid]) S.tree[cid] = { field: "", nodes: [], salt: Math.random().toString(36).slice(2, 5), ts: Date.now() }; return S.tree[cid]; }
+const nextK = t => Math.max(0, ...t.nodes.map(n => n.k)) + 1;
+function tTouch(cid){ const t = S.tree[cid]; if (!t) return; if (typeof tNorm === "function") tNorm(t); if (!t.nodes.length) delete S.tree[cid]; else t.ts = Date.now(); st("tree", cid); save(); }
+function tFormula(nodes, n){
+  const kids = tKids(nodes, n.k), rq = kids.filter(x => !x.ty), tk = kids.filter(x => x.ty), inner = rq.map(x => tFormula(nodes, x)).join(" " + MODE_SY[n.mode || "all"] + " ");
+  const ex = tk.map(x => "〔" + x.ty + "：" + tFormula(nodes, x) + "〕").join("");
+  const s1 = n.kind === "group" ? "（" + inner + "）" : (n.title || "（空）") + (kids.length ? "［" + inner + ex + "］" : "");
+  return (n.role === "ただし" ? "ただし" : "") + s1;
+}
+/* ---- 文の中の範囲を探して、マーカーで囲む ---- */
+function ptNodes(pt){ const w = document.createTreeWalker(pt, NodeFilter.SHOW_TEXT), a = []; let n; while ((n = w.nextNode())) a.push(n); return a; }
+function ptMap(pt){ let str = ""; const map = []; ptNodes(pt).forEach(n => { for (let i = 0; i < n.data.length; i++){ if (/\s/.test(n.data[i])) continue; str += n.data[i]; map.push([n, i]); } }); return { str, map }; }
+function dbFind(pts, it){
+  const t = strip(it.text); if (!t) return null; const order = [];
+  if (it.pos && pts[it.pos[0]]) order.push(it.pos[0]); pts.forEach((x, i) => { if (!order.includes(i)) order.push(i); });
+  for (const i of order){ const m = ptMap(pts[i]); let k = it.pos && i === it.pos[0] ? m.str.indexOf(t, Math.max(0, it.pos[1] - 1)) : -1; if (k < 0) k = m.str.indexOf(t); if (k >= 0) return { pi: i, s: k, m, len: t.length }; }
+  return null;
+}
+function dbWrap(loc, it){
+  const segs = []; let cur = null;
+  for (let q = loc.s; q < loc.s + loc.len; q++){ const [n, o] = loc.m.map[q]; if (cur && cur.n === n && cur.b + 1 === o) cur.b = o; else { cur = { n, a: o, b: o }; segs.push(cur); } }
+  segs.reverse().forEach(g => { const r = document.createRange(); r.setStart(g.n, g.a); r.setEnd(g.n, g.b + 1); const sp = el("span", "dbm"); sp.dataset.t = it.tag; sp.dataset.k = it.k; try { r.surroundContents(sp); } catch(e){} });
+}
+function tMarks(t){ const out = []; t.nodes.forEach(n => { if (n.text) out.push({ k: n.k, tag: n.parent ? (n.ty || "要件") : "判断", text: n.text, ref: n }); (n.pur || []).forEach(p => { if (p.text) out.push({ k: n.k, tag: "趣旨", text: p.text, ref: p }); }); }); return out; }
+function applyDbMarks(){
+  board.querySelectorAll(".dbm").forEach(sp => { const p = sp.parentNode; if (!p) return; while (sp.firstChild) p.insertBefore(sp.firstChild, sp); p.removeChild(sp); p.normalize(); });
+  const c = card(), t = c && S.tree[c.id]; if (!t) return;
+  const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed"));
+  tMarks(t).forEach(it => { it.ref.pos = it.ref.pos || null; const loc = dbFind(pts, { text: it.text, pos: it.ref.pos }); if (!loc){ it.ref.lost = 1; return; } delete it.ref.lost; it.ref.pos = [loc.pi, loc.s]; dbWrap(loc, it); });
+}
+document.addEventListener("selectionchange", () => {
+  if (!dbMode) return; const sel = getSelection(); if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+  const r = sel.getRangeAt(0), up = n => (n.nodeType === 3 ? n.parentNode : n), a = up(r.startContainer).closest && up(r.startContainer).closest(".pt"), b = up(r.endContainer).closest && up(r.endContainer).closest(".pt");
+  if (!a && !b) return;
+  if (!a || a !== b || !board.contains(a)){ dbLastSel = a && b && a !== b ? "many" : null; selShowUpdate(); return; }
+  const pre = document.createRange(); pre.selectNodeContents(a); pre.setEnd(r.startContainer, r.startOffset);
+  const text = sel.toString().replace(/[ \t　]*\n[ \t　]*/g, "\n").trim(); if (!strip(text)) return;
+  dbLastSel = { pt: a, text, s: strip(pre.toString()).length }; selShowUpdate();
+});
+function dbTap(e){
+  const m = e.target.closest(".dbm[data-k]"); if (!m || getSelection().toString()) return;
+  treeSel = +m.dataset.k; treeOpen = true; renderTree(); selShowUpdate();
+  $("editMsg").textContent = "選んだ：" + m.dataset.t + "「" + fullOf(m.textContent).slice(0, 30) + "」（下のツリー欄で、並べ替えなどができます）";
+}
+/* ---- 選んだ範囲を、ツリーのノードにする ---- */
+function tmsg(x, kind){ const m = $("treeMsg"); m.textContent = x; m.className = "tmsg" + (kind ? " " + kind : ""); if (x) toast(x, kind === "ng" ? "ng" : kind === "ok" ? "ok" : "", 4500); }
+function tMark0(kind0){
+  const ty = kind0 === "子考" ? "考慮要素" : kind0 === "子解" ? "解釈基準" : "", kind = ty ? "子" : kind0;
+  const msg = t => { $("editMsg").textContent = t; toast(t, "ng", 5000); };
+  if (dbLastSel === "many"){ msg("1つのブロックの中の1か所だけを選んでください。"); return; }
+  if (!dbLastSel){ msg("先に、文の一部を指でなぞって選んでください（文字を長押しして、両端をずらします）。"); return; }
+  const c = card();
+  const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed")), pi0 = pts.indexOf(dbLastSel.pt), L = strip(dbLastSel.text).length;
+  const t0 = S.tree[c.id], nodes0 = t0 ? t0.nodes : [];
+  const over = tMarks({ nodes: nodes0 }).find(x => x.ref.pos && x.ref.pos[0] === pi0 && x.ref.pos[1] < dbLastSel.s + L && dbLastSel.s < x.ref.pos[1] + strip(x.text).length);
+  if (over){ msg("すでにマークした範囲と重なっています（" + over.tag + "）。先に、そのマークをタップして、ツリーで消してください。"); return; }
+  const cur = tGet(nodes0, treeSel), title = fullOf(dbLastSel.text), pos = [pi0, dbLastSel.s];
+  treeOpen = true;
+  if (kind === "趣旨"){
+    if (!cur || cur.kind === "group"){ msg("趣旨をつけたい判断・要件を、先にタップして選んでください（下のツリー、または色のついた文）。"); return; }
+    cur.pur = cur.pur || []; cur.pur.push({ text: dbLastSel.text, pos });
+    treeFlash = cur.k; tTouch(c.id); finishMark("✔ 趣旨を「" + (fullOf(cur.title).slice(0, 14) || "空の行") + "」につけました。", "ok"); return; }
+  if (cur && cur.kind !== "group" && !cur.text && (kind === "子" || kind === "並" || (kind === "判断" && !cur.parent))){ if (ty && cur.parent) cur.ty = ty; tFill(); return; }
+  let parent = 0, afterK = 0, note = "";
+  if (kind === "判断"){ parent = 0; }
+  else { if (!cur){ msg("先に「判断」を作ってください（判断は、いちばん上の親になります）。"); return; }
+    if (kind === "子"){ parent = cur.k; }
+    else { if (!cur.parent){ parent = cur.k; note = "（判断と並列の要件は作れないので、判断の下に作りました）"; } else { parent = cur.parent; afterK = cur.k; } } }
+  const t = tEnsure(c.id);
+  const k = nextK(t), n = { k, kind: "node", title, text: dbLastSel.text, pur: [], parent, mode: "all", role: "", pos };
+  if (ty && parent) n.ty = ty;
+  const at = afterK ? t.nodes.findIndex(x => x.k === afterK) + 1 : t.nodes.length; t.nodes.splice(at, 0, n); treeSel = k; treeFlash = k; tTouch(c.id);
+  finishMark("✔ " + (parent ? (ty || "要件") : "判断") + "「" + title + "」を、ツリーに足しました。" + note, "ok");
+}
+function tFill0(){
+  const msg = t => { $("editMsg").textContent = t; tmsg(t, "ng"); };
+  if (dbLastSel === "many"){ msg("1つのブロックの中の1か所だけを選んでください。"); return; }
+  if (!dbLastSel){ msg("先に、カードの文の一部を指でなぞって選んでください。"); return; }
+  const c = card(), t = S.tree[c.id], cur = t && tGet(t.nodes, treeSel);
+  if (!cur){ msg("入れ先の行を、下のツリーでタップして選んでください。"); return; }
+  if (cur.kind === "group"){ msg("括弧には、文字を入れられません。要件の行を選んでください。"); return; }
+  const pts = [...board.querySelectorAll(".pt")].filter(x => !x.classList.contains("ed")), pi0 = pts.indexOf(dbLastSel.pt), L = strip(dbLastSel.text).length;
+  const over = tMarks(t).find(x => x.ref !== cur && x.ref.pos && x.ref.pos[0] === pi0 && x.ref.pos[1] < dbLastSel.s + L && dbLastSel.s < x.ref.pos[1] + strip(x.text).length);
+  if (over){ msg("すでにマークした範囲と重なっています（" + over.tag + "）。"); return; }
+  cur.text = dbLastSel.text; cur.pos = [pi0, dbLastSel.s]; delete cur.lost; treeFlash = cur.k; tTouch(c.id);
+  finishMark("✔ 「" + fullOf(cur.text).slice(0, 24) + (fullOf(cur.text).length > 24 ? "…" : "") + "」を、" + (cur.parent ? "要件" : "判断") + "に入れました（カードの文が、そのまま名前になります）。", "ok");
+}
+/* ---- 元に戻す／やり直し（カードごと・この画面を開いている間） ---- */
+const tHist = {};
+const tStr = cid => JSON.stringify((S.tree[cid] && S.tree[cid].nodes) || []);
+function tSnapIf(cid, before){ if (tStr(cid) === before) return; const h = tHist[cid] || (tHist[cid] = { u: [], r: [] }); if (h.u[h.u.length - 1] !== before){ h.u.push(before); if (h.u.length > 100) h.u.shift(); } h.r = []; }
+function tMark(kind){ const c = card(), b = tStr(c.id); tMark0(kind); tSnapIf(c.id, b); }
+function tFill(){ const c = card(), b = tStr(c.id); tFill0(); tSnapIf(c.id, b); }
+function tUndo(redo){
+  const c = card(), h = tHist[c.id]; let from = h && (redo ? h.r : h.u); const cur = tStr(c.id);
+  while (from && from.length && from[from.length - 1] === cur) from.pop();
+  if (!from || !from.length){ tmsg(redo ? "やり直せる操作は、ありません。" : "元に戻せる操作は、ありません。", "ng"); return; }
+  const s0 = from.pop(); (redo ? h.u : h.r).push(cur);
+  const t = S.tree[c.id] || tEnsure(c.id); t.nodes = JSON.parse(s0); if (!tGet(t.nodes, treeSel)) treeSel = 0;
+  tTouch(c.id); applyDbMarks(); renderTree(); selShowUpdate(); tmsg(redo ? "↷ やり直しました。" : "↶ 元に戻しました。", "ok");
+}
+function finishMark(t, kind){ try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; applyDbMarks(); renderTree(); selShowUpdate(); $("editMsg").textContent = t; tmsg(t, kind); }
+/* ---- ツリーの表示（DBのツリーと同じ見た目）と編集 ---- */
+const isReqK = k => k.role !== "ただし" && !k.ty;
+const LET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", circ = n => (n <= 20 ? String.fromCharCode(0x2460 + n - 1) : n + ".");
+const treeSig = t => t.field + "¦" + JSON.stringify(t.nodes.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text)])) + t.nodes.filter(n => n.ty).map(n => "¦" + n.k + n.ty).join("");
+function treeFormulaText(c){ const t = S.tree[c.id], nodes = t ? t.nodes : []; return tRoots(nodes).map(r => "判断「" + (r.title || "（空）") + "」" + (tKids(nodes, r.k).length ? " ＝ " + tKids(nodes, r.k).filter(x => !x.ty).map(x => tFormula(nodes, x)).join(" " + MODE_SY[r.mode || "all"] + " ") + tKids(nodes, r.k).filter(x => x.ty).map(x => "〔" + x.ty + "：" + tFormula(nodes, x) + "〕").join("") : "")).join("　／　"); }
+function bdg(text, cls){ const b = el("span", "bd " + (cls || ""), text); return b; }
+function jumpToMark(k, pur){ const m = board.querySelector('.dbm[data-k="' + k + '"]' + (pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])')); if (!m){ tmsg("カードの文の中に、この場所が見つかりません（文が変わった可能性があります）。", "ng"); return; } m.scrollIntoView({ block: "center", behavior: "auto" }); m.classList.add("dbhl"); setTimeout(() => m.classList.remove("dbhl"), 2500); }
+function tLi(nodes, n, par, bi, ids, c){
+  const kids = tKids(nodes, n.k), li = el("li", par ? "kid" + (n.role === "ただし" ? " exc" : n.ty ? " ty" : "") : "rootli");
+  const row = el("div", "r" + (n.k === treeSel ? " sel" : "") + (n.k === treeFlash ? " flash" : "")); row.dataset.k = n.k;
+  if (!par) row.append(bdg("判断", "j")); else if (n.role === "ただし") row.append(bdg("ただし", "exc")); else if (n.ty) row.append(bdg(n.ty, n.ty === "考慮要素" ? "wg" : "int")); else if (bi) row.append(bdg(bi.text, bi.cls));
+  if (n.kind === "group") row.append(bdg("括弧", "or"));
+  { const empty = n.kind !== "group" && !n.text; const tt = el("span", "ttl" + (empty ? " blank" : ""), n.kind === "group" ? "（" + MODE_LB[n.mode || "any"] + "）" : empty ? "（空）カードの文を選んで、「入れる」を押します" : n.title); row.append(tt); }
+  if (n.kind === "group" && n.k === treeSel) row.append(el("span", "un", "括弧の中の組み方を変えるには、下の「子の組み方」を押します"));
+  if (n.text){ const j = el("button", "jmp", "⌖ 本文"); j.title = "カードの中の、この文へ移る"; j.onclick = e => { e.stopPropagation(); jumpToMark(n.k, false); }; row.append(j); }
+  if (n.lost) row.append(el("span", "un", "⚠文が変わって見つかりません"));
+  const e0 = ids[n.k], pl = e0 && placeOf(e0.id);
+  if (pl && (pl.path || pl.field || pl.tree)){ const a = el("a", "pl", pl.path ? "🌳 DB上の場所：" + pl.path : "🌳 DB上の分野：" + (pl.field || pl.tree) + "（ツリーへの置き場所は、これから）"); a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e0.id); a.target = "_blank"; a.rel = "noopener"; a.onclick = e => e.stopPropagation(); row.append(a); }
+  row.onclick = e => { if (e.target.closest("a,button,input")) return; try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch(e2){} treeSel = n.k; renderTree(); selShowUpdate(); };
+  li.append(row);
+  if (false){ const sd = el("div", "src", "カードの文：「" + (n.text.replace(/\s+/g, " ").length > 70 ? n.text.replace(/\s+/g, " ").slice(0, 70) + "…" : n.text.replace(/\s+/g, " ")) + "」"); li.append(sd); }
+  (n.pur || []).forEach((pp, j) => { const u = el("div", "pu", "趣旨：" + (pp.text.replace(/\s+/g, " ").length > 60 ? pp.text.replace(/\s+/g, " ").slice(0, 60) + "…" : pp.text.replace(/\s+/g, " "))); 
+    const g = el("a", "", "⌖"); g.href = "#"; g.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); jumpToMark(n.k, true); }; u.append(g);
+    if (n.k === treeSel){ const x = el("a", "", "×消す"); x.href = "#"; x.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); { const bf = tStr(c.id); n.pur.splice(j, 1); tSnapIf(c.id, bf); } tTouch(c.id); applyDbMarks(); renderTree(); tmsg("趣旨を1つ消しました。"); }; u.append(x); }
+    li.append(u); });
+  if (kids.length){
+    const ul = el("ul", "kids"), mode = n.mode || "all", rc = kids.filter(isReqK).length;
+    if (rc > 0 && (mode !== "all" || rc > 1)){ const g = el("li", "ghead " + mode); g.append(el("span", null, mode === "any" ? "次のどれか1つを満たせばよい" : mode === "total" ? "次を、比重をつけて総合考慮する" : "次のすべてを満たす")); ul.append(g); }
+    let ri = 0;
+    kids.forEach(k => {
+      let b = null;
+      if (isReqK(k)){
+        ri++;
+        b = mode === "total" ? { text: "考慮", cls: "wg" } : rc < 2 ? { text: "要件", cls: "req" } : mode === "any" ? { text: LET[ri - 1] || String(ri), cls: "or" } : { text: circ(ri), cls: "req" };
+        if (ri > 1 && (mode === "any" || mode === "all")){ const sp = el("li", "sep " + mode); sp.append(el("span", null, mode === "any" ? "または" : "かつ")); ul.append(sp); }
+      }
+      const cl = tLi(nodes, k, n, b, ids, c);
+      if (isReqK(k)){ if (mode === "any" && rc > 1) cl.classList.add("orkid"); else if (mode === "total") cl.classList.add("wgkid"); else if (mode === "all" && rc > 1) cl.classList.add("andkid"); }
+      ul.append(cl);
+    });
+    li.append(ul);
+  }
+  return li;
+}
+function renderTree(){
+  const c = card(), box = $("treeBox"), top = $("treeTop"); if (!c){ box.hidden = true; return; }
+  const t = S.tree[c.id], nodes = t ? t.nodes : [];
+  const nj = tRoots(nodes).length, ny = nodes.filter(n => n.parent && n.kind !== "group" && !n.ty).length, nf = nodes.filter(n => n.ty === "考慮要素").length, ni = nodes.filter(n => n.ty === "解釈基準").length, np = nodes.reduce((a, n) => a + (n.pur || []).length, 0);
+  top.textContent = "🌳 ツリー" + (nodes.length ? "（判断" + nj + "・要件" + ny + "）" : ""); top.classList.toggle("on", treeOpen);
+  box.hidden = !treeOpen; document.body.classList.toggle("sheeton", treeOpen); document.body.dataset.tsz = treeSz; box.dataset.sz = treeSz;
+  if (!treeOpen) return;
+  $("treeSize").textContent = treeSz === 1 ? "大きく" : treeSz === 2 ? "たたむ" : "ひらく";
+  if (!tGet(nodes, treeSel)) treeSel = 0;
+  $("treeSum").textContent = "ツリー（このカード）　判断 " + nj + "・要件 " + ny + (nf ? "・考慮要素 " + nf : "") + (ni ? "・解釈基準 " + ni : "") + "・趣旨 " + np;
+  $("treeFormula").textContent = treeFormulaText(c);
+  if (!$("treeMsg").textContent || /^ツリーはまだありません/.test($("treeMsg").textContent)) $("treeMsg").textContent = nodes.length ? "行をタップして選ぶと、並べ替え・かつ/または・括弧などの操作が出ます。" : "ツリーはまだありません。文を長押し →「ツリー作成」で、文を選んで「判断にする」を押すと、ここに出ます。";
+  const ids = {}; treeIds(c.id).forEach(e => { if (!e.pur) ids[e.n.k] = e; });
+  const list = $("treeList"); list.innerHTML = "";
+  if (!nodes.length) list.append(el("div", "un", "まだ何もありません。文を長押し →「ツリー作成」で、文を選んで「判断にする」を押すと、ここに出ます。"));
+  tRoots(nodes).forEach(r => { const ul = el("ul", "roots"); ul.append(tLi(nodes, r, null, null, ids, c)); list.append(ul); });
+  const sel = tGet(nodes, treeSel), T = $("treeTools"); T.hidden = !sel;
+  if (sel){
+    $("treeSelName").textContent = "選択中：" + (sel.kind === "group" ? "（括弧）" : "「" + (sel.title ? sel.title.slice(0, 18) + (sel.title.length > 18 ? "…" : "") : "空の行") + "」");
+    const q = o => T.querySelector('[data-op="' + o + '"]');
+    ["all", "any", "total"].forEach(m => q("m:" + m).classList.toggle("on", (sel.mode || (sel.kind === "group" ? "any" : "all")) === m));
+    q("ungroup").hidden = sel.kind !== "group"; q("group").hidden = sel.kind === "group" || !sel.parent; q("role").hidden = !sel.parent || sel.kind === "group"; q("role").classList.toggle("on", sel.role === "ただし");
+    { const hid = !sel.parent || sel.kind === "group"; $("tyLab").hidden = hid; ["", "考慮要素", "解釈基準"].forEach(v => { const b = q("ty:" + v); b.hidden = hid; b.classList.toggle("on", (sel.ty || "") === v); }); }
+    q("addsib").textContent = sel.parent ? "＋並列の要件" : "＋別の判断";
+  }
+  const sd = t && t.sent; $("treeSent").textContent = !nodes.length ? "" : sd ? "最後にDBへ送ったのは " + new Date(sd.at).toTimeString().slice(0, 5) + "（" + (sd.sig === treeSig(t) ? "その後の変更なし" : "その後に変更あり：もう一度送ってください") + "）" : "このカードは、まだDBに送っていません。";
+  { const h = tHist[c.id], bu = box.querySelector('[data-op="undo"]'), br = box.querySelector('[data-op="redo"]'); if (bu) bu.disabled = !(h && h.u.length); if (br) br.disabled = !(h && h.r.length); $("treeKeys").hidden = !sel; }
+  selShowUpdate();
+  if (treeFlash){ const f = list.querySelector(".r.flash"); if (f) f.scrollIntoView({ block: "nearest" }); treeFlash = 0; }
+}
+function tOp(op){
+  const c = card();
+  if (op === "fill"){ tFill(); return; }
+  if (op === "undo" || op === "redo"){ tUndo(op === "redo"); return; }
+  const bf = tStr(c.id);
+  if (op === "addroot"){
+    const t = tEnsure(c.id); const k = nextK(t);
+    t.nodes.push({ k, kind: "node", title: "", text: "", pur: [], parent: 0, mode: "all", role: "", pos: null }); treeSel = k; treeFlash = k; tSnapIf(c.id, bf); tTouch(c.id); renderTree(); selShowUpdate(); tmsg("✔ 空の判断を足しました。カードの文を選んで、「入れる」を押してください。", "ok"); return; }
+  const t = S.tree[c.id]; if (!t){ tmsg("先にツリーを作ってください。", "ng"); return; }
+  const nodes = t.nodes, n = tGet(nodes, treeSel); if (!n){ tmsg("先に、ツリーの行をタップして選んでください。", "ng"); return; }
+  const msg = (x, k) => tmsg(x, k); let done = "";
+  const sibs = nodes.filter(x => x.parent === n.parent), si = sibs.indexOf(n), ai = nodes.indexOf(n);
+  if (op === "up" || op === "down"){ const o = sibs[si + (op === "up" ? -1 : 1)]; if (!o){ msg("これ以上、動かせません。", "ng"); return; } const bi = nodes.indexOf(o); nodes[ai] = o; nodes[bi] = n; done = "並び順を変えました。"; }
+  else if (op === "in"){ const prev = sibs[si - 1]; if (!prev){ msg("すぐ上に同じ階層のノードがないので、下げられません。", "ng"); return; } nodes.splice(ai, 1); n.parent = prev.k; nodes.push(n); done = "「" + (prev.title || "上のノード") + "」の下に入れました。"; }
+  else if (op === "out"){ if (!n.parent){ msg("判断は、これ以上、上げられません。", "ng"); return; } const par = tGet(nodes, n.parent); nodes.splice(ai, 1); n.parent = par.parent; nodes.splice(nodes.indexOf(par) + 1, 0, n); done = "一つ上の階層に出しました。"; }
+  else if (op.startsWith("m:")){ n.mode = op.slice(2); done = "子の組み方を「" + MODE_SY[n.mode] + " " + MODE_LB[n.mode] + "」にしました。" + (tKids(nodes, n.k).length ? "" : "（子の要件ができると、ツリーに表れます）"); }
+  else if (op === "role"){ if (!n.parent){ msg("判断には、「ただし」は付けられません。", "ng"); return; } n.role = n.role === "ただし" ? "" : "ただし"; done = n.role ? "「ただし（例外）」にしました。" : "「ただし」を外しました。"; }
+  else if (op.startsWith("ty:")){ if (!n.parent || n.kind === "group"){ msg("判断・括弧には、種類は付けられません。", "ng"); return; } const v = op.slice(3); if (v) n.ty = v; else delete n.ty; done = v ? "種類を「" + v + "」にしました（かつ／または の数には入りません）。" : "種類を「要件」にもどしました。"; }
+  else if (op === "group"){ const nx = sibs[si + 1]; if (!nx){ msg("まとめる相手（すぐ下の要件）がありません。まとめたい2つを、続けて並べてください。", "ng"); return; }
+    const k = nextK(t), g = { k, kind: "group", title: "", text: "", pur: [], parent: n.parent, mode: "any", role: "" };
+    nodes.splice(ai, 0, g); n.parent = k; nx.parent = k; treeSel = k; done = "括弧のグループを作りました（中は「∨ どれか」。変えるには、下の「子の組み方」を押します）。"; }
+  else if (op === "ungroup"){ if (n.kind !== "group") return; tKids(nodes, n.k).forEach(x => { x.parent = n.parent; }); nodes.splice(nodes.indexOf(n), 1); treeSel = 0; done = "括弧を解きました。"; }
+  else if (op === "addkid"){ const k = nextK(t); nodes.push({ k, kind: "node", title: "", text: "", pur: [], parent: n.k, mode: "all", role: "" , pos: null }); treeSel = k; treeFlash = k; done = "空の子の要件を足しました。カードの文を選んで、「入れる」を押してください。"; }
+  else if (op === "addsib"){ const k = nextK(t); if (!n.parent){ nodes.push({ k, kind: "node", title: "", text: "", pur: [], parent: 0, mode: "all", role: "", pos: null }); done = "空の判断を足しました。カードの文を選んで、「入れる」を押してください。"; } else { nodes.splice(ai + 1, 0, { k, kind: "node", title: "", text: "", pur: [], parent: n.parent, mode: "all", role: "", pos: null }); done = "空の並列の要件を足しました。カードの文を選んで、「入れる」を押してください。"; } treeSel = k; treeFlash = k; }
+  else if (op === "addabove"){ const k = nextK(t); nodes.splice(ai, 0, { k, kind: "node", title: "", text: "", pur: [], parent: n.parent, mode: "all", role: "", pos: null }); treeSel = k; treeFlash = k; done = "空の行を、上に足しました。カードの文を選んで、「入れる」を押してください。"; }
+  else if (op === "newout"){ if (!n.parent){ msg("判断より上の階層には、作れません。", "ng"); return; } const par = tGet(nodes, n.parent), k = nextK(t); nodes.splice(nodes.indexOf(par) + 1, 0, { k, kind: "node", title: "", text: "", pur: [], parent: par.parent, mode: "all", role: "", pos: null }); treeSel = k; treeFlash = k; done = "一つ上の階層に、空の行を足しました。カードの文を選んで、「入れる」を押してください。"; }
+  else if (op === "del"){ const sub = tSubtree(nodes, n.k); if (sub.length > 1 && !confirm("下にある " + (sub.length - 1) + " 個のノードも、いっしょに消えます。よろしいですか？")) return; t.nodes = nodes.filter(x => !sub.includes(x)); treeSel = 0; done = "消しました。"; }
+  tSnapIf(c.id, bf); tTouch(c.id); applyDbMarks(); renderTree(); selShowUpdate(); msg("✔ " + done, "ok");
+}
+document.addEventListener("keydown", e => {
+  if (!treeOpen || $("treeBox").hidden || e.altKey || e.isComposing) return;
+  const a = document.activeElement, tag = a ? a.tagName : "";
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(tag) || (a && a.isContentEditable)) return;
+  const k = e.key, lk = k.length === 1 ? k.toLowerCase() : k, ctrl = e.ctrlKey || e.metaKey, onBtn = tag === "BUTTON" || tag === "A";
+  let used = true;
+  if (ctrl){
+    if (lk === "z" && !e.shiftKey) tUndo(false);
+    else if (lk === "y" || (lk === "z" && e.shiftKey)) tUndo(true);
+    else if (k === "Enter" && treeSel) tFill();
+    else used = false;
+  } else if (!treeSel){ used = false; }
+  else if (k === "Enter" && !onBtn) tOp(e.shiftKey ? "addabove" : "addsib");
+  else if (k === "Tab" && !onBtn) tOp(e.shiftKey ? "newout" : "addkid");
+  else if (k === "Delete") tOp("del");
+  else if (k === "Escape"){ treeSel = 0; renderTree(); selShowUpdate(); }
+  else used = false;
+  if (used) e.preventDefault();
+});
+$("treeTools").addEventListener("pointerdown", e => { if (e.target.closest("button")) e.preventDefault(); });
+$("treeBox").addEventListener("click", e => { const b = e.target.closest("button[data-op]"); if (b){ tOp(b.dataset.op); try { b.blur(); } catch(e2){} } });
+$("treeClr").onclick = () => { const c = card(); if (!S.tree[c.id]){ tmsg("このカードには、ツリーがありません。"); return; } if (!confirm("このカードのツリーを、全部消します。よろしいですか？")) return; const bf = tStr(c.id); delete S.tree[c.id]; tSnapIf(c.id, bf); st("tree", c.id); save(); treeSel = 0; applyDbMarks(); renderTree(); selShowUpdate(); tmsg("このカードのツリーを消しました。", "ok"); };
+$("treeTop").onclick = () => { treeOpen = !treeOpen; if (treeOpen && treeSz === 0) treeSz = 1; renderTree(); if (treeOpen){ const c = card(); toast("このカードのツリーを表示しました（画面の下）。", "", 2000); } };
+$("treeClose").onclick = () => { treeOpen = false; renderTree(); };
+$("treeDb").onclick = () => {
+  const c = card(), r = c && treeIds(c.id).find(e => !e.pur);
+  if (!r){ toast("このカードのツリーが、まだありません。", ""); return; }
+  if (!S.tree[c.id].sent) toast("まだDBに送っていないかもしれません。送ったあと、DBの「🔄 同期」で届きます。", "", 6000);
+  window.open(TREE_URL + "#node=" + encodeURIComponent(r.id), "_blank");
+};
+$("treeSize").onclick = () => { treeSz = treeSz === 1 ? 2 : treeSz === 2 ? 0 : 1; renderTree(); };
+/* 前の方式（要件・規範・趣旨のマーク）で作ったものを、新しい形（判断・要件のツリー）に直す */
+function migrateDbq(){
+  let ch = false;
+  Object.entries(S.dbq || {}).forEach(([cid, dq]) => { if (!dq || !dq.items || !dq.items.length || S.tree[cid]) return;
+    const items = dq.items.slice().sort((a, b) => (a.pos ? a.pos[0] : 1e9) - (b.pos ? b.pos[0] : 1e9) || (a.pos ? a.pos[1] : 0) - (b.pos ? b.pos[1] : 0) || a.k - b.k), nodes = []; let lastReq = 0, lastAny = 0;
+    items.forEach(x => { if (x.tag === "趣旨"){ const p = tGet(nodes, lastAny); if (p) p.pur.push({ text: x.text, pos: x.pos || null }); return; }
+      const n = { k: x.k, kind: "node", title: x.title || "", text: x.text, pur: [], parent: x.tag === "要件" ? 0 : lastReq, mode: "all", role: "", pos: x.pos || null };
+      if (x.tag === "要件"){ lastReq = x.k; const g = dq.g && dq.g[x.k]; n.gv = ((g && g.v) || 1) + 1; } lastAny = x.k; nodes.push(n); });
+    if (nodes.length && nodes[0].parent === 0){ S.tree[cid] = { field: dq.field || "", nodes, ts: Date.now() }; st("tree", cid); ch = true; } });
+  if (ch) save();
+}
+function hashId(s){ let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
+function tBump(t){
+  let changed = false;
+  tRoots(t.nodes).forEach(r => { const sub = tSubtree(t.nodes, r.k), sig = t.field + "¦" + sub.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text).join("|")].join("~") + (n.ty ? "~ty:" + n.ty : "")).join("¦");
+    if (r.gsig && r.gsig !== sig){ r.gv = (r.gv || 1) + 1; changed = true; } if (r.gsig !== sig){ r.gsig = sig; changed = true; } if (!r.gv){ r.gv = 1; changed = true; } });
+  return changed;
+}
+function dbEmpty(){ let n = 0; Object.values(S.tree).forEach(t => { if (t && t.nodes) t.nodes.forEach(x => { if (x.kind !== "group" && !x.text) n++; }); }); return n; }
+function dbRows(){
+  const rows = []; let changed = false;
+  Object.entries(S.tree).forEach(([cid, t]) => { if (!t || !t.nodes || !t.nodes.length) return;
+    if (tBump(t)) changed = true;
+    const c = CARDS.find(x => x.id === cid), ref = "論証フローチャート：" + (c ? c.title : cid), es = treeIds(cid), idOf = {}; es.forEach(e => { if (!e.pur) idOf[e.n.k] = e.id; });
+    es.forEach(e => { const n = e.n;
+      if (e.pur){ rows.push({ id: e.id, parent: idOf[n.k], title: "", tag: "趣旨", purpose: e.pur.text, ref, card: cid }); return; }
+      const kids = tKids(t.nodes, n.k), row = { id: e.id, parent: n.parent ? idOf[n.parent] : "", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, tag: n.parent ? (n.ty || "要件") : "判断", text: (n.text && fullOf(n.text) !== n.title) ? n.text : "", ref, card: cid, order: tKids(t.nodes, n.parent).indexOf(n) + 1 };
+      if (!n.parent && t.field) row.field = t.field; if (kids.length) row.mode = MODE_LB[n.mode || "all"]; if (n.role === "ただし") row.role = "ただし"; if (n.kind === "group") row.group = true; rows.push(row); }); });
+  if (changed){ Object.keys(S.tree).forEach(k => st("tree", k)); save(); }
+  return rows;
+}
+const _render = render; render = function(){ _render.apply(this, arguments); try { applyDbMarks(); blkPick(); renderTree(); drawFrames(); frMark(); } catch(e){} };
+function blkPick(){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); if (txMode && blkU != null && blkLevel === "0"){ const pt = board.querySelector('.pt[data-u="' + blkU + '"],.pt[data-vu="' + blkU + '"]'); if (pt) pt.classList.add("pick"); } }
+const TREE_URL = "https://gitwallaby.github.io/decisions/decisions.html";
+const DB_PLACE_FILE = "decision_tree_placement.json";
+/* 送るidと同じ計算（バージョンは動かさない）。判断1つのまとまりごとに、末尾が -v2 などになる */
+function treeIds(cid){
+  const t = S.tree[cid]; if (!t) return []; const base = "fc-" + hashId(cid) + (t.salt || ""), out = [];
+  tRoots(t.nodes).forEach(r => { const suf = (r.gv || 1) > 1 ? "-v" + r.gv : "";
+    tSubtree(t.nodes, r.k).forEach(n => { const b = base + "-" + n.k;
+      out.push({ n, x: { tag: n.parent ? (n.ty || "要件") : "判断", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, text: n.text || "" }, base: b, id: b + suf });
+      (n.pur || []).forEach((p, j) => out.push({ n, pur: p, x: { tag: "趣旨", title: "", text: p.text }, base: b + "p" + (j + 1), id: b + "p" + (j + 1) + suf })); }); });
+  return out;
+}
+const dbItemIds = treeIds;
+const stripV = id => String(id || "").replace(/-v\d+$/, "");
+function placeOf(id){ const m = S.dbPlace && S.dbPlace.rows; if (!m) return null; if (m[id]) return m[id]; const k = Object.keys(m).find(k => stripV(k) === stripV(id)); return k ? m[k] : null; }
+function renderDbp(){ renderTree(); }
+function dbPlaceAccept(txt, where){
+  let j; try { j = JSON.parse(txt); } catch(e){ throw new Error("読めないファイルです（JSONではありません）"); }
+  if (!j || j.format !== "decisions-placement" || !Array.isArray(j.rows)) throw new Error("ツリーの配置ファイル（decision_tree_placement.json）ではありません");
+  const rows = {}; j.rows.forEach(r => { if (r && r.id) rows[r.id] = { id: r.id, field: r.field || "", tree: r.tree || "", path: r.path || "", parent: r.parent || "", stage: r.stage || "" }; });
+  S.dbPlace = { at: j.exportedAt || "", got: Date.now(), rows }; save(); renderDbp();
+  return j.rows.length;
+}
+async function gGet(name){
+  const fo = await gFolder(); if (!fo) return null;
+  const fl = await gFind(name, " and '" + fo.id + "' in parents", OLD_NAME[name]); if (!fl) return null;
+  return await (await gApi("https://www.googleapis.com/drive/v3/files/" + fl.id + "?alt=media")).text();
+}
+$("dbPlGet").onclick = async () => {
+  const out = $("dbPlMsg");
+  if (!S.gcid){ out.textContent = "先に、Googleドライブの設定（クライアントID）が必要です。または「ファイルから読み込む」を使ってください。"; return; }
+  try { out.textContent = "Googleに接続中…"; await gToken(); S.gOk = 1; out.textContent = "ドライブを確認中…";
+    const t = await gGet(DB_PLACE_FILE);
+    if (t === null){ await gPut(DB_PLACE_FILE, JSON.stringify({ format: "decisions-placement", version: 1, source: "tree", exportedAt: "", rows: [] }));
+      out.textContent = "ドライブの「" + G_FOLDER + "」フォルダに、空の「" + DB_PLACE_FILE + "」を作りました。ツリー側の「配置ファイルを書き出す」で、保存先にこのファイルを選んで上書きしてから、もう一度ここを押してください。"; return; }
+    const n = dbPlaceAccept(t, "drive");
+    out.textContent = n ? n + " 件の置き場所を読み込みました。" : "ドライブのファイルは、まだ空です。ツリー側の「配置ファイルを書き出す」で、このファイル（" + G_FOLDER + "／" + DB_PLACE_FILE + "）を選んで上書きしてください。";
+  } catch(e){ out.textContent = "読み込めませんでした：" + (e && e.message || e); }
+};
+$("dbPlFile").onclick = () => $("dbPlIn").click();
+$("dbPlIn").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  try { const n = dbPlaceAccept(await f.text(), "file"); $("dbPlMsg").textContent = n + " 件の置き場所を読み込みました。"; } catch(er){ $("dbPlMsg").textContent = "読み込めませんでした：" + (er && er.message || er); } };
+/* ツリーから飛んで来る：…/logic_chart.html#fc=<送信元のid>。そのブロックを含むカードを開き、該当の文を光らせる */
+function applyHash(){
+  const m = /[#&]fc=([^&]+)/.exec(location.hash || ""); if (!m || !CARDS.length) return;
+  const want = stripV(decodeURIComponent(m[1]));
+  let hit = null; for (const cd of CARDS){ const o = dbItemIds(cd.id).find(z => z.base === want); if (o){ hit = { cd, o }; break; } }
+  if (!hit){ $("dbPlMsg").textContent = "ツリーから指定されたブロック（" + want + "）が、この端末のカードの中に見つかりません。ドライブと同期してから、もう一度開いてください。"; return; }
+  let i = list.findIndex(n => CARDS[n].id === hit.cd.id);
+  if (i < 0){ const n = CARDS.indexOf(hit.cd); list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
+  pi = i; stop(); load(false).then(() => { treeSel = hit.o.n.k; renderTree(); const t = board.querySelector('.dbm[data-k="' + hit.o.n.k + '"]' + (hit.o.pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])'));
+    if (t){ t.scrollIntoView({ block: "center" }); t.classList.add("dbhl"); setTimeout(() => t.classList.remove("dbhl"), 4000); } else { const tb = $("treeBox"); if (!tb.hidden) tb.scrollIntoView({ block: "center" }); } });
+  history.replaceState(null, "", location.pathname + location.search);
+}
+window.addEventListener("hashchange", applyHash);
+async function gPut(name, body){
+  let fo = await gFolder();
+  if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
+  const fl = await gFind(name, " and '" + fo.id + "' in parents", OLD_NAME[name]);
+  if (fl) await gApi("https://www.googleapis.com/upload/drive/v3/files/" + fl.id + "?uploadType=media", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
+  else { const bd = "ronshoBoundary" + Date.now(), meta = JSON.stringify({ name, parents: [fo.id], mimeType: "application/json" });
+    await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
+      body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
+}
+async function dbSendRun(toFile){
+  const out = (t, k, ms) => { $("dbSendMsg").textContent = t; if (!$("treeBox").hidden){ const m = $("treeMsg"); m.textContent = t; m.className = "tmsg" + (k ? " " + k : ""); } toast(t, k === "ng" ? "ng" : k === "ok" ? "ok" : "", ms === undefined ? 0 : ms); };
+  out("送る内容を集めています…");
+  { const ne = dbEmpty(); if (ne){ out("文が入っていない空の行が " + ne + " 個あります。カードの文を選んで「入れる」を押すか、行を消してから、もう一度送ってください。", "ng", 9000); return; } }
+  const rows = dbRows();
+  if (!rows.length){ out("送る内容がありません。カードの文を長押しして「ツリー作成」で、判断・要件を作ってから、もう一度押してください。", "ng", 8000); return; }
+  const cnt = tg => rows.filter(r => r.tag === tg).length, cards = new Set(rows.map(r => r.card)).size;
+  const sum = "判断" + cnt("判断") + "・要件" + cnt("要件") + (cnt("考慮要素") ? "・考慮要素" + cnt("考慮要素") : "") + (cnt("解釈基準") ? "・解釈基準" + cnt("解釈基準") : "") + "・趣旨" + cnt("趣旨") + "（" + cards + "枚のカード、" + rows.length + "行）";
+  const text = JSON.stringify({ format: "decisions-inbox", version: 2, source: "flowchart", exportedAt: new Date().toISOString(), rows }, null, 1);
+  const mark = () => { const now = Date.now(); Object.values(S.tree).forEach(t => { if (t && t.nodes && t.nodes.length) t.sent = { at: now, sig: treeSig(t) }; }); save(); renderTree(); };
+  if (!toFile && S.gcid){
+    try {
+      out("Googleに接続しています…"); await gToken(); S.gOk = 1;
+      out("ドライブに書き込んでいます…（" + sum + "）"); await gPut(DB_FILE, text); save();
+      out("書き込めたか、確かめています…"); let back = null; try { back = await gGet(DB_FILE); } catch(e){}
+      mark();
+      if (back != null && back.length === text.length) out("✔ 送りました：" + sum + "。ドライブの「" + G_FOLDER + "」フォルダの「" + DB_FILE + "」に書き込み、読み戻して確かめました。ツリー側で、このファイルを読み込んでください。", "ok", 15000);
+      else out("書き込みました：" + sum + "。（ただし、読み戻しでの確認はできませんでした。ドライブの「" + G_FOLDER + "」フォルダの「" + DB_FILE + "」を開いて確かめてください。うまくいかないときは「💾 ファイルで保存」を使ってください）", "", 15000);
+      return;
+    } catch(e){ out("ドライブに書けませんでした（" + (e && e.message || e) + "）。代わりに、ファイルとして保存します…", "ng"); }
+  } else if (!toFile) out("Googleドライブの設定が、まだ入っていないので、ファイルとして保存します…");
+  try { await dlText(DB_FILE, text, "application/json"); mark(); out("✔ 「" + DB_FILE + "」として、この端末に保存しました：" + sum + "。（ダウンロードフォルダなど）。PCに移して、ツリー側で読み込んでください。", "ok", 15000); }
+  catch(e){ out("保存できませんでした（" + (e && e.message || e) + "）", "ng", 9000); }
+}
+$("treeSend").onclick = () => dbSendRun(false);
+$("treeFile").onclick = () => dbSendRun(true);
+
+/* ---------- 起動 ---------- */
+async function init(){
+  let blob = null;
+  try { blob = await get("data.json"); } catch(e){}
+  if (!blob){ $("empty").hidden = false; $("app").hidden = true; $("ctl").hidden = true; return false; }
+  DATA = JSON.parse(await blob.text()); CARDS = DATA.cards.concat(draftList());
+  $("empty").hidden = true; $("app").hidden = false; $("ctl").hidden = false;
+  /* 前の版の「卒業」の記録を引き継ぎ、PCのデータに入った直しは片付ける */
+  const byId = {}; CARDS.forEach(c => byId[c.id] = c);
+  Object.keys(S.grad || {}).forEach(id => { const c = byId[id]; if (c) S.imp[id] = S.grad[id] === 1 ? 4 : baseImp(c); }); S.grad = {};
+  Object.keys(S.imp).forEach(id => { if (byId[id] && byId[id].imp === S.imp[id]) delete S.imp[id]; });
+  Object.keys(S.deckOv).forEach(id => { if (byId[id] && byId[id].deck === S.deckOv[id]) delete S.deckOv[id]; });
+  tidyTx();
+  save();
+  $("gcid").value = S.gcid || ""; gStatus(); if (S.gcid) loadGis().catch(() => {});
+  const decks = [...new Set(CARDS.map(c => c.deck).concat(CARDS.map(deckOf)))].sort((a, b) => deckNo(a) - deckNo(b));
+  const sd = $("selDeck"); sd.innerHTML = "";
+  [...new Set(DECK_ORDER.concat(decks))].forEach(d => { const o = el("option"); o.value = d; o.textContent = d; sd.append(o); });
+  const fd = $("fDeck"); fd.innerHTML = "";
+  decks.forEach(d => { const l = el("label"); const i = el("input"); i.type = "checkbox"; i.checked = S.decks[d] !== false;
+    i.onchange = () => { S.decks[d] = i.checked; save(); relist(); }; l.append(i, document.createTextNode(d)); fd.append(l); });
+  $("fImp").querySelectorAll("input").forEach(x => x.checked = S.imps.includes(+x.value));
+  $("fShuf").checked = !!S.shuffle; $("fMode").value = S.mode || "imp"; $("fAu").checked = !!S.auOnly;
+  $("fWeak").checked = !!S.weak; $("qIn").value = S.q || ""; $("tagMode").value = S.tagMode || "any"; renderTagFilter(); $("fAuto").checked = S.auto !== false; $("fGate").checked = !!S.gate; $("selEdAu").value = S.edAu || "vv"; $("selHide").value = S.hide || ""; $("selThink").value = String(S.think || 0);
+  Object.keys(S.log).sort().slice(0, -120).forEach(k => delete S.log[k]);            /* 日ごとの記録は直近120日ぶんだけ残す */
+  let have = 0; for (const n of (DATA.bundles || [])) { try { if (await get(n)) have++; } catch(e){} }
+  $("info").textContent = "カード " + CARDS.length + "枚（" + (DATA.made || "") + " 作成）／音声ファイル " + have + " / " + (DATA.bundles || []).length + " 個" + (have < (DATA.bundles || []).length ? "　※足りない分は端末の読み上げで代用します" : "");
+  setRate(S.rate || 1);
+  migrateDbq(); try { tNormAll(); } catch(e){}
+  buildList(S.last); await load(false);
+  applyHash();
+  return true;
+}
+init();
+</script>
+</body>
+</html>
