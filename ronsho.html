@@ -331,6 +331,9 @@ body{padding-bottom:215px}
 #treeList .bd.int{background:rgba(20,160,150,.2);color:#0c8a80}
 #treeList li.kid.ty::before{border-top:2px dotted var(--btnline)}
 .dbm[data-t="考慮要素"]{background:rgba(190,140,255,.30)}.dbm[data-t="解釈基準"]{background:rgba(70,200,190,.30)}
+.sech{font-size:15px;margin:14px 0 4px;padding:4px 8px;background:rgba(120,160,150,.18);color:inherit;border-left:3px solid #6a9;border-radius:4px}
+.panel>.sech:first-of-type{margin-top:4px}
+#title .np{font-size:.62em;font-weight:500;color:var(--sub);margin-right:.35em}
 </style>
 </head>
 <body>
@@ -354,7 +357,32 @@ body{padding-bottom:215px}
       <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
       <div class="sres" id="sres" hidden></div>
     </div>
-    <details class="panel" id="fltTop"><summary>🎚 カードの絞り込み（科目・重要度・音声・タグ）</summary>
+    <details class="panel" id="rec">
+      <summary>📒 学習の記録</summary>
+      <div id="recBody"></div>
+      <p class="small">学習の記録は、画面上の「☁ Googleドライブと同期」を押すと、ドライブの「編集データ.json」に自動で保存・復元されます（別の控えを取る必要はありません）。</p>
+      <p class="small" id="recMsg"></p>
+    </details>
+    <details class="panel" id="fltTop"><summary>🎚 カードの表示方法・絞り込み</summary>
+      <h2 class="sech">カードの表示方法</h2>
+      <h3>並べ方</h3>
+      <select class="pick" id="fMode" aria-label="並べ方">
+        <option value="imp">重要度1から順に（科目はまぜる）</option>
+        <option value="impdeck">重要度1から順に、その中で科目ごと</option>
+        <option value="deckimp">科目ごとに、その中で重要度1から順に</option>
+        <option value="deck">科目ごとに（重要度はまぜる）</option>
+      </select>
+      <div class="chk"><label><input type="checkbox" id="fShuf">同じまとまりの中でシャッフルする（外すとカードファイルの順）</label></div>
+      <div class="act"><button id="reshuf">並べ直す（まだ聞いていないカードを前に）</button></div>
+      <h3>自己評価</h3>
+      <div class="chk">
+        <label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label>
+        <label><input type="checkbox" id="fAuto">○△×を押したら次のカードへ進む</label>
+        <label><input type="checkbox" id="fGate">○△×を押さないと、次のカードへ進めない（自動で進むときも止まる）</label>
+      </div>
+      <p class="small" id="cnt"></p>
+      <p class="small" id="info"></p>
+      <h2 class="sech">カードの絞り込み</h2>
       <h3>タグ　<select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select></h3>
       <div class="tgrow" id="fTag"></div>
       <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
@@ -368,6 +396,31 @@ body{padding-bottom:215px}
       </div>
       <h3>音声</h3>
       <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
+    </details>
+    <details class="panel" id="impTop"><summary>📥 インポート</summary>
+      <h3>カードと音声</h3>
+      <div class="act"><button class="grad" id="imp2">カードと音声を取り込み直す</button></div>
+      <h3>新規カード（CSV）</h3>
+      <p class="small">CSVの列：<b>題名・科目・重要度・表面・裏面</b>（必須）、タグ・ID（任意）。科目と重要度が空や一覧にない行は、取り込まれずに理由が出ます。書き方は 使い方.txt。</p>
+      <div class="act"><button class="grad" id="csvIn">CSVを取り込む</button> <button class="grad" id="csvSample">CSVの見本</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
+      <p class="small" id="csvMsg2"></p>
+      <p class="small">別の端末で直した内容（文字・図・タグ・重要度・科目・学習の記録・ツリー）は、「☁ Googleドライブと同期」で自動で入ります。</p>
+    </details>
+    <details class="panel" id="expTop"><summary>📤 エクスポート</summary>
+      <h3>直した内容（PC用）</h3>
+      <p class="small">文字・図・タグ・重要度・科目の直しを、PCに渡すファイルにします（Googleドライブと同期していれば、同期だけでも渡ります）。</p>
+      <div class="act"><button class="grad" id="editOut">直した内容を書き出す</button></div>
+      <div class="small" id="editCnt"></div><p class="small" id="outMsg"></p>
+      <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
+      <label class="small" id="edAuLab">直したカードの音声
+        <select class="mini" id="selEdAu" aria-label="文字を直したカードの音声">
+          <option value="vv">VOICEVOX（直す前の音声のまま）</option>
+          <option value="tts">端末の読み上げ（直した文のとおり）</option>
+        </select></label>
+      <h3>新規カード・文章</h3>
+      <div class="act"><button class="grad" id="csvOut">新規カードをCSVに書き出す</button>
+        <button class="grad" id="txtAll">全カードを文章で書き出す</button> <button class="grad" id="txtChg">直したカードだけ文章で</button></div>
+      <p class="small" id="csvMsg"></p>
     </details>
     <header>
       <h1 id="title"></h1>
@@ -424,7 +477,7 @@ body{padding-bottom:215px}
       <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkUndo">このカードの直しを全部取り消す</button><button class="go" id="blkEnd">編集を終わる</button></div>
     </div>
     <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
-      <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
+      <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeDb" title="このカードのツリーを、DB（判断ロジックツリー）の画面で開きます">🌳 DBで開く ↗</button><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
       <div class="tbar"><button data-op="undo" title="Ctrl+Z">↶ 元に戻す</button><button data-op="redo" title="Ctrl+Y">↷ やり直す</button><button data-op="addroot">＋ 判断を足す（文なし）</button></div>
       <div class="tbar"><span class="lab">DB</span><button class="go" id="treeSend">📤 DBに送る（全カード）</button><button id="treeFile">💾 ファイルで保存</button><button id="dbPlGet">📍 置き場所を読み込む（ドライブ）</button><button id="dbPlFile">📍 置き場所をファイルから</button><input type="file" id="dbPlIn" accept=".json,application/json" hidden></div>
       <p class="small" id="dbPlMsg"></p><p class="small" id="dbSendMsg" hidden></p>
@@ -446,61 +499,9 @@ body{padding-bottom:215px}
     <div class="board" id="board"></div>
 
     <details class="panel" id="setup">
-      <summary>聞くカードの選び方・取り込み</summary>
-      <details class="sub"><summary>並べ方・自己評価・取り込み直し</summary>
-      <h3>自己評価</h3>
-      <div class="chk">
-        <label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label>
-        <label><input type="checkbox" id="fAuto">○△×を押したら次のカードへ進む</label>
-        <label><input type="checkbox" id="fGate">○△×を押さないと、次のカードへ進めない（自動で進むときも止まる）</label>
-      </div>
-      <h3>並べ方</h3>
-      <select class="pick" id="fMode" aria-label="並べ方">
-        <option value="imp">重要度1から順に（科目はまぜる）</option>
-        <option value="impdeck">重要度1から順に、その中で科目ごと</option>
-        <option value="deckimp">科目ごとに、その中で重要度1から順に</option>
-        <option value="deck">科目ごとに（重要度はまぜる）</option>
-      </select>
-      <div class="chk"><label><input type="checkbox" id="fShuf">同じまとまりの中でシャッフルする（外すとカードファイルの順）</label></div>
-      <div class="act">
-        <button id="reshuf">並べ直す（まだ聞いていないカードを前に）</button>
-        <button id="imp2">カードと音声を取り込み直す</button>
-      </div>
-      <p class="small" id="cnt"></p>
-      <p class="small" id="info"></p>
-    </details>
-      <details class="sub"><summary>Googleドライブ同期</summary>
-      <p class="small">直した文字・図・タグ・重要度・科目・学習の記録を、Googleドライブの「論証フローチャート同期」フォルダの「編集データ.json」と1回のタップで入れ替えます（直した時刻が新しい方が残ります）。使う前に、Googleで「クライアントID」を1回だけ作る必要があります（手順は 使い方.txt）。</p>
-      <div class="qrow"><input type="text" id="gcid" placeholder="クライアントID（….apps.googleusercontent.com）" aria-label="クライアントID" autocomplete="off"><button id="gSave">保存</button></div></details>
-      <details class="sub"><summary>書き出し・新規カード・CSV</summary>
-      <h3>直した内容（PC用）</h3>
-      <p class="small">文字・図・タグ・重要度・科目の直しを、PCに渡すファイルにします（Googleドライブと同期していれば、同期だけでも渡ります）。</p>
-      <div class="act"><button class="grad" id="editOut">直した内容を書き出す</button></div>
-      <div class="small" id="editCnt"></div><p class="small" id="outMsg"></p>
-      <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
-      <label class="small" id="edAuLab">直したカードの音声
-        <select class="mini" id="selEdAu" aria-label="文字を直したカードの音声">
-          <option value="vv">VOICEVOX（直す前の音声のまま）</option>
-          <option value="tts">端末の読み上げ（直した文のとおり）</option>
-        </select></label>
-      <h3>新規カード・CSV・文章</h3>
-      <p class="small">CSVの列：<b>題名・科目・重要度・表面・裏面</b>（必須）、タグ・ID（任意）。科目と重要度が空や一覧にない行は、取り込まれずに理由が出ます。書き方は 使い方.txt。</p>
-      <div class="act"><button class="grad" id="csvIn">CSVを取り込む</button> <button class="grad" id="csvOut">新規カードをCSVに書き出す</button> <button class="grad" id="csvSample">CSVの見本</button>
-        <button class="grad" id="txtAll">全カードを文章で書き出す</button> <button class="grad" id="txtChg">直したカードだけ文章で</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
-      <p class="small" id="csvMsg"></p></details>
-      <details class="sub"><summary>判断ロジックツリー（DB）</summary>
-      <p class="small">DBへ送るボタンと、置き場所を読み込むボタンは、カードの「🌳 ツリー」画面にまとめました。</p></details>
-    </details>
-
-    <details class="panel" id="rec">
-      <summary>学習の記録</summary>
-      <div id="recBody"></div>
-      <p class="small">記録はこのスマホのブラウザの中にあります。ブラウザのデータを消すと失われるので、ときどき控えを取ってください（「直した内容を書き出す」と同じファイルに入ります）。戻すときは、そのファイルを「記録の控えを戻す」で選びます。</p>
-      <div class="act">
-        <button id="recOut">記録の控えを書き出す</button>
-        <button id="recIn">記録の控えを戻す</button>
-      </div>
-      <p class="small" id="recMsg"></p>
+      <summary>🔑 クライアントID（Googleドライブ同期の設定）</summary>
+      <p class="small">直した文字・図・タグ・重要度・科目・学習の記録を、Googleドライブの「logic_chart_sync」フォルダの「編集データ.json」と1回のタップで入れ替えます（直した時刻が新しい方が残ります）。使う前に、Googleで「クライアントID」を1回だけ作る必要があります（手順は 使い方.txt）。</p>
+      <div class="qrow"><input type="text" id="gcid" placeholder="クライアントID（….apps.googleusercontent.com）" aria-label="クライアントID" autocomplete="off"><button id="gSave">保存</button></div>
     </details>
   </div>
 </main>
@@ -1069,7 +1070,7 @@ function countLine(){
 
 function render(){
   const c = ecard();
-  $("title").textContent = c.title;
+  { const h = $("title"); h.textContent = ""; const np = document.createElement("span"); np.className = "np"; np.textContent = "再生中："; h.append(np, document.createTextNode(c.title)); }
   $("selDeck").value = deckOf(c); $("selDeck").classList.toggle("chg", !!S.deckOv[c.id]);
   $("selImp").value = String(impOf(c)); $("selImp").classList.toggle("chg", !!S.imp[c.id]);
   renderTags();
@@ -1319,9 +1320,7 @@ function renderRec(){
   box.append(tb);
 }
 $("rec").addEventListener("toggle", () => { if ($("rec").open) renderRec(); });
-$("recOut").onclick = () => $("editOut").click();
 { const eo = $("editOut").onclick; $("editOut").onclick = async () => { await eo(); const m = $("outMsg").textContent; if (m) toast(m, /ありません/.test(m) ? "" : "ok", 7000); }; }
-$("recIn").onclick = () => $("fi").click();
 
 /* ---------- 音声 ---------- */
 let thinkDone = false, gradedNow = false, pendNext = null, pre = null, resumePos = null;
@@ -1601,7 +1600,7 @@ function csvParse(text){
 }
 const CSV_HEAD = { id: ["id", "識別番号"], title: ["題名", "title", "タイトル"], deck: ["科目", "deck", "subject"], imp: ["重要度", "imp", "importance"], front: ["表面", "front", "問い", "問題"], back: ["裏面", "back", "答え"], tags: ["タグ", "tags", "tag"] };
 async function csvImport(file){
-  const out = $("csvMsg"); out.textContent = "読み込み中…";
+  const out = $("csvMsg2"); out.textContent = "読み込み中…";
   try {
     const buf = await file.arrayBuffer(); let text;
     try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e){ text = new TextDecoder("shift_jis").decode(buf); }
@@ -1666,7 +1665,9 @@ $("txtAll").onclick = () => exportCards(false); $("txtChg").onclick = () => expo
    しくみ：①Googleの「ログイン」の小窓で許可をもらう（このページが作ったファイルだけ触れる権限）→ ②ドライブの
    「論証フローチャート同期」フォルダの「編集データ.json」を読む → ③カードごとに「直した時刻が新しい方」を残して混ぜる
    → ④混ぜた結果をドライブに書き戻す。サーバーは使わず、ブラウザがGoogleと直接やり取りします。 */
-const G_FOLDER = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const G_FOLDER = "logic_chart_sync", G_FOLDER_OLD = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
+/* 名前を英語にそろえる前の名前。見つからないときは前の名前で探し、見つかったら新しい名前に直す（ドライブ側を先に直していなくても動く） */
+const OLD_NAME = { "decision_tree_inbox.json": "DB送信.json", "decision_tree_placement.json": "DB配置.json" };
 const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree]];
 let gTok = "", gExp = 0, gBusy = false;
 function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, study: { rev: S.rev, log: S.log } }; }
@@ -1695,7 +1696,7 @@ function gMsg(t){ $("gMsg").textContent = t; if (!gQuiet) toast(t, /できませ
 function gStatus(){ gQuiet = true; try { gStatus0(); } finally { gQuiet = false; } }
 function gStatus0(){
   const mx = Math.max(0, ...Object.values(S.ts)), z = n => String(n).padStart(2, "0"), d = new Date(S.gLast);
-  gMsg(S.gLast ? "最後の同期 " + (d.getMonth() + 1) + "/" + d.getDate() + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + (mx > S.gLast ? "（そのあとに直した分あり）" : "") : (S.gcid ? "まだ同期していません" : "初めに「設定」でクライアントIDを入れてください"));
+  gMsg(S.gLast ? "最後の同期 " + (d.getMonth() + 1) + "/" + d.getDate() + " " + z(d.getHours()) + ":" + z(d.getMinutes()) + (mx > S.gLast ? "（そのあとに直した分あり）" : "") : (S.gcid ? "まだ同期していません" : "初めに、いちばん下の「クライアントID」を入れてください"));
 }
 function loadGis(){ return new Promise((res, rej) => { if (window.google && google.accounts && google.accounts.oauth2) return res();
   const x = document.createElement("script"); x.src = "https://accounts.google.com/gsi/client"; x.async = true; x.onload = () => res(); x.onerror = () => rej(new Error("Googleのログイン部品を読み込めません（ネット接続か、Braveのシールドを確認）"));
@@ -1718,7 +1719,15 @@ async function gApi(url, opt){
   return r;
 }
 const Q = s => encodeURIComponent(s);
-async function gFind(name, extra){ const j = await (await gApi("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q=" + Q("name='" + name + "' and trashed=false" + extra))).json(); return (j.files || [])[0] || null; }
+const FOLDER_Q = " and mimeType='application/vnd.google-apps.folder'";
+async function gFind(name, extra, old){
+  let f = await gFind0(name, extra);
+  if (!f && old){ f = await gFind0(old, extra);
+    if (f){ try { await gApi("https://www.googleapis.com/drive/v3/files/" + f.id, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }); } catch(e){} } }
+  return f;
+}
+const gFolder = () => gFind(G_FOLDER, FOLDER_Q, G_FOLDER_OLD);
+async function gFind0(name, extra){ const j = await (await gApi("https://www.googleapis.com/drive/v3/files?spaces=drive&fields=files(id,name)&q=" + Q("name='" + name + "' and trashed=false" + extra))).json(); return (j.files || [])[0] || null; }
 async function gSync(){
   if (gBusy) return;
   if (!S.gcid){ $("setup").open = true; $("gcid").focus(); gStatus(); return; }
@@ -1726,7 +1735,7 @@ async function gSync(){
   try {
     gMsg("Googleに接続中…"); await gToken(); S.gOk = 1;
     gMsg("ドライブを確認中…");
-    let fo = await gFind(G_FOLDER, " and mimeType='application/vnd.google-apps.folder'");
+    let fo = await gFolder();
     if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
     const fl = await gFind(G_FILE, " and '" + fo.id + "' in parents");
     let n = 0, remote = null;
@@ -1754,14 +1763,14 @@ $("gSave").onclick = () => { S.gcid = $("gcid").value.trim(); S.gOk = 0; gTok = 
    S.dbq[カードid] = { field:"法律/刑法", items:[{k, tag:"要件|規範|趣旨", title, text}], g:{ 要件のk: {v, sig} }, ts }
    送るとき：要件ごとのまとまり（要件＋そのあとの規範・趣旨）を、{format:"decisions-inbox"} のJSONにする。
    idは fc-<カードの印>-<k>。まとまりの中身を直して送り直すと、-v2, -v3 …と変わる（ツリー側は同じidを二重に取り込まないため）。 */
-const DB_FILE = "DB送信.json";
+const DB_FILE = "decision_tree_inbox.json";
 function plainOf(h){ const d = el("div"); d.innerHTML = h || ""; d.querySelectorAll(".n").forEach(x => x.remove()); d.querySelectorAll("br").forEach(b => b.replaceWith("\n")); return d.textContent.replace(/[ \t\u3000]+\n/g, "\n").trim(); }
 function cardTexts(c){ const out = []; (c.sections || []).forEach(sec => sec.rows.forEach(r => r.b.forEach(b => (b.p || [b]).forEach(p => { const t = plainOf(p.h); if (t) out.push(t); })))); return out; }
 const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.．、・\s]+/, "").slice(0, 16);
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "11/20 版k（種類・絞り込み上部・DB集約）";
+const VER = "版 202611202144";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -1894,7 +1903,7 @@ function tLi(nodes, n, par, bi, ids, c){
   if (n.text){ const j = el("button", "jmp", "⌖ 本文"); j.title = "カードの中の、この文へ移る"; j.onclick = e => { e.stopPropagation(); jumpToMark(n.k, false); }; row.append(j); }
   if (n.lost) row.append(el("span", "un", "⚠文が変わって見つかりません"));
   const e0 = ids[n.k], pl = e0 && placeOf(e0.id);
-  if (pl && (pl.path || pl.field || pl.tree)){ const a = el("a", "pl", pl.path ? "📍" + pl.path : "📂 分野：" + (pl.field || pl.tree) + "（置き場所は、これから）"); a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e0.id); a.target = "_blank"; a.rel = "noopener"; a.onclick = e => e.stopPropagation(); row.append(a); }
+  if (pl && (pl.path || pl.field || pl.tree)){ const a = el("a", "pl", pl.path ? "🌳 DB上の場所：" + pl.path : "🌳 DB上の分野：" + (pl.field || pl.tree) + "（ツリーへの置き場所は、これから）"); a.href = TREE_URL + "#node=" + encodeURIComponent(pl.id || e0.id); a.target = "_blank"; a.rel = "noopener"; a.onclick = e => e.stopPropagation(); row.append(a); }
   row.onclick = e => { if (e.target.closest("a,button,input")) return; try { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); } catch(e2){} treeSel = n.k; renderTree(); selShowUpdate(); };
   li.append(row);
   if (false){ const sd = el("div", "src", "カードの文：「" + (n.text.replace(/\s+/g, " ").length > 70 ? n.text.replace(/\s+/g, " ").slice(0, 70) + "…" : n.text.replace(/\s+/g, " ")) + "」"); li.append(sd); }
@@ -2004,6 +2013,12 @@ $("treeBox").addEventListener("click", e => { const b = e.target.closest("button
 $("treeClr").onclick = () => { const c = card(); if (!S.tree[c.id]){ tmsg("このカードには、ツリーがありません。"); return; } if (!confirm("このカードのツリーを、全部消します。よろしいですか？")) return; const bf = tStr(c.id); delete S.tree[c.id]; tSnapIf(c.id, bf); st("tree", c.id); save(); treeSel = 0; applyDbMarks(); renderTree(); selShowUpdate(); tmsg("このカードのツリーを消しました。", "ok"); };
 $("treeTop").onclick = () => { treeOpen = !treeOpen; if (treeOpen && treeSz === 0) treeSz = 1; renderTree(); if (treeOpen){ const c = card(); toast("このカードのツリーを表示しました（画面の下）。", "", 2000); } };
 $("treeClose").onclick = () => { treeOpen = false; renderTree(); };
+$("treeDb").onclick = () => {
+  const c = card(), r = c && treeIds(c.id).find(e => !e.pur);
+  if (!r){ toast("このカードのツリーが、まだありません。", ""); return; }
+  if (!S.tree[c.id].sent) toast("まだDBに送っていないかもしれません。送ったあと、DBの「🔄 同期」で届きます。", "", 6000);
+  window.open(TREE_URL + "#node=" + encodeURIComponent(r.id), "_blank");
+};
 $("treeSize").onclick = () => { treeSz = treeSz === 1 ? 2 : treeSz === 2 ? 0 : 1; renderTree(); };
 /* 前の方式（要件・規範・趣旨のマーク）で作ったものを、新しい形（判断・要件のツリー）に直す */
 function migrateDbq(){
@@ -2039,7 +2054,7 @@ function dbRows(){
 const _render = render; render = function(){ _render.apply(this, arguments); try { applyDbMarks(); blkPick(); renderTree(); drawFrames(); frMark(); } catch(e){} };
 function blkPick(){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); if (txMode && blkU != null && blkLevel === "0"){ const pt = board.querySelector('.pt[data-u="' + blkU + '"],.pt[data-vu="' + blkU + '"]'); if (pt) pt.classList.add("pick"); } }
 const TREE_URL = "https://gitwallaby.github.io/decisions/decisions.html";
-const DB_PLACE_FILE = "DB配置.json";
+const DB_PLACE_FILE = "decision_tree_placement.json";
 /* 送るidと同じ計算（バージョンは動かさない）。判断1つのまとまりごとに、末尾が -v2 などになる */
 function treeIds(cid){
   const t = S.tree[cid]; if (!t) return []; const base = "fc-" + hashId(cid) + (t.salt || ""), out = [];
@@ -2055,14 +2070,14 @@ function placeOf(id){ const m = S.dbPlace && S.dbPlace.rows; if (!m) return null
 function renderDbp(){ renderTree(); }
 function dbPlaceAccept(txt, where){
   let j; try { j = JSON.parse(txt); } catch(e){ throw new Error("読めないファイルです（JSONではありません）"); }
-  if (!j || j.format !== "decisions-placement" || !Array.isArray(j.rows)) throw new Error("ツリーの配置ファイル（DB配置.json）ではありません");
+  if (!j || j.format !== "decisions-placement" || !Array.isArray(j.rows)) throw new Error("ツリーの配置ファイル（decision_tree_placement.json）ではありません");
   const rows = {}; j.rows.forEach(r => { if (r && r.id) rows[r.id] = { id: r.id, field: r.field || "", tree: r.tree || "", path: r.path || "", parent: r.parent || "", stage: r.stage || "" }; });
   S.dbPlace = { at: j.exportedAt || "", got: Date.now(), rows }; save(); renderDbp();
   return j.rows.length;
 }
 async function gGet(name){
-  const fo = await gFind(G_FOLDER, " and mimeType='application/vnd.google-apps.folder'"); if (!fo) return null;
-  const fl = await gFind(name, " and '" + fo.id + "' in parents"); if (!fl) return null;
+  const fo = await gFolder(); if (!fo) return null;
+  const fl = await gFind(name, " and '" + fo.id + "' in parents", OLD_NAME[name]); if (!fl) return null;
   return await (await gApi("https://www.googleapis.com/drive/v3/files/" + fl.id + "?alt=media")).text();
 }
 $("dbPlGet").onclick = async () => {
@@ -2093,9 +2108,9 @@ function applyHash(){
 }
 window.addEventListener("hashchange", applyHash);
 async function gPut(name, body){
-  let fo = await gFind(G_FOLDER, " and mimeType='application/vnd.google-apps.folder'");
+  let fo = await gFolder();
   if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
-  const fl = await gFind(name, " and '" + fo.id + "' in parents");
+  const fl = await gFind(name, " and '" + fo.id + "' in parents", OLD_NAME[name]);
   if (fl) await gApi("https://www.googleapis.com/upload/drive/v3/files/" + fl.id + "?uploadType=media", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
   else { const bd = "ronshoBoundary" + Date.now(), meta = JSON.stringify({ name, parents: [fo.id], mimeType: "application/json" });
     await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
