@@ -328,6 +328,9 @@ body{padding-bottom:215px}
 .log th,.log td{padding:3px 10px 3px 0;text-align:right;border-bottom:1px solid var(--barline)}
 .log th:first-child,.log td:first-child{text-align:left}
 [hidden]{display:none !important}
+#treeList .bd.int{background:rgba(20,160,150,.2);color:#0c8a80}
+#treeList li.kid.ty::before{border-top:2px dotted var(--btnline)}
+.dbm[data-t="考慮要素"]{background:rgba(190,140,255,.30)}.dbm[data-t="解釈基準"]{background:rgba(70,200,190,.30)}
 </style>
 </head>
 <body>
@@ -351,6 +354,21 @@ body{padding-bottom:215px}
       <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
       <div class="sres" id="sres" hidden></div>
     </div>
+    <details class="panel" id="fltTop"><summary>🎚 カードの絞り込み（科目・重要度・音声・タグ）</summary>
+      <h3>タグ　<select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select></h3>
+      <div class="tgrow" id="fTag"></div>
+      <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
+      <h3>科目　<button class="grad" id="dAll">全部選ぶ</button> <button class="grad" id="dNone">全部外す</button></h3><div class="chk" id="fDeck"></div>
+      <h3>重要度（数字はPCの「重要度一覧.txt」で決まります）</h3>
+      <div class="chk" id="fImp">
+        <label><input type="checkbox" value="1">1 丸暗記</label>
+        <label><input type="checkbox" value="2">2 要素</label>
+        <label><input type="checkbox" value="3">3 ざっくり</label>
+        <label><input type="checkbox" value="4">卒業</label>
+      </div>
+      <h3>音声</h3>
+      <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
+    </details>
     <header>
       <h1 id="title"></h1>
       <div class="meta">
@@ -407,7 +425,9 @@ body{padding-bottom:215px}
     </div>
     <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
       <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
-      <div class="tbar"><button data-op="undo" title="Ctrl+Z">↶ 元に戻す</button><button data-op="redo" title="Ctrl+Y">↷ やり直す</button><button data-op="addroot">＋ 判断を足す（文なし）</button><button class="go" id="treeSend">📤 DBに送る</button><button id="treeFile">💾 ファイルで保存</button></div>
+      <div class="tbar"><button data-op="undo" title="Ctrl+Z">↶ 元に戻す</button><button data-op="redo" title="Ctrl+Y">↷ やり直す</button><button data-op="addroot">＋ 判断を足す（文なし）</button></div>
+      <div class="tbar"><span class="lab">DB</span><button class="go" id="treeSend">📤 DBに送る（全カード）</button><button id="treeFile">💾 ファイルで保存</button><button id="dbPlGet">📍 置き場所を読み込む（ドライブ）</button><button id="dbPlFile">📍 置き場所をファイルから</button><input type="file" id="dbPlIn" accept=".json,application/json" hidden></div>
+      <p class="small" id="dbPlMsg"></p><p class="small" id="dbSendMsg" hidden></p>
       <p class="tmsg" id="treeMsg">ツリーはまだありません。</p>
       <div class="small" id="treeFormula"></div>
       <div class="tbar" id="treeTools" hidden>
@@ -415,7 +435,7 @@ body{padding-bottom:215px}
         <button data-op="fill" class="go">✎ 選んだ文字を入れる</button>
         <button data-op="up">↑</button><button data-op="down">↓</button><button data-op="out">← 上の階層へ</button><button data-op="in">→ 下の階層へ</button>
         <span class="lab">子の組み方</span><button data-op="m:all">⋀ すべて</button><button data-op="m:any">∨ どれか</button><button data-op="m:total">＋ 総合考慮</button>
-        <button data-op="group">（ ）括弧でまとめる</button><button data-op="ungroup">括弧を解く</button><button data-op="role">ただし</button>
+        <button data-op="group">（ ）括弧でまとめる</button><button data-op="ungroup">括弧を解く</button><button data-op="role">ただし</button><span class="lab" id="tyLab">種類</span><button data-op="ty:">要件</button><button data-op="ty:考慮要素">考慮要素</button><button data-op="ty:解釈基準">解釈基準</button>
         <button data-op="addkid">＋子の要件</button><button data-op="addsib">＋並列の要件</button><button data-op="del">消す</button>
       </div>
       <p class="small" id="treeKeys" hidden>PCのキー：Enter＝同じ階層の空の行を下に／Shift+Enter＝上に／Tab＝子の空の行／Shift+Tab＝一つ上の階層に空の行／Ctrl+Enter＝選んだ文字を入れる／Delete＝消す／Esc＝選択を外す／Ctrl+Z・Ctrl+Y＝元に戻す・やり直す（行をタップして選んでから）</p>
@@ -427,20 +447,6 @@ body{padding-bottom:215px}
 
     <details class="panel" id="setup">
       <summary>聞くカードの選び方・取り込み</summary>
-      <details class="sub" open><summary>カードの絞り込み</summary>
-      <h3>タグ　<select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select></h3>
-      <div class="tgrow" id="fTag"></div>
-      <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
-      <h3>科目　<button class="grad" id="dAll">全部選ぶ</button> <button class="grad" id="dNone">全部外す</button></h3><div class="chk" id="fDeck"></div>
-      <h3>重要度（数字はPCの「重要度一覧.txt」で決まります）</h3>
-      <div class="chk" id="fImp">
-        <label><input type="checkbox" value="1">1 丸暗記</label>
-        <label><input type="checkbox" value="2">2 要素</label>
-        <label><input type="checkbox" value="3">3 ざっくり</label>
-        <label><input type="checkbox" value="4">卒業</label>
-      </div>
-      <h3>音声</h3>
-      <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div></details>
       <details class="sub"><summary>並べ方・自己評価・取り込み直し</summary>
       <h3>自己評価</h3>
       <div class="chk">
@@ -482,11 +488,8 @@ body{padding-bottom:215px}
       <div class="act"><button class="grad" id="csvIn">CSVを取り込む</button> <button class="grad" id="csvOut">新規カードをCSVに書き出す</button> <button class="grad" id="csvSample">CSVの見本</button>
         <button class="grad" id="txtAll">全カードを文章で書き出す</button> <button class="grad" id="txtChg">直したカードだけ文章で</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
       <p class="small" id="csvMsg"></p></details>
-      <details class="sub"><summary>判断ロジックツリー（DB）へ送る</summary>
-      <p class="small">カードの文を長押し→「ツリー作成」で、文の一部を「判断」「要件」「趣旨」にして、カードごとに部分ツリーを作ります。ここを押すと、全カードのツリーをまとめて「DB送信.json」にします。</p>
-      <div class="act"><button class="grad" id="dbSend">DBに送る（全カードぶん）</button></div><p class="small" id="dbSendMsg"></p>
-      <p class="small">ツリーで置いた場所を、カードに表示します（ツリーの「配置ファイル（DB配置.json）を書き出す」で作ったファイルを読みます）。</p>
-      <div class="act"><button class="grad" id="dbPlGet">ツリーの置き場所を読み込む（ドライブ）</button> <button class="grad" id="dbPlFile">ファイルから読み込む</button><input type="file" id="dbPlIn" accept=".json,application/json" hidden></div><p class="small" id="dbPlMsg"></p></details>
+      <details class="sub"><summary>判断ロジックツリー（DB）</summary>
+      <p class="small">DBへ送るボタンと、置き場所を読み込むボタンは、カードの「🌳 ツリー」画面にまとめました。</p></details>
     </details>
 
     <details class="panel" id="rec">
@@ -876,7 +879,7 @@ function blkDraw(){
   if (blkLevel === "tree"){
     ttl.textContent = "ツリー作成：文の一部を選んで、押してください（分野は決めません。骨格だけ作って、DBに送ります）";
     const ss = el("div", "selshow"); ss.id = "selShow"; body.before(ss);
-    [["判断にする", "判断"], ["子の要件にする", "子"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
+    [["判断にする", "判断"], ["子の要件にする", "子"], ["子の考慮要素にする", "子考"], ["子の解釈基準にする", "子解"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
     add("選んだ文字を、選択中の行に入れる", () => tFill()).dataset.mk = "入";
     add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => blkGo("0"));
     selShowUpdate();
@@ -1758,7 +1761,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "11/19 夜 版j（枠・取消・キー）";
+const VER = "11/20 版k（種類・絞り込み上部・DB集約）";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -1776,8 +1779,9 @@ function tEnsure(cid){ if (!S.tree[cid]) S.tree[cid] = { field: "", nodes: [], s
 const nextK = t => Math.max(0, ...t.nodes.map(n => n.k)) + 1;
 function tTouch(cid){ const t = S.tree[cid]; if (!t) return; if (typeof tNorm === "function") tNorm(t); if (!t.nodes.length) delete S.tree[cid]; else t.ts = Date.now(); st("tree", cid); save(); }
 function tFormula(nodes, n){
-  const kids = tKids(nodes, n.k), inner = kids.map(x => tFormula(nodes, x)).join(" " + MODE_SY[n.mode || "all"] + " ");
-  const s1 = n.kind === "group" ? "（" + inner + "）" : (n.title || "（空）") + (kids.length ? "［" + inner + "］" : "");
+  const kids = tKids(nodes, n.k), rq = kids.filter(x => !x.ty), tk = kids.filter(x => x.ty), inner = rq.map(x => tFormula(nodes, x)).join(" " + MODE_SY[n.mode || "all"] + " ");
+  const ex = tk.map(x => "〔" + x.ty + "：" + tFormula(nodes, x) + "〕").join("");
+  const s1 = n.kind === "group" ? "（" + inner + "）" : (n.title || "（空）") + (kids.length ? "［" + inner + ex + "］" : "");
   return (n.role === "ただし" ? "ただし" : "") + s1;
 }
 /* ---- 文の中の範囲を探して、マーカーで囲む ---- */
@@ -1794,7 +1798,7 @@ function dbWrap(loc, it){
   for (let q = loc.s; q < loc.s + loc.len; q++){ const [n, o] = loc.m.map[q]; if (cur && cur.n === n && cur.b + 1 === o) cur.b = o; else { cur = { n, a: o, b: o }; segs.push(cur); } }
   segs.reverse().forEach(g => { const r = document.createRange(); r.setStart(g.n, g.a); r.setEnd(g.n, g.b + 1); const sp = el("span", "dbm"); sp.dataset.t = it.tag; sp.dataset.k = it.k; try { r.surroundContents(sp); } catch(e){} });
 }
-function tMarks(t){ const out = []; t.nodes.forEach(n => { if (n.text) out.push({ k: n.k, tag: n.parent ? "要件" : "判断", text: n.text, ref: n }); (n.pur || []).forEach(p => { if (p.text) out.push({ k: n.k, tag: "趣旨", text: p.text, ref: p }); }); }); return out; }
+function tMarks(t){ const out = []; t.nodes.forEach(n => { if (n.text) out.push({ k: n.k, tag: n.parent ? (n.ty || "要件") : "判断", text: n.text, ref: n }); (n.pur || []).forEach(p => { if (p.text) out.push({ k: n.k, tag: "趣旨", text: p.text, ref: p }); }); }); return out; }
 function applyDbMarks(){
   board.querySelectorAll(".dbm").forEach(sp => { const p = sp.parentNode; if (!p) return; while (sp.firstChild) p.insertBefore(sp.firstChild, sp); p.removeChild(sp); p.normalize(); });
   const c = card(), t = c && S.tree[c.id]; if (!t) return;
@@ -1811,13 +1815,14 @@ document.addEventListener("selectionchange", () => {
   dbLastSel = { pt: a, text, s: strip(pre.toString()).length }; selShowUpdate();
 });
 function dbTap(e){
-  const m = e.target.closest(".dbm"); if (!m || getSelection().toString()) return;
+  const m = e.target.closest(".dbm[data-k]"); if (!m || getSelection().toString()) return;
   treeSel = +m.dataset.k; treeOpen = true; renderTree(); selShowUpdate();
   $("editMsg").textContent = "選んだ：" + m.dataset.t + "「" + fullOf(m.textContent).slice(0, 30) + "」（下のツリー欄で、並べ替えなどができます）";
 }
 /* ---- 選んだ範囲を、ツリーのノードにする ---- */
 function tmsg(x, kind){ const m = $("treeMsg"); m.textContent = x; m.className = "tmsg" + (kind ? " " + kind : ""); if (x) toast(x, kind === "ng" ? "ng" : kind === "ok" ? "ok" : "", 4500); }
-function tMark0(kind){
+function tMark0(kind0){
+  const ty = kind0 === "子考" ? "考慮要素" : kind0 === "子解" ? "解釈基準" : "", kind = ty ? "子" : kind0;
   const msg = t => { $("editMsg").textContent = t; toast(t, "ng", 5000); };
   if (dbLastSel === "many"){ msg("1つのブロックの中の1か所だけを選んでください。"); return; }
   if (!dbLastSel){ msg("先に、文の一部を指でなぞって選んでください（文字を長押しして、両端をずらします）。"); return; }
@@ -1832,7 +1837,7 @@ function tMark0(kind){
     if (!cur || cur.kind === "group"){ msg("趣旨をつけたい判断・要件を、先にタップして選んでください（下のツリー、または色のついた文）。"); return; }
     cur.pur = cur.pur || []; cur.pur.push({ text: dbLastSel.text, pos });
     treeFlash = cur.k; tTouch(c.id); finishMark("✔ 趣旨を「" + (fullOf(cur.title).slice(0, 14) || "空の行") + "」につけました。", "ok"); return; }
-  if (cur && cur.kind !== "group" && !cur.text && (kind === "子" || kind === "並" || (kind === "判断" && !cur.parent))){ tFill(); return; }
+  if (cur && cur.kind !== "group" && !cur.text && (kind === "子" || kind === "並" || (kind === "判断" && !cur.parent))){ if (ty && cur.parent) cur.ty = ty; tFill(); return; }
   let parent = 0, afterK = 0, note = "";
   if (kind === "判断"){ parent = 0; }
   else { if (!cur){ msg("先に「判断」を作ってください（判断は、いちばん上の親になります）。"); return; }
@@ -1840,8 +1845,9 @@ function tMark0(kind){
     else { if (!cur.parent){ parent = cur.k; note = "（判断と並列の要件は作れないので、判断の下に作りました）"; } else { parent = cur.parent; afterK = cur.k; } } }
   const t = tEnsure(c.id);
   const k = nextK(t), n = { k, kind: "node", title, text: dbLastSel.text, pur: [], parent, mode: "all", role: "", pos };
+  if (ty && parent) n.ty = ty;
   const at = afterK ? t.nodes.findIndex(x => x.k === afterK) + 1 : t.nodes.length; t.nodes.splice(at, 0, n); treeSel = k; treeFlash = k; tTouch(c.id);
-  finishMark("✔ " + (parent ? "要件" : "判断") + "「" + title + "」を、ツリーに足しました。" + note, "ok");
+  finishMark("✔ " + (parent ? (ty || "要件") : "判断") + "「" + title + "」を、ツリーに足しました。" + note, "ok");
 }
 function tFill0(){
   const msg = t => { $("editMsg").textContent = t; tmsg(t, "ng"); };
@@ -1872,15 +1878,16 @@ function tUndo(redo){
 }
 function finishMark(t, kind){ try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; applyDbMarks(); renderTree(); selShowUpdate(); $("editMsg").textContent = t; tmsg(t, kind); }
 /* ---- ツリーの表示（DBのツリーと同じ見た目）と編集 ---- */
+const isReqK = k => k.role !== "ただし" && !k.ty;
 const LET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ", circ = n => (n <= 20 ? String.fromCharCode(0x2460 + n - 1) : n + ".");
-const treeSig = t => t.field + "¦" + JSON.stringify(t.nodes.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text)]));
-function treeFormulaText(c){ const t = S.tree[c.id], nodes = t ? t.nodes : []; return tRoots(nodes).map(r => "判断「" + (r.title || "（空）") + "」" + (tKids(nodes, r.k).length ? " ＝ " + tKids(nodes, r.k).map(x => tFormula(nodes, x)).join(" " + MODE_SY[r.mode || "all"] + " ") : "")).join("　／　"); }
+const treeSig = t => t.field + "¦" + JSON.stringify(t.nodes.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text)])) + t.nodes.filter(n => n.ty).map(n => "¦" + n.k + n.ty).join("");
+function treeFormulaText(c){ const t = S.tree[c.id], nodes = t ? t.nodes : []; return tRoots(nodes).map(r => "判断「" + (r.title || "（空）") + "」" + (tKids(nodes, r.k).length ? " ＝ " + tKids(nodes, r.k).filter(x => !x.ty).map(x => tFormula(nodes, x)).join(" " + MODE_SY[r.mode || "all"] + " ") + tKids(nodes, r.k).filter(x => x.ty).map(x => "〔" + x.ty + "：" + tFormula(nodes, x) + "〕").join("") : "")).join("　／　"); }
 function bdg(text, cls){ const b = el("span", "bd " + (cls || ""), text); return b; }
 function jumpToMark(k, pur){ const m = board.querySelector('.dbm[data-k="' + k + '"]' + (pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])')); if (!m){ tmsg("カードの文の中に、この場所が見つかりません（文が変わった可能性があります）。", "ng"); return; } m.scrollIntoView({ block: "center", behavior: "auto" }); m.classList.add("dbhl"); setTimeout(() => m.classList.remove("dbhl"), 2500); }
 function tLi(nodes, n, par, bi, ids, c){
-  const kids = tKids(nodes, n.k), li = el("li", par ? "kid" + (n.role === "ただし" ? " exc" : "") : "rootli");
+  const kids = tKids(nodes, n.k), li = el("li", par ? "kid" + (n.role === "ただし" ? " exc" : n.ty ? " ty" : "") : "rootli");
   const row = el("div", "r" + (n.k === treeSel ? " sel" : "") + (n.k === treeFlash ? " flash" : "")); row.dataset.k = n.k;
-  if (!par) row.append(bdg("判断", "j")); else if (n.role === "ただし") row.append(bdg("ただし", "exc")); else if (bi) row.append(bdg(bi.text, bi.cls));
+  if (!par) row.append(bdg("判断", "j")); else if (n.role === "ただし") row.append(bdg("ただし", "exc")); else if (n.ty) row.append(bdg(n.ty, n.ty === "考慮要素" ? "wg" : "int")); else if (bi) row.append(bdg(bi.text, bi.cls));
   if (n.kind === "group") row.append(bdg("括弧", "or"));
   { const empty = n.kind !== "group" && !n.text; const tt = el("span", "ttl" + (empty ? " blank" : ""), n.kind === "group" ? "（" + MODE_LB[n.mode || "any"] + "）" : empty ? "（空）カードの文を選んで、「入れる」を押します" : n.title); row.append(tt); }
   if (n.kind === "group" && n.k === treeSel) row.append(el("span", "un", "括弧の中の組み方を変えるには、下の「子の組み方」を押します"));
@@ -1896,18 +1903,18 @@ function tLi(nodes, n, par, bi, ids, c){
     if (n.k === treeSel){ const x = el("a", "", "×消す"); x.href = "#"; x.onclick = ev => { ev.preventDefault(); ev.stopPropagation(); { const bf = tStr(c.id); n.pur.splice(j, 1); tSnapIf(c.id, bf); } tTouch(c.id); applyDbMarks(); renderTree(); tmsg("趣旨を1つ消しました。"); }; u.append(x); }
     li.append(u); });
   if (kids.length){
-    const ul = el("ul", "kids"), mode = n.mode || "all", rc = kids.filter(k => k.role !== "ただし").length;
+    const ul = el("ul", "kids"), mode = n.mode || "all", rc = kids.filter(isReqK).length;
     if (rc > 0 && (mode !== "all" || rc > 1)){ const g = el("li", "ghead " + mode); g.append(el("span", null, mode === "any" ? "次のどれか1つを満たせばよい" : mode === "total" ? "次を、比重をつけて総合考慮する" : "次のすべてを満たす")); ul.append(g); }
     let ri = 0;
     kids.forEach(k => {
       let b = null;
-      if (k.role !== "ただし"){
+      if (isReqK(k)){
         ri++;
         b = mode === "total" ? { text: "考慮", cls: "wg" } : rc < 2 ? { text: "要件", cls: "req" } : mode === "any" ? { text: LET[ri - 1] || String(ri), cls: "or" } : { text: circ(ri), cls: "req" };
         if (ri > 1 && (mode === "any" || mode === "all")){ const sp = el("li", "sep " + mode); sp.append(el("span", null, mode === "any" ? "または" : "かつ")); ul.append(sp); }
       }
       const cl = tLi(nodes, k, n, b, ids, c);
-      if (k.role !== "ただし"){ if (mode === "any" && rc > 1) cl.classList.add("orkid"); else if (mode === "total") cl.classList.add("wgkid"); else if (mode === "all" && rc > 1) cl.classList.add("andkid"); }
+      if (isReqK(k)){ if (mode === "any" && rc > 1) cl.classList.add("orkid"); else if (mode === "total") cl.classList.add("wgkid"); else if (mode === "all" && rc > 1) cl.classList.add("andkid"); }
       ul.append(cl);
     });
     li.append(ul);
@@ -1917,13 +1924,13 @@ function tLi(nodes, n, par, bi, ids, c){
 function renderTree(){
   const c = card(), box = $("treeBox"), top = $("treeTop"); if (!c){ box.hidden = true; return; }
   const t = S.tree[c.id], nodes = t ? t.nodes : [];
-  const nj = tRoots(nodes).length, ny = nodes.filter(n => n.parent && n.kind !== "group").length, np = nodes.reduce((a, n) => a + (n.pur || []).length, 0);
+  const nj = tRoots(nodes).length, ny = nodes.filter(n => n.parent && n.kind !== "group" && !n.ty).length, nf = nodes.filter(n => n.ty === "考慮要素").length, ni = nodes.filter(n => n.ty === "解釈基準").length, np = nodes.reduce((a, n) => a + (n.pur || []).length, 0);
   top.textContent = "🌳 ツリー" + (nodes.length ? "（判断" + nj + "・要件" + ny + "）" : ""); top.classList.toggle("on", treeOpen);
   box.hidden = !treeOpen; document.body.classList.toggle("sheeton", treeOpen); document.body.dataset.tsz = treeSz; box.dataset.sz = treeSz;
   if (!treeOpen) return;
   $("treeSize").textContent = treeSz === 1 ? "大きく" : treeSz === 2 ? "たたむ" : "ひらく";
   if (!tGet(nodes, treeSel)) treeSel = 0;
-  $("treeSum").textContent = "ツリー（このカード）　判断 " + nj + "・要件 " + ny + "・趣旨 " + np;
+  $("treeSum").textContent = "ツリー（このカード）　判断 " + nj + "・要件 " + ny + (nf ? "・考慮要素 " + nf : "") + (ni ? "・解釈基準 " + ni : "") + "・趣旨 " + np;
   $("treeFormula").textContent = treeFormulaText(c);
   if (!$("treeMsg").textContent || /^ツリーはまだありません/.test($("treeMsg").textContent)) $("treeMsg").textContent = nodes.length ? "行をタップして選ぶと、並べ替え・かつ/または・括弧などの操作が出ます。" : "ツリーはまだありません。文を長押し →「ツリー作成」で、文を選んで「判断にする」を押すと、ここに出ます。";
   const ids = {}; treeIds(c.id).forEach(e => { if (!e.pur) ids[e.n.k] = e; });
@@ -1936,6 +1943,7 @@ function renderTree(){
     const q = o => T.querySelector('[data-op="' + o + '"]');
     ["all", "any", "total"].forEach(m => q("m:" + m).classList.toggle("on", (sel.mode || (sel.kind === "group" ? "any" : "all")) === m));
     q("ungroup").hidden = sel.kind !== "group"; q("group").hidden = sel.kind === "group" || !sel.parent; q("role").hidden = !sel.parent || sel.kind === "group"; q("role").classList.toggle("on", sel.role === "ただし");
+    { const hid = !sel.parent || sel.kind === "group"; $("tyLab").hidden = hid; ["", "考慮要素", "解釈基準"].forEach(v => { const b = q("ty:" + v); b.hidden = hid; b.classList.toggle("on", (sel.ty || "") === v); }); }
     q("addsib").textContent = sel.parent ? "＋並列の要件" : "＋別の判断";
   }
   const sd = t && t.sent; $("treeSent").textContent = !nodes.length ? "" : sd ? "最後にDBへ送ったのは " + new Date(sd.at).toTimeString().slice(0, 5) + "（" + (sd.sig === treeSig(t) ? "その後の変更なし" : "その後に変更あり：もう一度送ってください") + "）" : "このカードは、まだDBに送っていません。";
@@ -1960,6 +1968,7 @@ function tOp(op){
   else if (op === "out"){ if (!n.parent){ msg("判断は、これ以上、上げられません。", "ng"); return; } const par = tGet(nodes, n.parent); nodes.splice(ai, 1); n.parent = par.parent; nodes.splice(nodes.indexOf(par) + 1, 0, n); done = "一つ上の階層に出しました。"; }
   else if (op.startsWith("m:")){ n.mode = op.slice(2); done = "子の組み方を「" + MODE_SY[n.mode] + " " + MODE_LB[n.mode] + "」にしました。" + (tKids(nodes, n.k).length ? "" : "（子の要件ができると、ツリーに表れます）"); }
   else if (op === "role"){ if (!n.parent){ msg("判断には、「ただし」は付けられません。", "ng"); return; } n.role = n.role === "ただし" ? "" : "ただし"; done = n.role ? "「ただし（例外）」にしました。" : "「ただし」を外しました。"; }
+  else if (op.startsWith("ty:")){ if (!n.parent || n.kind === "group"){ msg("判断・括弧には、種類は付けられません。", "ng"); return; } const v = op.slice(3); if (v) n.ty = v; else delete n.ty; done = v ? "種類を「" + v + "」にしました（かつ／または の数には入りません）。" : "種類を「要件」にもどしました。"; }
   else if (op === "group"){ const nx = sibs[si + 1]; if (!nx){ msg("まとめる相手（すぐ下の要件）がありません。まとめたい2つを、続けて並べてください。", "ng"); return; }
     const k = nextK(t), g = { k, kind: "group", title: "", text: "", pur: [], parent: n.parent, mode: "any", role: "" };
     nodes.splice(ai, 0, g); n.parent = k; nx.parent = k; treeSel = k; done = "括弧のグループを作りました（中は「∨ どれか」。変えるには、下の「子の組み方」を押します）。"; }
@@ -2010,7 +2019,7 @@ function migrateDbq(){
 function hashId(s){ let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; return h.toString(36); }
 function tBump(t){
   let changed = false;
-  tRoots(t.nodes).forEach(r => { const sub = tSubtree(t.nodes, r.k), sig = t.field + "¦" + sub.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text).join("|")].join("~")).join("¦");
+  tRoots(t.nodes).forEach(r => { const sub = tSubtree(t.nodes, r.k), sig = t.field + "¦" + sub.map(n => [n.k, n.parent, n.kind, n.title, n.text, n.mode, n.role, (n.pur || []).map(p => p.text).join("|")].join("~") + (n.ty ? "~ty:" + n.ty : "")).join("¦");
     if (r.gsig && r.gsig !== sig){ r.gv = (r.gv || 1) + 1; changed = true; } if (r.gsig !== sig){ r.gsig = sig; changed = true; } if (!r.gv){ r.gv = 1; changed = true; } });
   return changed;
 }
@@ -2022,7 +2031,7 @@ function dbRows(){
     const c = CARDS.find(x => x.id === cid), ref = "論証フローチャート：" + (c ? c.title : cid), es = treeIds(cid), idOf = {}; es.forEach(e => { if (!e.pur) idOf[e.n.k] = e.id; });
     es.forEach(e => { const n = e.n;
       if (e.pur){ rows.push({ id: e.id, parent: idOf[n.k], title: "", tag: "趣旨", purpose: e.pur.text, ref, card: cid }); return; }
-      const kids = tKids(t.nodes, n.k), row = { id: e.id, parent: n.parent ? idOf[n.parent] : "", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, tag: n.parent ? "要件" : "判断", text: (n.text && fullOf(n.text) !== n.title) ? n.text : "", ref, card: cid, order: tKids(t.nodes, n.parent).indexOf(n) + 1 };
+      const kids = tKids(t.nodes, n.k), row = { id: e.id, parent: n.parent ? idOf[n.parent] : "", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, tag: n.parent ? (n.ty || "要件") : "判断", text: (n.text && fullOf(n.text) !== n.title) ? n.text : "", ref, card: cid, order: tKids(t.nodes, n.parent).indexOf(n) + 1 };
       if (!n.parent && t.field) row.field = t.field; if (kids.length) row.mode = MODE_LB[n.mode || "all"]; if (n.role === "ただし") row.role = "ただし"; if (n.kind === "group") row.group = true; rows.push(row); }); });
   if (changed){ Object.keys(S.tree).forEach(k => st("tree", k)); save(); }
   return rows;
@@ -2036,7 +2045,7 @@ function treeIds(cid){
   const t = S.tree[cid]; if (!t) return []; const base = "fc-" + hashId(cid) + (t.salt || ""), out = [];
   tRoots(t.nodes).forEach(r => { const suf = (r.gv || 1) > 1 ? "-v" + r.gv : "";
     tSubtree(t.nodes, r.k).forEach(n => { const b = base + "-" + n.k;
-      out.push({ n, x: { tag: n.parent ? "要件" : "判断", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, text: n.text || "" }, base: b, id: b + suf });
+      out.push({ n, x: { tag: n.parent ? (n.ty || "要件") : "判断", title: n.kind === "group" ? "（" + MODE_LB[n.mode || "all"] + "）" : n.title, text: n.text || "" }, base: b, id: b + suf });
       (n.pur || []).forEach((p, j) => out.push({ n, pur: p, x: { tag: "趣旨", title: "", text: p.text }, base: b + "p" + (j + 1), id: b + "p" + (j + 1) + suf })); }); });
   return out;
 }
@@ -2099,7 +2108,7 @@ async function dbSendRun(toFile){
   const rows = dbRows();
   if (!rows.length){ out("送る内容がありません。カードの文を長押しして「ツリー作成」で、判断・要件を作ってから、もう一度押してください。", "ng", 8000); return; }
   const cnt = tg => rows.filter(r => r.tag === tg).length, cards = new Set(rows.map(r => r.card)).size;
-  const sum = "判断" + cnt("判断") + "・要件" + cnt("要件") + "・趣旨" + cnt("趣旨") + "（" + cards + "枚のカード、" + rows.length + "行）";
+  const sum = "判断" + cnt("判断") + "・要件" + cnt("要件") + (cnt("考慮要素") ? "・考慮要素" + cnt("考慮要素") : "") + (cnt("解釈基準") ? "・解釈基準" + cnt("解釈基準") : "") + "・趣旨" + cnt("趣旨") + "（" + cards + "枚のカード、" + rows.length + "行）";
   const text = JSON.stringify({ format: "decisions-inbox", version: 2, source: "flowchart", exportedAt: new Date().toISOString(), rows }, null, 1);
   const mark = () => { const now = Date.now(); Object.values(S.tree).forEach(t => { if (t && t.nodes && t.nodes.length) t.sent = { at: now, sig: treeSig(t) }; }); save(); renderTree(); };
   if (!toFile && S.gcid){
@@ -2116,7 +2125,6 @@ async function dbSendRun(toFile){
   try { await dlText(DB_FILE, text, "application/json"); mark(); out("✔ 「" + DB_FILE + "」として、この端末に保存しました：" + sum + "。（ダウンロードフォルダなど）。PCに移して、ツリー側で読み込んでください。", "ok", 15000); }
   catch(e){ out("保存できませんでした（" + (e && e.message || e) + "）", "ng", 9000); }
 }
-$("dbSend").onclick = () => dbSendRun(false);
 $("treeSend").onclick = () => dbSendRun(false);
 $("treeFile").onclick = () => dbSendRun(true);
 
