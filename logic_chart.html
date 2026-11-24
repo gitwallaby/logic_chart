@@ -1770,7 +1770,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611231115";
+const VER = "版 202611241410";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2096,6 +2096,18 @@ $("dbPlIn").onchange = async e => { const f = e.target.files[0]; e.target.value 
   try { const n = dbPlaceAccept(await f.text(), "file"); $("dbPlMsg").textContent = n + " 件の置き場所を読み込みました。"; } catch(er){ $("dbPlMsg").textContent = "読み込めませんでした：" + (er && er.message || er); } };
 /* ツリーから飛んで来る：…/logic_chart.html#fc=<送信元のid>。そのブロックを含むカードを開き、該当の文を光らせる */
 function applyHash(){
+  /* 起案スプシなどから飛んで来る：…/logic_chart.html#card=<カードIDをURL用に直したもの>。そのカードを1枚開く */
+  const mc = /[#&]card=([^&]+)/.exec(location.hash || "");
+  if (mc && CARDS.length){
+    let cid = ""; try { cid = decodeURIComponent(mc[1]); } catch(e){}
+    const cd = CARDS.find(c => c.id === cid);
+    if (!cd){ toast("リンクで指定されたカードが、この端末のカードの中に見つかりません。ドライブと同期してから、もう一度開いてください。", "ng", 9000); return; }
+    let i = list.findIndex(n => CARDS[n].id === cd.id);
+    if (i < 0){ const n = CARDS.indexOf(cd); list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
+    pi = i; stop(); load(false).then(() => { window.scrollTo(0, 0); });
+    history.replaceState(null, "", location.pathname + location.search);
+    return;
+  }
   const m = /[#&]fc=([^&]+)/.exec(location.hash || ""); if (!m || !CARDS.length) return;
   const want = stripV(decodeURIComponent(m[1]));
   let hit = null; for (const cd of CARDS){ const o = dbItemIds(cd.id).find(z => z.base === want); if (o){ hit = { cd, o }; break; } }
