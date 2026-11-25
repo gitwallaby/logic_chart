@@ -685,7 +685,20 @@ function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEa
 function ensureCv(){ const c = card();
   if (!S.cv[c.id]){ S.cv[c.id] = { sig: sigOf(c.sections), qa: qaOf(c), sections: JSON.parse(JSON.stringify(c.sections)) }; render(); }
   return S.cv[c.id]; }
-function touch(){ S.cv[card().id].stamp = String(Date.now()); st("cv", card().id); if (S.rd) delete S.rd[card().id]; save(); }
+function touch(){ const id = card().id; S.cv[id].stamp = String(Date.now()); st("cv", id); if (S.rd) delete S.rd[id]; save();
+  const h = hist(id); h.u.push(h.cur); if (h.u.length > HMAX) h.u.shift(); h.r.length = 0; h.cur = cvSnap(id); }
+/* 取り消し・やり直し：このカードの「直し(S.cv)」の、保存のたびの状態を、最大 HMAX 回分ためておく（画面を閉じると消える） */
+const HIST = {}, HMAX = 50;
+function cvSnap(id){ return JSON.stringify(S.cv[id] || null); }
+function hist(id){ return HIST[id] || (HIST[id] = { u:[], r:[], cur: cvSnap(id) }); }
+function undoCard(redo){
+  const c = card(); if (!c) return false; const h = hist(c.id), from = redo ? h.r : h.u, to = redo ? h.u : h.r;
+  if (!from.length){ toast(redo ? "やり直せる操作がありません" : "戻せる操作がありません（保存した直しだけ戻せます）", ""); return false; }
+  to.push(h.cur); const snap = from.pop(), v = JSON.parse(snap);
+  if (v){ v.stamp = String(Date.now()); S.cv[c.id] = v; h.cur = JSON.stringify(v); } else { delete S.cv[c.id]; h.cur = "null"; }
+  st("cv", c.id); save(); edEl = null; edU = -1; if (txMode){ blkLevel = ""; blkU = null; blkDraw(); }
+  $("editMsg").textContent = redo ? "やり直しました。" : "ひとつ前の状態に戻しました。"; load(false, true); return true;
+}
 function sayOf(runs){ return runs.filter(r => !r.n).map(r => r.ch).join("").replace(/\n/g, "、").replace(/[→↓]+/g, "、").replace(/、{2,}/g, "、").replace(/([。（「])、/g, "$1").replace(/^[、\s]+|[、\s]+$/g, ""); }
 function hasText(runs){ return runs.some(r => /[^\s]/.test(r.ch)); }
 function colOf(r){ return (r.b.p && r.p.c) || ({ reason:"c", norm:"y" })[r.b.t] || ""; }
@@ -742,11 +755,11 @@ function setCaret(a, b){
   if (sa){ r.setStart(sa[0], sa[1]); r.setEnd((sb || sa)[0], (sb || sa)[1]); } else { r.selectNodeContents(edEl); r.collapse(false); }
   const s = getSelection(); s.removeAllRanges(); s.addRange(r);
 }
-function redraw(runs, a, b){ edEl.innerHTML = htmlOf(runs, true); edEl.focus(); setCaret(a, b); lastSel = [a, b]; }
+function redraw(runs, a, b){ edEl._dirty = true; edEl.innerHTML = htmlOf(runs, true); edEl.focus(); setCaret(a, b); lastSel = [a, b]; }
 function openEd(u){
   const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (!pt) return;
   if (playing) stop();
-  edEl = pt; edU = u; lastSel = null;
+  edEl = pt; edU = u; lastSel = null; pt._dirty = false; pt.addEventListener("input", () => { pt._dirty = true; });
   pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.focus();
   pt.addEventListener("beforeinput", e => {                            /* 改行キー：その場に改行の文字を入れる */
     if (e.inputType !== "insertParagraph" && e.inputType !== "insertLineBreak") return;
@@ -754,6 +767,38 @@ function openEd(u){
     const runs = runsOf(edEl), a = Math.min(v[0], v[1]), b = Math.max(v[0], v[1]);
     runs.splice(a, b - a, { ch:"\n" }); redraw(runs, a + 1, a + 1); });
   pt.addEventListener("input", () => { if (edEl && edEl.querySelector("br,div,p")){ const v = selNow(), runs = runsOf(edEl); redraw(runs, v ? v[0] : runs.length, v ? v[1] : runs.length); } });
+}
+/* ---- ブロックのコピー・切り取り・貼り付け・削除 ---- */
+let blkClip = null;
+function pendingSave(u){
+  if (!edEl) return true;
+  const runs = trimRuns(runsOf(edEl)); if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return false; }
+  if (htmlOf(runs, false) !== normH(refs[u].p.h)){ const cv = ensureCv(), was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); }
+  return true;
+}
+function insertBelow(u, np){ const cv = ensureCv(), R = refs[u]; R.sec.rows.splice(R.sec.rows.indexOf(R.row) + 1, 0, { b:[np] }); if (np.s && posOf(u) < cv.qa) cv.qa++; }
+function blkCopy(u){
+  const R = u != null ? refs[u] : null; if (!R){ $("editMsg").textContent = "コピーするブロックを、先に選んでください。"; return false; }
+  const h = edEl && u === edU ? htmlOf(trimRuns(runsOf(edEl)), false) : R.p.h;
+  blkClip = { h, s: R.p.s || "", c: R.p.c || "", t: R.b.t || "", plain: plainOf(h).trim() }; return true;
+}
+function blkPaste(){
+  if (!blkClip){ $("editMsg").textContent = "貼り付けるブロックがありません。先にコピーか切り取りをしてください。"; return; }
+  const u = edU >= 0 ? edU : blkU; if (u == null || !refs[u]){ $("editMsg").textContent = "貼り付け先のブロックを、先に選んでください（その下に入ります）。"; return; }
+  if (!pendingSave(u)) return;
+  const np = { h: blkClip.h, x: 1 }; if (blkClip.s) np.s = blkClip.s; if (blkClip.c) np.c = blkClip.c; const t = blkClip.t || refs[u].b.t; if (t) np.t = t;
+  insertBelow(u, np); touch(); $("editMsg").textContent = "選んでいたブロックの下に、貼り付けました。"; toast("貼り付けました", "ok"); closeEd();
+}
+function delBlock(u, noConfirm){
+  const cv0 = ensureCv(), R = u != null ? refs[u] : null; if (!R){ $("editMsg").textContent = "消すブロックを、先に選んでください。"; return; }
+  if (cv0.qa <= 2 && posOf(u) < cv0.qa){ $("editMsg").textContent = "表面の最後のブロックは消せません。"; return; }
+  if (flatRows(cv0.sections).length <= 2 && !(R.b.p && R.b.p.length > 1)){ $("editMsg").textContent = "ブロックが少なすぎて、これ以上は消せません。"; return; }
+  if (!noConfirm && !window.confirm("このブロックを消します。よいですか？\n（「もとに戻す」か、「このカードの直しを全部取り消す」で、元に戻せます）")) return;
+  const wasS = R.p.s, pos = posOf(u);
+  if (R.b.p && R.b.p.length > 1) R.b.p.splice(R.b.p.indexOf(R.p), 1);
+  else { R.row.b.splice(R.row.b.indexOf(R.b), 1); if (!R.row.b.length){ R.sec.rows.splice(R.sec.rows.indexOf(R.row), 1); if (!R.sec.rows.length) cv0.sections.splice(cv0.sections.indexOf(R.sec), 1); } }
+  if (wasS && pos < cv0.qa) cv0.qa--;
+  touch(); $("editMsg").textContent = "ブロックを消しました。"; toast("ブロックを消しました", "ok"); closeEd();
 }
 function mergeInto(u, now){
   const cv = ensureCv(), A = refs[u - 1], B = refs[u];
@@ -804,27 +849,17 @@ function edAct(a){
     mergeInto(v, nextRuns); touch(); $("editMsg").textContent = ""; closeEd(); return;
   }
   if (a === "add"){
-    const u = edU, runs = trimRuns(runsOf(edEl)); if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return; }
-    const changed = htmlOf(runs, false) !== normH(refs[u].p.h);
-    const cv = ensureCv(); if (changed){ const was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); }
-    const { b, row, sec } = refs[u], np = {}; setPart(np, Array.from("（新しいブロック：文を書き換えてください）").map(ch => ({ ch, c:"", m:"", b:0, n:0 })));
-    if (b.t) np.t = b.t;
-    sec.rows.splice(sec.rows.indexOf(row) + 1, 0, { b:[np] });
-    if (posOf(u) < cv.qa) cv.qa++;
+    const u = edU; if (!pendingSave(u)) return;
+    const np = {}; setPart(np, Array.from("（新しいブロック：文を書き換えてください）").map(ch => ({ ch, c:"", m:"", b:0, n:0 })));
+    if (refs[u].b.t) np.t = refs[u].b.t; insertBelow(u, np);
     touch(); $("editMsg").textContent = "下に新しいブロックを足しました（直列）。足したブロックをタップして、文を書き換えてください。"; toast("下にブロックを足しました", "ok"); closeEd(); return;
   }
-  if (a === "del"){
-    const u = edU, cv0 = ensureCv(), R = refs[u];
-    if (!R){ return; }
-    if (cv0.qa <= 2 && posOf(u) < cv0.qa){ $("editMsg").textContent = "表面の最後のブロックは消せません。"; return; }
-    if (flatRows(cv0.sections).length <= 2 && !(R.b.p && R.b.p.length > 1)){ $("editMsg").textContent = "ブロックが少なすぎて、これ以上は消せません。"; return; }
-    if (!window.confirm("このブロックを消します。よいですか？\n（あとで「このカードの直しを全部取り消す」で、元に戻せます）")) return;
-    const wasS = R.p.s, pos = posOf(u);
-    if (R.b.p && R.b.p.length > 1) R.b.p.splice(R.b.p.indexOf(R.p), 1);
-    else { R.row.b.splice(R.row.b.indexOf(R.b), 1); if (!R.row.b.length){ R.sec.rows.splice(R.sec.rows.indexOf(R.row), 1); if (!R.sec.rows.length) cv0.sections.splice(cv0.sections.indexOf(R.sec), 1); } }
-    if (wasS && pos < cv0.qa) cv0.qa--;
-    touch(); $("editMsg").textContent = "ブロックを消しました。"; toast("ブロックを消しました", "ok"); closeEd(); return;
-  }
+  if (a === "del"){ delBlock(edU >= 0 ? edU : blkU, false); return; }
+  if (a === "copy"){ const u = edU >= 0 ? edU : blkU; if (blkCopy(u)) toast("ブロックをコピーしました（「下に貼り付け」か Ctrl+V で、選んでいるブロックの下に入ります）", "ok", 3500); return; }
+  if (a === "cut"){ const u = edU >= 0 ? edU : blkU; if (!blkCopy(u)) return; delBlock(u, true); return; }
+  if (a === "paste"){ blkPaste(); return; }
+  if (a === "undo"){ if (edEl && edEl._dirty){ try { document.execCommand("undo"); } catch(e){} } else undoCard(false); return; }
+  if (a === "redo"){ if (edEl && edEl._dirty){ try { document.execCommand("redo"); } catch(e){} } else undoCard(true); return; }
   const v = selNow() || lastSel;
   if (a === "nall"){ const runs = runsOf(edEl), all = runs.filter(r => r.ch !== "\n"), on = !all.every(r => r.n); all.forEach(r => r.n = on ? 1 : 0); $("editMsg").textContent = on ? "この文ぜんぶを「音声なし」にしました（保存すると反映されます）。" : "この文の「音声なし」を戻しました（保存すると反映されます）。"; redraw(runs, 0, 0); return; }
   const runs = runsOf(edEl), noSel = !v || v[0] === v[1];
@@ -877,7 +912,7 @@ function setTx(v){
 }
 $("blkEnd").onclick = () => setTx(false);
 $("blkUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
-  delete S.cv[c.id]; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの直しを取り消しました。"; load(false, true); };
+  const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの直しを取り消しました。"; load(false, true); };
 /* 長押し（PCは右クリック）：編集を始めて、そのブロックのメニューを出す */
 function blkMenu(u){
   if (!txMode) setTx(true);
@@ -906,6 +941,7 @@ function blkDraw(){
   const sample = (() => { const pt = board.querySelector(".pt.pick,.pt.ed"); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 18) : ""; })();
   if (blkLevel === "0"){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
+    [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => add(t, () => edAct(a), "", draft && a !== "undo" && a !== "redo").dataset.a = a);
     add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft);
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
@@ -935,6 +971,8 @@ function blkDraw(){
     [["split","ここで分ける"],["merge","前の文とつなげる"]].concat(first ? [] : yk ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   } else {
     if (blkLevel === "text"){
+      { const l = el("span", "lab"); l.textContent = "操作"; body.append(l); }
+      [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
       [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
     }
     if (blkLevel === "text"){
@@ -1382,7 +1420,7 @@ let thinkDone = false, gradedNow = false, pendNext = null, pre = null, resumePos
 try { resumePos = JSON.parse(localStorage.getItem("rp_pos") || "null"); } catch(e){}
 async function load(autoplay, keep, pre){
   const my = ++tok; const c = card(), y0 = window.scrollY; if (!keep) secEd = -1;
-  S.last = c.id; save(); $("selRd").value = reader(c);
+  S.last = c.id; save(); $("selRd").value = reader(c); hist(c.id);
   if (window.speechSynthesis) speechSynthesis.cancel();
   endThink(false); shownTo = -1; opened = new Set(); allShown = false; $("sug").hidden = true;
   if (!pre) au.pause(); thinkDone = false; if (!keep){ treeSel = 0; gradedNow = false; pendNext = null; $("gr").classList.remove("need"); } cur = -1; render(); window.scrollTo(0, keep ? y0 : 0);
@@ -1825,7 +1863,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251300";
+const VER = "版 202611251330";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2244,6 +2282,20 @@ async function init(){
   return true;
 }
 init();
+
+/* ---- B5: 取り消し(Ctrl+Z)・やり直し(Ctrl+Y)・ブロックのコピー(Ctrl+C)・切り取り(Ctrl+X)・貼り付け(Ctrl+V)。文字を選んでいるとき・文字を打ち直したあと・入力欄の中は、ブラウザ標準の動き */
+const blkKeysOn = () => txMode && !dbMode && blkLevel !== "tree" && blkLevel !== "frame" && (blkU != null || edU >= 0);
+const selCollapsed = () => { const g = getSelection(); return !g || !g.rangeCount || g.isCollapsed; };
+const inField = () => { const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); };
+document.addEventListener("keydown", e => {
+  if (!txMode || dbMode || blkLevel === "tree" || blkLevel === "frame" || e.isComposing || e.altKey || !(e.ctrlKey || e.metaKey) || inField()) return;
+  const k = e.key.toLowerCase(), dirty = !!(edEl && edEl._dirty);
+  if (k === "z" && !e.shiftKey){ if (dirty) return; e.preventDefault(); undoCard(false); }
+  else if (k === "y" || (k === "z" && e.shiftKey)){ if (dirty) return; e.preventDefault(); undoCard(true); }
+});
+document.addEventListener("copy", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; if (!blkCopy(edU >= 0 ? edU : blkU)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); toast("ブロックをコピーしました（Ctrl+V か「下に貼り付け」で、選んでいるブロックの下に入ります）", "ok", 3500); });
+document.addEventListener("cut", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; const u = edU >= 0 ? edU : blkU; if (!blkCopy(u)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); delBlock(u, true); });
+document.addEventListener("paste", e => { if (!blkKeysOn() || inField() || !blkClip || !selCollapsed()) return; const t = (e.clipboardData.getData("text/plain") || "").trim(); if (t !== blkClip.plain) return; e.preventDefault(); blkPaste(); });
 </script>
 </body>
 </html>
