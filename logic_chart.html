@@ -446,8 +446,8 @@ body{padding-bottom:215px}
     </details>
     <details class="panel" id="expTop"><summary>📤 エクスポート</summary>
       <h3>直した内容（PC用）</h3>
-      <p class="small">文字・図・タグ・重要度・科目の直しを、PCに渡すファイルにします（Googleドライブと同期していれば、同期だけでも渡ります）。</p>
-      <div class="act"><button class="grad" id="editOut">直した内容を書き出す</button></div>
+      <p class="small">文字・図・タグ・重要度・科目・メモ・補足・再生順の直しは、「☁ Googleドライブと同期」で渡ります。控えを取るときは、ドライブ logic_chart_sync の『編集データ.json』をコピーしてください（「改行を直す」の直しは同期に入りません）。</p>
+      <div class="act" hidden><button class="grad" id="editOut" hidden>直した内容を書き出す</button></div>
       <div class="small" id="editCnt"></div><p class="small" id="outMsg"></p>
       <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
       <label class="small" id="edAuLab" hidden>直したカードの音声
@@ -1951,7 +1951,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251551";
+const VER = "版 202611251651";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
