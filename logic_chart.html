@@ -199,6 +199,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .tgs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 2px;align-items:center}
 .tg{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--btnline);background:var(--btn);border-radius:999px;padding:2px 4px 2px 10px;font-size:12.5px}
 .tg button,.tgadd{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:3px 6px}
+.tg .tgn{padding:3px 6px 3px 0}.tg.auto{padding-right:10px;border-style:dashed;background:#3a4a35;border-color:#5c7a52}.tg.auto .tgn{padding-right:0}
 .tgadd{border:1px dashed var(--btnline);border-radius:999px;font-size:12.5px;padding:3px 10px}
 #tgNew{margin:4px 0 6px}
 .n{color:var(--gray)!important;font-style:italic;border-bottom:1px dotted var(--gray)}
@@ -1307,18 +1308,29 @@ const sidx = {};
 function normQ(t){ return String(t || "").normalize("NFKC").toLowerCase(); }
 function plainQuick(h){ return String(h).replace(/<br>/g, " ").replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"); }
 function tagsOf(c){ return S.tags[c.id] || c.tags || []; }
+/* 起案チェックから自動で付くタグ（出題・関連判例の名前）。S.tags には入れない（取り込んだ起案データから毎回作る）。押すと絞り込み、×では外せない */
+function autoTagsOf(c){
+  if (!S.kian || !Object.keys(S.kian).length) return [];
+  if (!KMAP || KMAP.ref !== CARDS) kBuild();
+  const ents = KMAP.per[c.id]; if (!ents || !ents.length) return [];
+  const out = []; const add = t => { t = String(t || "").trim(); if (t && !out.includes(t)) out.push(t); };
+  ents.forEach(e => { const y = e.yr || ""; if (y) add(y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"); });
+  ents.forEach(e => (e.r.hj || []).forEach(h => add(h.n)));
+  return out;
+}
+function allTagsOf(c){ const u = tagsOf(c), a = autoTagsOf(c); return a.length ? u.concat(a.filter(t => !u.includes(t))) : u; }
 function sameArr(a, b){ return a.length === b.length && a.every((v, i) => v === b[i]); }
 function indexOf(c){
-  const v = S.cv[c.id], key = (v ? v.stamp : "") + "|" + deckOf(c) + "|" + tagsOf(c).join(","), e = sidx[c.id];
+  const v = S.cv[c.id], key = (v ? v.stamp : "") + "|" + deckOf(c) + "|" + allTagsOf(c).join(","), e = sidx[c.id];
   if (e && e.key === key) return e;
   const sents = []; (v ? v.sections : c.sections).forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.h) sents.push(plainQuick(p.h)); }))));
-  const norm = normQ([c.title, deckOf(c), tagsOf(c).join(" ")].concat(sents).join("\u0002")).replace(/[\s\u3000]+/g, "");
+  const norm = normQ([c.title, deckOf(c), allTagsOf(c).join(" ")].concat(sents).join("\u0002")).replace(/[\s\u3000]+/g, "");
   return sidx[c.id] = { key, sents, norm };
 }
 function words(){ return normQ(S.q).split(/\s+/).filter(Boolean); }
 function qOk(c){ if (!S.q) return true; const w = words(), n = indexOf(c).norm; return w.every(x => n.includes(x)); }
 function tagOk(c){
-  if (!S.tagSel.length) return true; const t = tagsOf(c);
+  if (!S.tagSel.length) return true; const t = allTagsOf(c);
   const has = k => k === NOTAG ? !t.length : t.includes(k);
   return S.tagMode === "all" ? S.tagSel.every(has) : S.tagSel.some(has);
 }
@@ -1345,13 +1357,13 @@ $("qIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); doSearch
 $("qIn").onchange = doSearch;
 $("qClr").onclick = () => { S.q = ""; sresOpen = false; S.tagSel = []; $("qIn").value = ""; save(); renderTagFilter(); refilter(); };
 $("tagMode").onchange = e => { S.tagMode = e.target.value; save(); refilter(); };
-function allTags(){ const n = {}; CARDS.forEach(c => tagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
+function allTags(){ const n = {}; CARDS.forEach(c => allTagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
 function renderTagFilter(){
   const box = $("fTag"), n = allTags(), names = Object.keys(n).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
   S.tagSel = S.tagSel.filter(t => t === NOTAG || t in n); box.innerHTML = "";
   $("tagMode").hidden = !names.length;
   if (!names.length){ const p = el("span", "small"); p.textContent = "まだタグがありません。カードの題名の下の「＋タグ」から付けられます。"; box.append(p); return; }
-  const none = CARDS.filter(c => !tagsOf(c).length).length;
+  const none = CARDS.filter(c => !allTagsOf(c).length).length;
   [NOTAG].concat(names).forEach(t => { const b = el("button"); b.textContent = t === NOTAG ? "タグなし " + none : t + " " + n[t];
     b.setAttribute("aria-pressed", S.tagSel.includes(t) ? "true" : "false");
     b.onclick = () => { S.tagSel = S.tagSel.includes(t) ? S.tagSel.filter(v => v !== t) : S.tagSel.concat([t]); save(); renderTagFilter(); refilter(); };
@@ -1368,16 +1380,18 @@ function addTags(raw){
   if (!sameArr(cur, tagsOf(c))) setTags(c, cur);
   if (over) $("editMsg").textContent = "1枚に付けられるタグは12個までです。";
 }
+function tagPick(t){ S.tagSel = [t]; save(); renderTagFilter(); refilter(); toast("タグ「" + t + "」が付いたカードに絞り込みました（解除は「検索とタグの絞り込みを外す」）", "ok", 3000); }
 function renderTags(keep){
   const c = card(), box = $("tgs"); box.innerHTML = ""; if (!keep) $("tgNew").hidden = true;
-  tagsOf(c).forEach(t => { const x = el("span", "tg"); x.append(document.createTextNode(t));
+  tagsOf(c).forEach(t => { const x = el("span", "tg"); const nb = el("button", "tgn"); nb.type = "button"; nb.textContent = t; nb.title = "押すと、このタグが付いたカードに絞り込みます"; nb.onclick = () => tagPick(t); x.append(nb);
     const r = el("button"); r.textContent = "×"; r.setAttribute("aria-label", t + "を外す"); r.onclick = () => setTags(c, tagsOf(c).filter(v => v !== t)); x.append(r); box.append(x); });
+  autoTagsOf(c).filter(t => !tagsOf(c).includes(t)).forEach(t => { const x = el("span", "tg auto"); const nb = el("button", "tgn"); nb.type = "button"; nb.textContent = t; nb.title = "起案チェックから自動で付いたタグ。押すと、このタグが付いたカードに絞り込みます"; nb.onclick = () => tagPick(t); x.append(nb); box.append(x); });
   const a = el("button", "tgadd"); a.textContent = "＋タグ";
   a.onclick = () => { const h = $("tgNew").hidden = !$("tgNew").hidden; if (!h){ renderSug(); $("tgIn").focus(); } }; box.append(a);
   if (!$("tgNew").hidden) renderSug();
 }
 function renderSug(){
-  const c = card(), have = tagsOf(c), n = allTags(), box = $("tgSug"); box.innerHTML = "";
+  const c = card(), have = allTagsOf(c), n = allTags(), box = $("tgSug"); box.innerHTML = "";
   Object.keys(n).filter(t => !have.includes(t)).sort((a, b) => n[b] - n[a]).slice(0, 14).forEach(t => { const b = el("button"); b.textContent = t; b.onclick = () => addTags(t); box.append(b); });
 }
 $("tgAdd").onclick = () => { addTags($("tgIn").value); $("tgIn").value = ""; $("tgIn").focus(); };
@@ -1879,7 +1893,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251445";
+const VER = "版 202611251500";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2326,8 +2340,8 @@ $("memoIn").onblur = memoFlush;
 window.addEventListener("pagehide", memoFlush);
 
 /* ---------- 起案チェック（CSV）：出題年度・関連判例を上、補足（拾った事実・拾い漏れ）を下に出す。S.kian[ファイル名] = { yr, at, rows:[{ q:設問, pt:出題趣旨, fa:拾った事実, mi:拾い漏れ, ro:[論証名], hj:[{ n:判例名, u:リンク, p:パス }], yr }] } ---------- */
-let KMAP = null;
-const kn = t => String(t || "").normalize("NFKC").replace(/\s+/g, "").trim();
+var KMAP = null;
+function kn(t){ return String(t || "").normalize("NFKC").replace(/\s+/g, "").trim(); }
 function kYear(name){
   const m = String(name || "").normalize("NFKC").match(/(?:^|[^A-Za-z])([RH])(\d{1,2})(?![0-9])/i); if (!m) return "";
   const n = +m[2], y = m[1].toUpperCase() === "R" ? 2018 + n : 1988 + n;
@@ -2381,9 +2395,9 @@ $("kIn").onclick = () => $("kFile").click();
 $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const out = $("kMsg"); out.textContent = "読み込み中…";
   try { const buf = await f.arrayBuffer(); let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e2){ text = new TextDecoder("shift_jis").decode(buf); }
     const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
-    toast("起案チェックを取り込みました", "ok"); renderKian();
+    toast("起案チェックを取り込みました", "ok"); renderKian(); renderTags(true); renderTagFilter(); refilter();
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
-$("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); $("kMsg").textContent = "消しました。"; };
+$("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
 </script>
 </body>
 </html>
