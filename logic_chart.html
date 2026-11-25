@@ -132,6 +132,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .pt.q{font-size:13px}
 .c{color:var(--cyan)} .y{color:var(--yellow)}
 .recline{margin:2px 0}
+.rdsel{margin-top:2px;font-size:13px}
 .pick{width:100%;box-sizing:border-box;min-height:44px;line-height:1.5;margin:8px 0 6px;padding:10px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:14px}
 .flag{font-size:12.5px;color:#b3261e;margin:4px 0}
 .pt.y{color:var(--yellow)}
@@ -412,7 +413,7 @@ body{padding-bottom:215px}
       <div class="act"><button class="grad" id="editOut">直した内容を書き出す</button></div>
       <div class="small" id="editCnt"></div><p class="small" id="outMsg"></p>
       <textarea id="editTxt" readonly hidden aria-label="書き出した内容"></textarea>
-      <label class="small" id="edAuLab">直したカードの音声
+      <label class="small" id="edAuLab" hidden>直したカードの音声
         <select class="mini" id="selEdAu" aria-label="文字を直したカードの音声">
           <option value="vv">VOICEVOX（直す前の音声のまま）</option>
           <option value="tts">端末の読み上げ（直した文のとおり）</option>
@@ -437,6 +438,7 @@ body{padding-bottom:215px}
         <div id="tgSug"></div>
       </div>
       <select class="pick" id="pick" aria-label="カードを選ぶ"></select>
+      <select class="pick rdsel" id="selRd" aria-label="このカードの読み手"><option value="vv">読み手：VOICEVOX（PCで作った音声）</option><option value="tts">読み手：端末の読み上げ（Edge なら Microsoft の声）</option></select>
       <div class="flag" id="flag" hidden></div>
       <div class="small" id="src"></div>
     </header>
@@ -556,7 +558,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
@@ -676,11 +678,13 @@ let secEd = -1;
 let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0, treeOpen = false, treeSz = 1, treeFlash = 0;
 let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
 function edited(c){ return !!S.cv[c.id]; }
+/* 読み手：vv＝PCで作ったVOICEVOXの音声、tts＝端末の読み上げ（Edgeなら Microsoft の声）。カードごとに選べる。選んでいなければ、文言を直したカードは tts、そのほかは vv */
+function reader(c){ const r = S.rd && S.rd[c.id]; return r === "vv" || r === "tts" ? r : (edited(c) ? "tts" : "vv"); }
 function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEach(row => row.b.forEach(b => (b.p || [b]).forEach(p => { if (p.s) out.push(nows(plainOf(p.h))); })))); return out.join("|"); }
 function ensureCv(){ const c = card();
   if (!S.cv[c.id]){ S.cv[c.id] = { sig: sigOf(c.sections), qa: qaOf(c), sections: JSON.parse(JSON.stringify(c.sections)) }; render(); }
   return S.cv[c.id]; }
-function touch(){ S.cv[card().id].stamp = String(Date.now()); st("cv", card().id); save(); }
+function touch(){ S.cv[card().id].stamp = String(Date.now()); st("cv", card().id); if (S.rd) delete S.rd[card().id]; save(); }
 function sayOf(runs){ return runs.filter(r => !r.n).map(r => r.ch).join("").replace(/\n/g, "、").replace(/[→↓]+/g, "、").replace(/、{2,}/g, "、").replace(/([。（「])、/g, "$1").replace(/^[、\s]+|[、\s]+$/g, ""); }
 function hasText(runs){ return runs.some(r => /[^\s]/.test(r.ch)); }
 function colOf(r){ return (r.b.p && r.p.c) || ({ reason:"c", norm:"y" })[r.b.t] || ""; }
@@ -822,12 +826,15 @@ function edAct(a){
   }
   const v = selNow() || lastSel;
   if (a === "nall"){ const runs = runsOf(edEl), all = runs.filter(r => r.ch !== "\n"), on = !all.every(r => r.n); all.forEach(r => r.n = on ? 1 : 0); $("editMsg").textContent = on ? "この文ぜんぶを「音声なし」にしました（保存すると反映されます）。" : "この文の「音声なし」を戻しました（保存すると反映されます）。"; redraw(runs, 0, 0); return; }
-  if (!v || v[0] === v[1]){ $("editMsg").textContent = "色や太字、音声なしを変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
-  const runs = runsOf(edEl), lo = Math.min(v[0], v[1]), hi = Math.max(v[0], v[1]), part = runs.slice(lo, hi).filter(r => r.ch !== "\n");
+  const runs = runsOf(edEl), noSel = !v || v[0] === v[1];
+  if (noSel && txMode && blkLevel === "text"){ $("editMsg").textContent = "文字を選ばなかったので、このブロック全体に変更しました（一部だけ変えたいときは、文字を長押しして範囲を選んでから押します）。"; }
+  else if (noSel){ $("editMsg").textContent = "色や太字、音声なしを変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
+  else $("editMsg").textContent = "";
+  const lo = noSel ? 0 : Math.min(v[0], v[1]), hi = noSel ? runs.length : Math.max(v[0], v[1]), part = runs.slice(lo, hi).filter(r => r.ch !== "\n");
   if (a === "b"){ const on = !part.every(r => r.b); part.forEach(r => r.b = on ? 1 : 0); }
   else if (a === "n"){ const on = !part.every(r => r.n); part.forEach(r => r.n = on ? 1 : 0); }
   else { const [k, val] = a.split(":"); part.forEach(r => r[k] = val); }
-  $("editMsg").textContent = ""; redraw(runs, lo, hi);
+  redraw(runs, lo, hi);
 }
 function commit(){
   if (!edEl) return true;
@@ -929,7 +936,13 @@ function blkDraw(){
     if (blkLevel === "text"){
       [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
     }
-    (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
+    if (blkLevel === "text"){
+      const lab = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
+      lab("文字色"); [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
+      lab("ハイライト"); [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","なし"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
+      add("太字", () => edAct("b")).dataset.a = "b";
+      lab("音声"); add("音声なし：切替", () => edAct("n")).dataset.a = "n"; add("この文ぜんぶ音声なし：切替", () => edAct("nall")).dataset.a = "nall";
+    } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   }
   add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
   if (blkLevel === "text") add("その他の操作（図・音声・ツリー・枠）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
@@ -996,6 +1009,7 @@ function selShowUpdate(){
   s.textContent = l1 + "　／　追加先：" + (cur ? (cur.kind === "group" ? "括弧" : cur.text ? "「" + fullOf(cur.text).slice(0, 14) + (fullOf(cur.text).length > 14 ? "…" : "") + "」（入れると差し替え）" : "空の行（選んだ文字が、ここに入ります）") + "　※別の行は、下のツリーでタップ" : "なし（最初は「効果」を作ります）");
   document.querySelectorAll("#blkBody button[data-mk]").forEach(b => { const k = b.dataset.mk; b.disabled = !ok || (k !== "判断" && !cur) || ((k === "趣旨" || k === "入") && cur && cur.kind === "group"); });
 }
+$("selRd").onchange = e => { const c = card(); if (!c) return; if (!S.rd) S.rd = {}; S.rd[c.id] = e.target.value; save(); if (playing) stop(); load(false, true); };
 $("selEdAu").onchange = e => { S.edAu = e.target.value; save(); load(false, true); };
 /* 取り込み直したとき：PCに入った直しは片付ける。前の版の「文字の直し」（S.tx）は、新しい形（S.cv）に移す */
 function tidyTx(){
@@ -1363,7 +1377,7 @@ let thinkDone = false, gradedNow = false, pendNext = null, pre = null, resumePos
 try { resumePos = JSON.parse(localStorage.getItem("rp_pos") || "null"); } catch(e){}
 async function load(autoplay, keep, pre){
   const my = ++tok; const c = card(), y0 = window.scrollY; if (!keep) secEd = -1;
-  S.last = c.id; save();
+  S.last = c.id; save(); $("selRd").value = reader(c);
   if (window.speechSynthesis) speechSynthesis.cancel();
   endThink(false); shownTo = -1; opened = new Set(); allShown = false; $("sug").hidden = true;
   if (!pre) au.pause(); thinkDone = false; if (!keep){ treeSel = 0; gradedNow = false; pendNext = null; $("gr").classList.remove("need"); } cur = -1; render(); window.scrollTo(0, keep ? y0 : 0);
@@ -1372,7 +1386,7 @@ async function load(autoplay, keep, pre){
   hasAudio = false; curBlob = null; triedData = false; let why = "";
   try {
     if (pre){ objUrl = pre.url; curBlob = pre.blob; hasAudio = true; au.defaultPlaybackRate = S.rate; au.playbackRate = S.rate; }
-    else if (edited(c) && S.edAu === "tts") why = "直したカードなので、直した文を端末の読み上げで読んでいます（PCで「作る.bat」を実行するとVOICEVOXの声になります）";
+    else if (reader(c) === "tts") why = edited(c) ? "直したカードなので、直した文を端末の読み上げ（Microsoft など）で読んでいます（PCで「作る.bat」を実行すると、VOICEVOXの声に戻せます）" : "読み手で、端末の読み上げ（Microsoft など）を選んでいます";
     else if (!c.au || !DATA.bundles) why = "このカードの音声は、まだPCで作られていません";
     else { const b = await bundle(c.au.b);
       if (!b) why = "音声ファイル「" + DATA.bundles[c.au.b] + "」が取り込まれていません（「カードと音声を取り込み直す」で audio_○○.bin も全部選んでください）";
@@ -1407,7 +1421,7 @@ async function prefetchNext(){
   const i = pi + 1; if (!DATA || i >= list.length) { dropPre(); return; }
   const n = CARDS[list[i]]; if (pre && pre.id === n.id) return;
   dropPre();
-  if (!n.au || !DATA.bundles || (edited(n) && S.edAu === "tts")) return;
+  if (!n.au || !DATA.bundles || reader(n) === "tts") return;
   try { const b = await bundle(n.au.b); if (!b || !list[pi + 1] || CARDS[list[pi + 1]].id !== n.id) return;
     const blob = b.slice(n.au.o, n.au.o + n.au.n, DATA.mime || "audio/mpeg"), url = URL.createObjectURL(blob);
     au2.src = url; au2.defaultPlaybackRate = S.rate; au2.playbackRate = S.rate; au2.load(); pre = { id: n.id, url, blob };
@@ -1806,7 +1820,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251130";
+const VER = "版 202611251230";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
