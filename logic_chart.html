@@ -113,6 +113,12 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .row.ladder>.blk::after{content:"";position:absolute;left:-17px;width:2px;top:-4px;bottom:-4px;background:var(--trace)}
 .row.ladder>.blk:first-of-type::after{top:-6px}
 .row.ladder>.blk:last-child::after{bottom:auto;height:24px}
+.row.ladder>.blk.lf::after{top:18px}
+.row.ladder>.blk.lf:last-child::after{display:none}
+.row .jl{font-size:11px;color:var(--gray);line-height:1.2}
+.row.par>.jl,.row.branch>.jl{position:absolute;top:0;transform:translate(-50%,-50%);background:var(--board,#14161a);padding:0 4px;z-index:1;white-space:nowrap}
+.row.ladder>.jl{margin:-5px 0 -5px -4px}
+.lnrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.lnrow input{flex:1 1 9rem;min-width:7rem;font-size:15px;padding:8px}
 .row.ladder>.blk::before{content:"";position:absolute;left:-17px;top:18px;width:17px;height:2px;background:var(--trace)}
 .row.ladder>.blk.out::before{display:none}
 .row.ladder>.blk.on::after,.row.ladder>.blk.past::after,
@@ -1004,6 +1010,7 @@ function blkGo(level){
   $("editMsg").textContent = "";
   if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; treeOpen = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
   if (level === "frame"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "frame"; frU1 = frU2 = blkU; frWho = "end"; frNameV = ""; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); frMark(); return; }
+  if (level === "line"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "line"; blkDraw(); return; }
   if (level === "0"){ if (edEl) closeEd(); dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = "0"; blkDraw(); renderTree(); return; }
   if (!edEl) openEd(blkU);
   if (!edEl) return; blkLevel = level; blkDraw();
@@ -1019,9 +1026,28 @@ function blkDraw(){
   if (blkLevel === "0"){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
     [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => add(t, () => edAct(a), "", draft && a !== "undo" && a !== "redo").dataset.a = a);
-    add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft);
+    add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字／直列・並列", () => blkGo("line"), "", draft);
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
+  if (blkLevel === "line"){
+    const r = refs[blkU]; if (!r){ blkGo("0"); return; }
+    const row = r.row, ri = r.sec.rows.indexOf(row), bi = row.b.indexOf(r.b), nx = r.sec.rows[ri + 1];
+    ttl.textContent = "矢印・線の文字／直列・並列：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」まわりを直します";
+    const lab = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
+    const field = (id, val, ph, quick, onSave) => { const w = el("div", "lnrow"); const i = el("input"); i.type = "text"; i.id = id; i.maxLength = 12; i.value = val || ""; i.placeholder = ph; i.setAttribute("aria-label", ph); w.append(i);
+      quick.forEach(q => { const b = el("button"); b.type = "button"; b.textContent = q; b.onclick = e => { e.stopPropagation(); i.value = q; }; w.append(b); });
+      const sv = el("button", "go"); sv.type = "button"; sv.textContent = "保存"; sv.onclick = e => { e.stopPropagation(); onSave(i.value.trim()); }; const dl = el("button"); dl.type = "button"; dl.textContent = "消す"; dl.onclick = e => { e.stopPropagation(); onSave(""); }; w.append(sv, dl); body.append(w); };
+    if (ri > 0){ lab("①このブロックの上の矢印の横の文字（例：そこで）"); field("lnVia", row.via, "矢印の文字（空で消す）", ["そこで", "したがって", "しかし"], v => lnOp(x => { if (v) x.row.via = v; else delete x.row.via; }, v ? "矢印の文字を入れました。" : "矢印の文字を消しました。")); }
+    else lab("①このブロックは区切りの最初なので、上に矢印はありません。");
+    if (row.b.length > 1 && bi < row.b.length - 1){ lab("②このブロックと、つながる次のブロックの間の線の文字"); field("lnJl", (row.jl || [])[bi], "線の文字（空で消す）", ["又は", "かつ", "そして"], v => lnOp(x => { const a = (x.row.jl || []).slice(); while (a.length < x.row.b.length - 1) a.push(""); a[x.row.b.indexOf(x.b)] = v; x.row.jl = a.some(Boolean) ? a : undefined; if (!x.row.jl) delete x.row.jl; }, v ? "線の文字を入れました。" : "線の文字を消しました。")); }
+    else lab("②線の文字は、同じ行に並んだブロック（並列）の間に入れられます。下の『並列にする』のあとで入れてください。");
+    lab("③直列・並列");
+    if (row.b.length > 1) add("この行を直列にする（ブロックを上から1つずつに分ける）", () => lnOp(x => { const rows = x.sec.rows, i = rows.indexOf(x.row), first = x.row, parts = first.b.map((b, k) => { const n = { b: [b] }; if (first.fr) n.fr = first.fr.slice(); if (k === 0){ if (first.via) n.via = first.via; if (first.fl) n.fl = first.fl; if (first.lab) n.lab = first.lab; } return n; }); rows.splice(i, 1, ...parts); }, "直列にしました。"));
+    if (nx){ const same = JSON.stringify(row.fr || []) === JSON.stringify(nx.fr || []);
+      add("下のブロックと並列にする（左の線でつなぐ）", () => lnJoin("ladder"), "", !same); add("下のブロックと横に並べる（並列）", () => lnJoin("par"), "", !same);
+      if (!same) { const n = el("div", "small"); n.textContent = "※下の行と枠の入り方が違うので、並列にはできません（先に枠を外すか、同じ枠にそろえてください）。"; body.append(n); } }
+    else lab("下に続くブロックが無いので、『並列にする』は出ません。");
+    add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "frame"){
     const R = frRange(), n = R ? R.hi - R.lo + 1 : 0;
     ttl.textContent = "枠でまとめる：オレンジの点線の行が、枠に入ります（いま " + n + " 行）。" + (frWho === "start" ? "始まりにしたい行の文を、タップしてください。" : "終わりにしたい行の文を、タップしてください。");
@@ -1063,6 +1089,10 @@ function blkDraw(){
   add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
   if (blkLevel === "text") add("その他の操作（図・音声・ツリー・枠）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
 }
+/* ---- 矢印・線の文字／直列・並列。row.via=上の矢印の文字、row.jl=[つながるブロックの間の線の文字…]、row.k=one/par/branch/ladder ---- */
+function lnOp(fn, msg){ const u = blkU; ensureCv(); const x = refs[u]; if (!x) return; fn(x); touch(); blkLevel = "line"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500); }
+function lnJoin(kind){ lnOp(x => { const rows = x.sec.rows, i = rows.indexOf(x.row), nx = rows[i + 1]; if (!nx) return; const jl = (x.row.jl || []).slice(); while (jl.length < x.row.b.length - 1) jl.push(""); if (nx.via) jl.push(nx.via); else jl.push("");
+    while (nx.jl && jl.length < x.row.b.length - 1 + 0) jl.push(""); x.row.b = x.row.b.concat(nx.b); (nx.jl || []).forEach(t => jl.push(t)); const nb = x.row.b.length - 1; while (jl.length < nb) jl.push(""); x.row.k = x.row.b.length > 1 ? (x.row.k === "ladder" && kind === "par" ? "par" : kind) : "one"; if (jl.some(Boolean)) x.row.jl = jl; else delete x.row.jl; rows.splice(i + 1, 1); }, kind === "ladder" ? "下のブロックと並列にしました（左の線でつなぎます）。" : "下のブロックと横に並べました。"); }
 /* ---- 枠でまとめる：行（row）に fr:[枠の印…]、最初の行に fl:{枠の印:名前} を持たせる。図（S.cv）の一部なので、同期・書き出しにそのまま乗る ---- */
 let frU1 = null, frU2 = null, frWho = "end", frNameV = "";
 const flatRows = secs => { const o = []; secs.forEach(sec => sec.rows.forEach(r => o.push(r))); return o; };
@@ -1268,6 +1298,9 @@ function render(){
       const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
       if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
       curRow = row; curSec = sec; row.b.forEach(b => r.append(makeBlock(b)));
+      { const bl = [...r.children].filter(x => x.classList.contains("blk")); if (row.k === "ladder" && bl[0]) bl[0].classList.add("lf");
+        if (row.jl && bl.length > 1) row.jl.forEach((t, i) => { if (!t || i >= bl.length - 1) return; const j = el("span", "jl"); j.textContent = t; j.dataset.i = i;
+          if (row.k === "ladder") r.insertBefore(j, bl[i + 1]); else { j.style.left = ((i + 1) / bl.length * 100) + "%"; r.append(j); } }); }
       s.append(r);
     });
     board.append(s);
@@ -1981,7 +2014,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611252239";
+const VER = "版 202611252242";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
