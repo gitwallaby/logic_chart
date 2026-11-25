@@ -599,7 +599,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, kov:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, kov:{}, kx:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
@@ -624,6 +624,7 @@ async function importFiles(files){
         try { const o = JSON.parse(await f.text()); if (o && (o.study || o.figs || o.tags || o.memo)){ mergeStudy(o.study || {});
           Object.keys(o.memo || {}).forEach(id => { if (!S.memo[id]) S.memo[id] = o.memo[id]; });
           Object.keys(o.kov || {}).forEach(id => { if (!S.kov[id]) S.kov[id] = o.kov[id]; });
+          Object.keys(o.kx || {}).forEach(id => { if (!S.kx[id]) S.kx[id] = o.kx[id]; });
           Object.keys(o.tags || {}).forEach(id => { if (!S.tags[id]) S.tags[id] = o.tags[id]; });
           /* 別の置き場所に引っ越したとき用：まだPCに入れていない直し（図・重要度・科目）も戻す */
           Object.keys(o.figs || {}).forEach(id => { if (!S.cv[id]) S.cv[id] = o.figs[id]; });
@@ -1175,10 +1176,10 @@ function setEditing(v){ if (v && dbMode) dbMode = false; editing = v; $("edit").
 $("edit").onclick = () => setEditing(!editing);
 $("editUndo").onclick = () => { const id = card().id; S.edits = S.edits.filter(e => e.id !== id); save(); render(); };
 $("editOut").onclick = async () => {
-  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.memo).length && !Object.keys(S.kov).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
+  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.memo).length && !Object.keys(S.kov).length && !Object.keys(S.kx).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
   const d = new Date(), z = n => String(n).padStart(2, "0");
   const name = "編集_" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes()) + ".json";
-  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
+  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
   /* claude.ai の中では保存の確認が出る。PCで再生ページ.htmlを直接開いたときは、そのままダウンロードする */
   let dl = null;
   try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch(e){}
@@ -1836,9 +1837,9 @@ $("txtAll").onclick = () => exportCards(false); $("txtChg").onclick = () => expo
 const G_FOLDER = "logic_chart_sync", G_FOLDER_OLD = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
 /* 名前を英語にそろえる前の名前。見つからないときは前の名前で探し、見つかったら新しい名前に直す（ドライブ側を先に直していなくても動く） */
 const OLD_NAME = { "decision_tree_inbox.json": "DB送信.json", "decision_tree_placement.json": "DB配置.json" };
-const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree], ["memo", o => o.memo, () => S.memo], ["kov", o => o.kov, () => S.kov]];
+const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree], ["memo", o => o.memo, () => S.memo], ["kov", o => o.kov, () => S.kov], ["kx", o => o.kx, () => S.kx]];
 let gTok = "", gExp = 0, gBusy = false;
-function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, study: { rev: S.rev, log: S.log } }; }
+function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, study: { rev: S.rev, log: S.log } }; }
 function tsOf(kind, id, store, ts){ const k = kind + ":" + id; return ts && ts[k] ? ts[k] : ((kind === "cv" && store && store[id] && +store[id].stamp) || (kind === "new" && store && store[id] && +store[id].ts) || (kind === "dbq" && store && store[id] && +store[id].ts) || (kind === "tree" && store && store[id] && +store[id].ts) || 0); }
 /* 混ぜる：カード1枚ごとに、直した時刻が新しい方を採る（新しい方が「直しを消した」なら、消した方が勝つ）。戻り値＝この端末が書き換わった数 */
 function mergeSnap(o){
@@ -1938,7 +1939,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251548";
+const VER = "版 202611251549";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2454,24 +2455,45 @@ function kEditor(c, e){
   const rs = el("button", "grad"); rs.textContent = "CSVの内容に戻す"; rs.onclick = () => { if (confirm("この項目の直しを全部消して、取り込んだCSVの内容に戻します。よろしいですか？")) kResetEdit(c, e); };
   row.append(sv, cn, rs); w.append(row); const n = el("div", "small"); n.textContent = "直した項目は、CSVを取り込み直しても上書きされません(直していない項目だけ新しいCSVの内容になります)。"; w.append(n); return w;
 }
+/* 自分で足した補足の項目: S.kx[カードid] = [{ id, n:名前, t:文章 }]。CSVとは関係なく残り、CSVを取り込み直しても消えない。同期あり(kind kx。カード1枚ごとに、新しい方の全体を採用) */
+let kxEd = null;
+function kxList(c){ return (S.kx && S.kx[c.id]) || []; }
+function kxPut(c, arr){ if (!S.kx) S.kx = {}; if (arr.length) S.kx[c.id] = arr; else delete S.kx[c.id]; st("kx", c.id); save(); kxEd = null; renderKian(); }
+function kxForm(c, it){
+  const w = el("div", "kedit"), l1 = el("label"); l1.append(document.createTextNode("項目の名前（例：論点の注意）")); const ni = el("input"); ni.value = it ? it.n : ""; ni.maxLength = 40; l1.append(ni); w.append(l1);
+  const l2 = el("label"); l2.append(document.createTextNode("内容")); const ta = el("textarea"); ta.rows = 4; ta.value = it ? it.t : ""; l2.append(ta); w.append(l2);
+  const row = el("div", "act"); const sv = el("button", "grad"); sv.textContent = "保存";
+  sv.onclick = () => { const n = ni.value.trim(), t = ta.value.trim(); if (!n && !t){ kxEd = null; renderKian(); return; }
+    const arr = kxList(c).slice(), o = { id: it ? it.id : "k" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), n: n || "補足", t };
+    if (it) arr[arr.findIndex(x => x.id === it.id)] = o; else arr.push(o); kxPut(c, arr); };
+  const cn = el("button", "grad"); cn.textContent = "やめる"; cn.onclick = () => { kxEd = null; renderKian(); }; row.append(sv, cn);
+  if (it){ const dl = el("button", "grad"); dl.textContent = "この項目を消す"; dl.onclick = () => { if (confirm("この補足の項目「" + it.n + "」を消します。よろしいですか？")) kxPut(c, kxList(c).filter(x => x.id !== it.id)); }; row.append(dl); }
+  w.append(row); return w;
+}
 function renderKian(){
   const top = $("kTop"), bot = $("kBot"); top.innerHTML = ""; bot.innerHTML = ""; top.hidden = bot.hidden = true;
-  const c = card(); if (!c || !S.kian || !Object.keys(S.kian).length) return;
-  const ents = kEff(c); if (!ents.length) return;
+  const c = card(); if (!c) return;
+  if (renderKian._id !== c.id){ renderKian._id = c.id; kxEd = null; kEd = null; }
+  const ents = (S.kian && Object.keys(S.kian).length) ? kEff(c) : [];
   const yrs = [], hj = new Map(), qs = [];
   ents.forEach(e => { const y = (e.yr || "") ? (e.yr.includes(deckOf(c)) ? e.yr : e.yr + "(" + deckOf(c) + ")") : ""; if (y && !yrs.includes(y)) yrs.push(y);
     (e.r.hj || []).forEach(h => { const k = h.n || h.p; if (k && !hj.has(k)) hj.set(k, h); else if (k && h.p && !hj.get(k).p) hj.get(k).p = h.p; }); qs.push(e); });
   if (yrs.length){ const l = el("span", "kh"); l.append(document.createTextNode("出題：")); yrs.forEach(y => { const b = el("span", "kyr"); b.textContent = y; l.append(b); }); top.append(l); }
-  if (hj.size){ const l = el("span", "kh"); l.append(document.createTextNode("関連判例："));
-    [...hj.values()].forEach(h => { const nm = h.n || "判例"; l.append(kCase(nm, h.p)); }); top.append(l); }
-  { const l = el("span", "kh"); const b = el("button"); b.type = "button"; b.textContent = "✎ 出題・判例・補足を直す"; b.onclick = () => { kEd = qs[0].ek; renderKian(); const k = $("kBot"); if (k.scrollIntoView) k.scrollIntoView({ block: "center" }); }; l.append(b); top.append(l); }
+  if (hj.size){ const l = el("span", "kh"); l.append(document.createTextNode("関連判例：")); [...hj.values()].forEach(h => { const nm = h.n || "判例"; l.append(kCase(nm, h.p)); }); top.append(l); }
+  if (qs.length){ const l = el("span", "kh"); const b = el("button"); b.type = "button"; b.textContent = "✎ 出題・判例・補足を直す"; b.onclick = () => { kEd = qs[0].ek; renderKian(); const k = $("kBot"); if (k.scrollIntoView) k.scrollIntoView({ block: "center" }); }; l.append(b); top.append(l); }
   top.hidden = !top.childNodes.length;
-  const h3 = el("h3"); h3.textContent = "📎 補足（起案より。読み上げません）"; bot.append(h3);
+  const h3 = el("h3"); h3.textContent = "📎 補足（読み上げません）"; bot.append(h3);
   qs.forEach(e => { const d = el("div", "kq");
     if (kEd === e.ek){ d.append(kEditor(c, e)); bot.append(d); return; }
     const add = (lab, t) => { if (!t) return; const b = el("b"); b.textContent = lab; const pre = el("pre"); pre.textContent = t; d.append(b, pre); };
     add("設問", e.r.q); add("出題趣旨が求める要素", e.r.pt); add("起案で拾った事実", e.r.fa); add("拾い漏れの可能性がある事実", e.r.mi);
-    const f = el("div", "small"); f.textContent = "（" + e.src + (e.ed.length ? "・直した項目あり" : "") + "） "; const eb = el("button", "grad"); eb.type = "button"; eb.textContent = "✎ 直す"; eb.onclick = () => { kEd = e.ek; renderKian(); }; f.append(eb); d.append(f); bot.append(d); });
+    const f = el("div", "small"); f.textContent = "（起案より・" + e.src + (e.ed.length ? "・直した項目あり" : "") + "） "; const eb = el("button", "grad"); eb.type = "button"; eb.textContent = "✎ 直す"; eb.onclick = () => { kEd = e.ek; renderKian(); }; f.append(eb); d.append(f); bot.append(d); });
+  kxList(c).forEach(it => { const d = el("div", "kq");
+    if (kxEd === it.id){ d.append(kxForm(c, it)); bot.append(d); return; }
+    const b = el("b"); b.textContent = it.n; const pre = el("pre"); pre.textContent = it.t; d.append(b, pre);
+    const f = el("div", "small"); f.textContent = "（自分で足した項目） "; const eb = el("button", "grad"); eb.type = "button"; eb.textContent = "✎ 直す"; eb.onclick = () => { kxEd = it.id; renderKian(); }; f.append(eb); d.append(f); bot.append(d); });
+  if (kxEd === "new"){ const d = el("div", "kq"); d.append(kxForm(c, null)); bot.append(d); }
+  else { const d = el("div", "act"); const ab = el("button", "grad"); ab.type = "button"; ab.id = "kxAdd"; ab.textContent = "＋補足の項目を足す"; ab.onclick = () => { kxEd = "new"; renderKian(); }; d.append(ab); bot.append(d); }
   bot.hidden = false;
 }
 $("kIn").onclick = () => $("kFile").click();
