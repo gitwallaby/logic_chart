@@ -353,6 +353,10 @@ body{padding-bottom:215px}
 .sech{font-size:15px;margin:14px 0 4px;padding:4px 8px;background:rgba(120,160,150,.18);color:inherit;border-left:3px solid #6a9;border-radius:4px}
 .panel>.sech:first-of-type{margin-top:4px}
 #title .np{font-size:.62em;font-weight:500;color:var(--sub);margin-right:.35em}
+.csbar{display:flex;gap:6px;margin:6px 0}.csbar .cs{flex:1;min-height:42px;font:inherit;font-size:14px;border-radius:10px;border:2px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer;padding:6px 4px}
+.csbar .cs.on{font-weight:bold;color:#111}.csbar .cs-u.on{background:#c9ced6;border-color:#8b929e}.csbar .cs-c.on{background:#ffd966;border-color:#c99a00}.csbar .cs-m.on{background:#ff9a8a;border-color:#d1493a}.csbar .cs-d.on{background:#8fe0a6;border-color:#2f9e55}
+.csb{display:inline-block;border-radius:99px;padding:1px 9px;font-size:12px;border:1px solid var(--btnline)}.csb-c{background:#ffd966;color:#111}.csb-m{background:#ff9a8a;color:#111}.csb-d{background:#8fe0a6;color:#111}.csb-u{background:transparent}
+.scopelab{font-size:13px;margin-right:8px}.plask{margin:8px 0;padding:8px;border:1px solid #c99a00;border-radius:8px;font-size:13px}.plask button{margin-left:6px}
 </style>
 </head>
 <body>
@@ -403,14 +407,16 @@ body{padding-bottom:215px}
         <label><input type="checkbox" value="3">3 ざっくり</label>
         <label><input type="checkbox" value="4">卒業</label>
       </div>
+      <h3>確認の状態（複数選べます。何も選ばなければ全部）</h3>
+      <div class="chk" id="fCs"></div>
       <h3>ほか</h3>
-      <div class="chk"><label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
+      <div class="chk"><label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label></div>
     </details>
-      <p class="small plnote" id="plNote" hidden>再生順（プレイリスト）を使っています。絞り込み・並べ方・シャッフルの設定は、いまは再生に効きません（再生順が優先です）。</p>
       <div class="cbctl cbv"><button class="grad" id="cbvList" aria-pressed="true">一覧</button><button class="grad" id="cbvPl" aria-pressed="false">再生順</button></div>
       <div id="cbListView">
       <div class="cbctl"><label>表の並び:</label><select class="mini" id="cbSort" aria-label="表の並び替え"></select><button class="grad" id="cbDir" aria-label="昇順・降順を切り替え">↑ 昇順</button></div>
       <div class="cbctl"><label><input type="checkbox" id="cbAll">絞り込みに関係なく全部のカードを出す</label></div>
+      <div class="cbctl" id="cbSelBar"><span class="small" id="cbSelN">0 枚選んでいます</span> <button class="grad" id="cbAddTop" type="button">選んだカードを再生順の先頭に追加</button> <button class="grad" id="cbAddEnd" type="button">選んだカードを再生順の最後に追加</button> <button class="grad" id="cbSelClr" type="button">選びを外す</button></div>
       <p class="small" id="cbCnt"></p>
       <div class="cbwrap"><table class="cbt" id="cbT"></table></div>
       <div class="act"><button class="grad" id="cbMore" hidden>50枚ふやす</button></div>
@@ -418,7 +424,7 @@ body{padding-bottom:215px}
       <div id="plView" hidden></div>
       <p class="small">題名を押すと、「プレイヤー」でそのカードが開きます（そのまま直せます）。検索・タグ・科目・重要度・並べ方を変えると、再生する順番もそのとおりに変わります。表の見出しで並び替えるのは、この表の見た目だけです（「表の並び」を「再生の順」にすると、再生する順に並びます）。</p>
     </section>
-    <div class="plsum panel" id="plSum"><span id="plTxt"></span> <button class="grad" id="plBrowse">ブラウザで選び直す</button></div>
+    <div class="plsum panel" id="plSum"><label class="scopelab">再生する範囲 <select class="mini" id="scopeSel" aria-label="再生する範囲"><option value="all">全カード</option><option value="filter">いまの絞り込み</option><option value="pl">再生順（プレイリスト）</option></select></label> <span id="plTxt"></span> <button class="grad" id="plBrowse">ブラウザで選び直す</button></div>
     <details class="panel" id="plSet"><summary>⚙ 再生の設定</summary>
       <h3>自己評価</h3>
       <div class="chk">
@@ -469,6 +475,7 @@ body{padding-bottom:215px}
         </select>
         <span id="pos"></span>
       </div>
+      <div class="csbar" id="csBar" role="radiogroup" aria-label="このカードの確認の状態"></div>
       <div class="tgs" id="tgs"></div>
       <div id="tgNew" hidden>
         <div class="row"><input id="tgIn" maxlength="40" placeholder="新しいタグ（「、」で区切ると複数）" aria-label="新しいタグ"><button id="tgAdd">追加</button></div>
@@ -605,12 +612,29 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, kov:{}, kx:{}, pl:{}, plOn:false, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
-try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, kov:{}, kx:{}, pl:{}, cs:{}, scope:"filter", csSel:[], tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+try { const _raw = JSON.parse(localStorage.getItem("rp_set") || "{}"); Object.assign(S, _raw); if (_raw.plOn && !_raw.scope) S.scope = "pl"; } catch(e){}
+delete S.plOn; delete S.auOnly;      /* 前の版の「この再生順で再生する」と「音声ありだけ」は使わない（再生する範囲の選択に置き換え） */
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
 /* 「いつ直したか」の記録：S.ts["種類:カード番号"] = 直した時刻。Googleドライブの同期で、時刻が新しい方を残すのに使う */
 function st(kind, id){ S.ts[kind + ":" + id] = Date.now(); }
+/* ---------- 確認の状態：S.cs[カードid] = { v:"u|c|m|d" }。記録が無いカードは「未確認」。同期あり(kind cs。カード1枚ごとに、新しい方を採用) ---------- */
+const CSORD = ["u", "c", "m", "d"], CSL = { u: "未確認", c: "確認中", m: "修正必須", d: "完成" };
+function csOf(c){ const r = S.cs && S.cs[c.id]; return r && CSL[r.v] ? r.v : "u"; }
+function csSet(c, v){ if (!S.cs) S.cs = {}; S.cs[c.id] = { v }; st("cs", c.id); save(); }
+function csOk(c){ return !S.csSel.length || S.csSel.includes(csOf(c)); }
+let csDirty = false;
+function renderCs(){
+  const bar = $("csBar"), c = card(); if (!bar || !c) return; bar.innerHTML = ""; const cur = csOf(c);
+  CSORD.forEach(k => { const b = el("button", "cs cs-" + k + (cur === k ? " on" : "")); b.type = "button"; b.textContent = CSL[k]; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", cur === k ? "true" : "false"); b.dataset.cs = k;
+    b.onclick = () => { if (csOf(c) === k) return; csSet(c, k); csDirty = !!S.csSel.length; renderCs(); if ($("app").classList.contains("cb")) renderCb(); }; bar.append(b); });
+}
+function renderCsFilter(){
+  const box = $("fCs"); if (!box) return; box.innerHTML = "";
+  CSORD.forEach(k => { const l = el("label"), i = el("input"); i.type = "checkbox"; i.checked = S.csSel.includes(k); i.value = k; i.onchange = () => { S.csSel = CSORD.filter(x => x === k ? i.checked : S.csSel.includes(x)); save(); csDirty = false; relist(); }; l.append(i, document.createTextNode(CSL[k])); box.append(l); });
+}
+function scopeOf(){ return S.scope === "all" || S.scope === "pl" ? S.scope : "filter"; }
 
 /* ---------- ファイルの保管（この端末のブラウザの中） ---------- */
 function db(){ return new Promise((res, rej) => { const r = indexedDB.open("ronshoPlayer", 1);
@@ -627,11 +651,12 @@ async function importFiles(files){
     let back = 0;
     for (const f of files){ n++; msg("取り込み中… " + n + " / " + files.length + "（" + f.name + "）");
       if (f.name !== "data.json" && /\.json$/i.test(f.name)){            /* 「編集_日時.json」＝学習の記録の控え */
-        try { const o = JSON.parse(await f.text()); if (o && (o.study || o.figs || o.tags || o.memo)){ mergeStudy(o.study || {});
+        try { const o = JSON.parse(await f.text()); if (o && (o.study || o.figs || o.tags || o.memo || o.cs)){ mergeStudy(o.study || {});
           Object.keys(o.memo || {}).forEach(id => { if (!S.memo[id]) S.memo[id] = o.memo[id]; });
           Object.keys(o.kov || {}).forEach(id => { if (!S.kov[id]) S.kov[id] = o.kov[id]; });
           Object.keys(o.kx || {}).forEach(id => { if (!S.kx[id]) S.kx[id] = o.kx[id]; });
           Object.keys(o.pl || {}).forEach(id => { if (!S.pl[id]) S.pl[id] = o.pl[id]; });
+          Object.keys(o.cs || {}).forEach(id => { if (!S.cs[id]) S.cs[id] = o.cs[id]; });
           Object.keys(o.tags || {}).forEach(id => { if (!S.tags[id]) S.tags[id] = o.tags[id]; });
           /* 別の置き場所に引っ越したとき用：まだPCに入れていない直し（図・重要度・科目）も戻す */
           Object.keys(o.figs || {}).forEach(id => { if (!S.cv[id]) S.cv[id] = o.figs[id]; });
@@ -1183,10 +1208,10 @@ function setEditing(v){ if (v && dbMode) dbMode = false; editing = v; $("edit").
 $("edit").onclick = () => setEditing(!editing);
 $("editUndo").onclick = () => { const id = card().id; S.edits = S.edits.filter(e => e.id !== id); save(); render(); };
 $("editOut").onclick = async () => {
-  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.memo).length && !Object.keys(S.kov).length && !Object.keys(S.kx).length && !Object.keys(S.pl).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
+  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.memo).length && !Object.keys(S.kov).length && !Object.keys(S.kx).length && !Object.keys(S.pl).length && !Object.keys(S.cs).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
   const d = new Date(), z = n => String(n).padStart(2, "0");
   const name = "編集_" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes()) + ".json";
-  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
+  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, cs: S.cs, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
   /* claude.ai の中では保存の確認が出る。PCで再生ページ.htmlを直接開いたときは、そのままダウンロードする */
   let dl = null;
   try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch(e){}
@@ -1254,7 +1279,7 @@ function render(){
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
   renderKian();
-  renderMemo();
+  renderMemo(); renderCs();
   update();
 }
 /* ---------- 隠して再生 ---------- */
@@ -1304,7 +1329,7 @@ function groupOf(c){
   if (m === "deck") return { key: "D|" + d, sort: dn, label: d };
   return { key: String(lv), sort: String(lv), label: lvName(lv) };
 }
-function baseList(reshuffle){
+function baseList(reshuffle, nofilter){
   const groups = {}, res = [];
   CARDS.forEach((c, i) => { const g = groupOf(c); (groups[g.key] = groups[g.key] || { sort:g.sort, idx:[] }).idx.push(i); });
   Object.keys(groups).sort((a, b) => groups[a].sort < groups[b].sort ? -1 : 1).forEach(k => {
@@ -1323,19 +1348,19 @@ function baseList(reshuffle){
       } else order = shuffled(fresh).concat(prev);
       S.ord[k] = order; g = order.map(id => at[id]);
     }
-    res.push(...g.filter(i => { const c = CARDS[i]; return S.imps.includes(impOf(c)) && S.decks[deckOf(c)] !== false && (!S.auOnly || c.au) && (!S.weak || weak(c)) && tagOk(c) && qOk(c); }));
+    res.push(...g.filter(i => { const c = CARDS[i]; return nofilter || (S.imps.includes(impOf(c)) && S.decks[deckOf(c)] !== false && (!S.weak || weak(c)) && csOk(c) && tagOk(c) && qOk(c)); }));
   });
   return res;
 }
 function buildList(keepId, reshuffle){
-  const pl = S.plOn ? plIdx() : [], usePl = pl.length > 0;
-  list = usePl ? pl : baseList(reshuffle);
+  const sc = scopeOf(), pl = sc === "pl" ? plIdx() : [], usePl = pl.length > 0;
+  list = usePl ? pl : baseList(reshuffle, sc === "all");
   save();
   const none = !usePl && !list.length;
   if (!list.length) list = CARDS.map((c, i) => i);
   pi = Math.max(0, list.findIndex(i => CARDS[i].id === keepId));
   fillPick();
-  const cnt = $("cnt"); if (cnt) cnt.textContent = none ? "いまの条件に合うカードがありません（かわりに全部のカードを出しています）" : "いまの条件で " + list.length + " 枚（うち音声つき " + list.filter(i => CARDS[i].au).length + " 枚）";
+  const cnt = $("cnt"); if (cnt) cnt.textContent = none ? "いまの条件に合うカードがありません（かわりに全部のカードを出しています）" : (sc === "all" ? "全カード " : sc === "pl" && usePl ? "再生順 " : "いまの条件で ") + list.length + " 枚（うち音声つき " + list.filter(i => CARDS[i].au).length + " 枚）";
   renderSearch(none);
 }
 
@@ -1378,13 +1403,15 @@ function filtText(){
   if (S.tagSel.length) f.push("タグ「" + S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、") + "」");
   const off = Object.keys(S.decks).filter(k => S.decks[k] === false); if (off.length) f.push("科目 " + off.length + " 個を外す");
   if (S.imps.slice().sort().join() !== "1,2,3") f.push("重要度 " + S.imps.map(v => v === 4 ? "卒業" : v).join("・"));
-  if (S.weak) f.push("×か△のみ"); if (S.auOnly) f.push("音声ありのみ");
+  if (S.weak) f.push("×か△のみ"); if (S.csSel.length) f.push("状態 " + S.csSel.map(k => CSL[k]).join("・"));
   return f.length ? f.join(" ＋ ") : "絞り込みなし";
 }
 function plSum(){
   const b = $("plTxt"); if (!b || !CARDS.length) return;
-  if (S.plOn && plIdx().length){ b.textContent = "再生順（プレイリスト）で再生中（" + list.length + " 枚中 " + (pi + 1) + " 枚目）"; return; }
-  b.textContent = "いまの絞り込み: " + filtText() + "（" + list.length + " 枚中 " + (pi + 1) + " 枚目）";
+  const sc = scopeOf(), sel = $("scopeSel"); if (sel && sel.value !== sc) sel.value = sc;
+  if (sc === "pl" && plIdx().length){ b.textContent = "再生順（プレイリスト）で再生中（" + list.length + " 枚中 " + (pi + 1) + " 枚目）"; return; }
+  if (sc === "all"){ b.textContent = "全カードを再生中（" + list.length + " 枚中 " + (pi + 1) + " 枚目）"; return; }
+  b.textContent = (sc === "pl" ? "再生順が空なので、いまの絞り込みで再生しています。" : "") + "いまの絞り込み: " + filtText() + "（" + list.length + " 枚中 " + (pi + 1) + " 枚目）";
 }
 function renderSearch(none){
   lastNone = !!none; const has = !!(S.q || S.tagSel.length);
@@ -1691,7 +1718,6 @@ function relist(){ const keep = list.length ? card().id : null; buildList(keep);
 $("reshuf").onclick = () => { buildList(null, true); pi = 0; load(playing); };
 $("fShuf").onchange = e => { S.shuffle = e.target.checked; save(); relist(); };
 $("fMode").onchange = e => { S.mode = e.target.value; save(); relist(); };
-$("fAu").onchange = e => { S.auOnly = e.target.checked; save(); relist(); };
 function setDecks(v){ CARDS.forEach(c => { S.decks[c.deck] = v; S.decks[deckOf(c)] = v; }); $("fDeck").querySelectorAll("input").forEach(i => i.checked = v); save(); relist(); }
 $("dAll").onclick = () => setDecks(true); $("dNone").onclick = () => setDecks(false);
 $("fImp").querySelectorAll("input").forEach(x => x.onchange = () => {
@@ -1849,9 +1875,9 @@ $("txtAll").onclick = () => exportCards(false); $("txtChg").onclick = () => expo
 const G_FOLDER = "logic_chart_sync", G_FOLDER_OLD = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
 /* 名前を英語にそろえる前の名前。見つからないときは前の名前で探し、見つかったら新しい名前に直す（ドライブ側を先に直していなくても動く） */
 const OLD_NAME = { "decision_tree_inbox.json": "DB送信.json", "decision_tree_placement.json": "DB配置.json" };
-const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree], ["memo", o => o.memo, () => S.memo], ["kov", o => o.kov, () => S.kov], ["kx", o => o.kx, () => S.kx], ["pl", o => o.pl, () => S.pl]];
+const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree], ["memo", o => o.memo, () => S.memo], ["kov", o => o.kov, () => S.kov], ["kx", o => o.kx, () => S.kx], ["pl", o => o.pl, () => S.pl], ["cs", o => o.cs, () => S.cs]];
 let gTok = "", gExp = 0, gBusy = false;
-function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, study: { rev: S.rev, log: S.log } }; }
+function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, cs: S.cs, study: { rev: S.rev, log: S.log } }; }
 function tsOf(kind, id, store, ts){ const k = kind + ":" + id; return ts && ts[k] ? ts[k] : ((kind === "cv" && store && store[id] && +store[id].stamp) || (kind === "new" && store && store[id] && +store[id].ts) || (kind === "dbq" && store && store[id] && +store[id].ts) || (kind === "tree" && store && store[id] && +store[id].ts) || 0); }
 /* 混ぜる：カード1枚ごとに、直した時刻が新しい方を採る（新しい方が「直しを消した」なら、消した方が勝つ）。戻り値＝この端末が書き換わった数 */
 function mergeSnap(o){
@@ -1951,7 +1977,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251651";
+const VER = "版 202611252237";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2358,8 +2384,8 @@ async function init(){
   decks.forEach(d => { const l = el("label"); const i = el("input"); i.type = "checkbox"; i.checked = S.decks[d] !== false;
     i.onchange = () => { S.decks[d] = i.checked; save(); relist(); }; l.append(i, document.createTextNode(d)); fd.append(l); });
   $("fImp").querySelectorAll("input").forEach(x => x.checked = S.imps.includes(+x.value));
-  $("fShuf").checked = !!S.shuffle; $("fMode").value = S.mode || "imp"; $("fAu").checked = !!S.auOnly;
-  $("fWeak").checked = !!S.weak; $("qIn").value = S.q || ""; $("tagMode").value = S.tagMode || "any"; renderTagFilter(); $("fAuto").checked = S.auto !== false; $("fGate").checked = !!S.gate; $("selEdAu").value = S.edAu || "vv"; $("selHide").value = S.hide || ""; $("selThink").value = String(S.think || 0);
+  $("fShuf").checked = !!S.shuffle; $("fMode").value = S.mode || "imp";
+  renderCsFilter(); $("scopeSel").value = scopeOf(); $("fWeak").checked = !!S.weak; $("qIn").value = S.q || ""; $("tagMode").value = S.tagMode || "any"; renderTagFilter(); $("fAuto").checked = S.auto !== false; $("fGate").checked = !!S.gate; $("selEdAu").value = S.edAu || "vv"; $("selHide").value = S.hide || ""; $("selThink").value = String(S.think || 0);
   Object.keys(S.log).sort().slice(0, -120).forEach(k => delete S.log[k]);            /* 日ごとの記録は直近120日ぶんだけ残す */
   let have = 0; for (const n of (DATA.bundles || [])) { try { if (await get(n)) have++; } catch(e){} }
   $("info").textContent = "カード " + CARDS.length + "枚（" + (DATA.made || "") + " 作成）／音声ファイル " + have + " / " + (DATA.bundles || []).length + " 個" + (have < (DATA.bundles || []).length ? "　※足りない分は端末の読み上げで代用します" : "");
@@ -2423,8 +2449,9 @@ function kImport(text, fname){
   const src = String(fname || "起案チェック").replace(/\.[A-Za-z0-9]+$/, "");
   if (!S.kian) S.kian = {}; S.kian[src] = { yr: kYear(src), at: Date.now(), rows: out }; save(); kBuild();
   const miss = []; let hit = 0; out.forEach(o => o.ro.forEach(nm => { if (KMAP.byTitle[kn(nm)]) hit++; else miss.push(nm); }));
+  let auto = 0; out.forEach(o => o.ro.forEach(nm => { const cs = KMAP.byTitle[kn(nm)]; if (cs){ const c = cs[0]; if (!(S.cs && S.cs[c.id])){ csSet(c, "c"); auto++; } } }));
   let kept = 0; Object.keys(KMAP.per).forEach(id => (KMAP.per[id] || []).forEach(e => { if (S.kov && S.kov[id] && S.kov[id][e.ek]) kept++; }));
-  return { kept, src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
+  return { auto, kept, src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
 }
 function kCopy(t){ const done = () => toast("コピーしました", "ok", 2500);
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => kCopyOld(t, done)); else kCopyOld(t, done); }
@@ -2511,45 +2538,59 @@ function renderKian(){
 $("kIn").onclick = () => $("kFile").click();
 $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const out = $("kMsg"); out.textContent = "読み込み中…";
   try { const buf = await f.arrayBuffer(); let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e2){ text = new TextDecoder("shift_jis").decode(buf); }
-    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.kept ? "。直した項目のある " + r.kept + " 件は、直した内容をそのまま残しました" : "") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
-    toast("起案チェックを取り込みました", "ok"); renderKian(); renderTags(true); renderTagFilter(); refilter();
+    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + "。確認中にしたカード：" + r.auto + " 枚（まだ状態の記録が無かったカードだけ）" + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.kept ? "。直した項目のある " + r.kept + " 件は、直した内容をそのまま残しました" : "") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
+    toast("起案チェックを取り込みました", "ok"); renderCs(); renderKian(); renderTags(true); renderTagFilter(); refilter();
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
 
 /* ---------- 「ブラウザ」タブ（第1段）：一覧表。見出しで並び替え。題名を押すと「プレイヤー」タブでそのカードを開く。インポートは小窓 ---------- */
-const CB = { key: "", dir: 1, shown: 50, all: false, view: "list" };
-const CBCOLS = [["title", "題名"], ["deck", "科目"], ["imp", "重要度"], ["tags", "タグ"], ["yr", "出題"], ["memo", "メモ"], ["rev", "学習の記録"]];
+const CB = { key: "", dir: 1, shown: 50, all: false, view: "list", sel: new Set() };
+const CBCOLS = [["title", "題名"], ["deck", "科目"], ["imp", "重要度"], ["tags", "タグ"], ["yr", "出題"], ["cs", "状態"], ["rev", "学習の記録"]];
 function cbYrs(c){ const out = []; if (S.kian && Object.keys(S.kian).length) kEff(c).forEach(e => { const y = e.yr || ""; if (y){ const t = y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"; if (!out.includes(t)) out.push(t); } }); return out; }
-function cbInfo(n){ const c = CARDS[n], r = S.rev[c.id], tg = allTagsOf(c), yr = cbYrs(c), memo = (S.memo && S.memo[c.id]) || "";
-  return { n, c, title: c.title, deck: deckOf(c), imp: impOf(c), tags: tg, yr, memo, rev: r && r.g ? (GMARK[r.g] || "") + " " + (r.d || "") : "", revKey: r && r.d ? r.d + (r.g || "") : "" }; }
+function cbInfo(n){ const c = CARDS[n], r = S.rev[c.id], tg = allTagsOf(c), yr = cbYrs(c), cs = csOf(c);
+  return { n, c, title: c.title, deck: deckOf(c), imp: impOf(c), tags: tg, yr, cs, rev: r && r.g ? (GMARK[r.g] || "") + " " + (r.d || "") : "", revKey: r && r.d ? r.d + (r.g || "") : "" }; }
 function cbItems(){
-  const base = CB.all ? CARDS.map((c, i) => i) : [...new Set(list)];
+  const base = CB.all ? CARDS.map((c, i) => i) : [...new Set(scopeOf() === "filter" ? list : baseList(false))];
   let it = base.map(cbInfo);
   const k = CB.key, d = CB.dir, cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
-  const key = x => k === "deck" ? deckNo(x.deck) : k === "imp" ? x.imp : k === "tags" ? x.tags.length : k === "yr" ? x.yr.join(",") : k === "memo" ? (x.memo ? 1 : 0) : k === "rev" ? x.revKey : x.title;
+  const key = x => k === "deck" ? deckNo(x.deck) : k === "imp" ? x.imp : k === "tags" ? x.tags.length : k === "yr" ? x.yr.join(",") : k === "cs" ? CSORD.indexOf(x.cs) : k === "rev" ? x.revKey : x.title;
   if (!k) return it;
   it.sort((a, b) => { const A = key(a), B = key(b); const r = (typeof A === "string" && typeof B === "string") ? A.localeCompare(B, "ja") : cmp(A, B); return (r || a.title.localeCompare(b.title, "ja")) * d; });
   return it;
 }
 function renderCb(){
-  const pv = CB.view === "pl"; $("cbListView").hidden = pv; $("plView").hidden = !pv; $("cbvList").setAttribute("aria-pressed", pv ? "false" : "true"); $("cbvPl").setAttribute("aria-pressed", pv ? "true" : "false"); $("plNote").hidden = !(S.plOn && plIdx().length);
+  const pv = CB.view === "pl"; $("cbListView").hidden = pv; $("plView").hidden = !pv; $("cbvList").setAttribute("aria-pressed", pv ? "false" : "true"); $("cbvPl").setAttribute("aria-pressed", pv ? "true" : "false");
   if (pv){ renderPl(); return; }
   const sel = $("cbSort"); if (!sel.options.length){ const o0 = el("option"); o0.value = ""; o0.textContent = "再生の順"; sel.append(o0); } if (sel.options.length === 1) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
   sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順"; $("cbAll").checked = CB.all;
   const it = cbItems(), show = it.slice(0, CB.shown), t = $("cbT"); t.innerHTML = "";
   $("cbCnt").textContent = (CB.all ? "全部のカード" : "いまの条件に合うカード") + " " + it.length + " 枚中 " + show.length + " 枚を表示";
-  const hr = el("tr"); CBCOLS.forEach(([k, l]) => { const th = el("th"); th.setAttribute("scope", "col"); const b = el("button"); b.type = "button"; b.textContent = l + (CB.key === k ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === k) CB.dir = -CB.dir; else { CB.key = k; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); });
+  const hr = el("tr"); CBCOLS.forEach(([k, l]) => { const th = el("th"); th.setAttribute("scope", "col"); if (k === "title"){ const ca = el("input"); ca.type = "checkbox"; ca.id = "cbSelAll"; ca.setAttribute("aria-label", "見えている行を全部選ぶ・全部外す"); ca.checked = show.length > 0 && show.every(x => CB.sel.has(x.c.id));
+      ca.onchange = () => { show.forEach(x => { if (ca.checked) CB.sel.add(x.c.id); else CB.sel.delete(x.c.id); }); renderCb(); }; th.append(ca, document.createTextNode(" ")); } const b = el("button"); b.type = "button"; b.textContent = l + (CB.key === k ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === k) CB.dir = -CB.dir; else { CB.key = k; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); });
   { const th = el("th"); th.textContent = "再生順"; hr.append(th); }
+  const plAt = {}; plData().ids.forEach((id, k) => plAt[id] = k + 1);
   const thd = el("thead"); thd.append(hr); t.append(thd);
   const tb = el("tbody");
   show.forEach(x => { const tr = el("tr"); const td = (txt, cls) => { const e = el("td", cls); e.textContent = txt; tr.append(e); return e; };
-    const t0 = el("td"); const b = el("button", "cbT"); b.type = "button"; b.textContent = x.title; b.onclick = () => cbOpen(x.n); t0.append(b); tr.append(t0);
-    td(x.deck, "nw"); td(x.imp === 4 ? "卒" : String(x.imp), "nw"); td(x.tags.slice(0, 3).join("・") + (x.tags.length > 3 ? "…(+" + (x.tags.length - 3) + ")" : "")); td(x.yr.join("・")); td(x.memo ? "📝" : "", "nw"); td(x.rev, "nw");
-    { const tp = el("td", "nw"), id = x.c.id, inPl = plData().ids.includes(id), pb = el("button", "grad"); pb.type = "button"; pb.textContent = inPl ? "先頭へ" : "＋先頭に追加"; pb.title = "再生順（プレイリスト）の先頭に入れます"; pb.onclick = () => { const d = plData(); plPut({ ids: [id].concat(d.ids.filter(v => v !== id)), off: d.off }); toast("再生順の先頭に入れました", "ok", 2000); }; tp.append(pb); tr.append(tp); }
+    const t0 = el("td"); const cx = el("input"); cx.type = "checkbox"; cx.className = "cbSel"; cx.checked = CB.sel.has(x.c.id); cx.setAttribute("aria-label", x.title + "を選ぶ"); cx.onchange = () => { if (cx.checked) CB.sel.add(x.c.id); else CB.sel.delete(x.c.id); cbSelUpd(); }; t0.append(cx, document.createTextNode(" ")); const b = el("button", "cbT"); b.type = "button"; b.textContent = x.title; b.onclick = () => cbOpen(x.n); t0.append(b); tr.append(t0);
+    td(x.deck, "nw"); td(x.imp === 4 ? "卒" : String(x.imp), "nw"); td(x.tags.slice(0, 3).join("・") + (x.tags.length > 3 ? "…(+" + (x.tags.length - 3) + ")" : "")); td(x.yr.join("・")); { const e = td("", "nw"), sp = el("span", "csb csb-" + x.cs); sp.textContent = CSL[x.cs]; e.append(sp); } td(x.rev, "nw");
+    td(plAt[x.c.id] ? plAt[x.c.id] + "番目" : "", "nw");
     tb.append(tr); });
   t.append(tb);
+  cbSelUpd(it);
   const mo = $("cbMore"); mo.hidden = it.length <= show.length; mo.textContent = "50枚ふやす（あと " + (it.length - show.length) + " 枚）";
 }
+function cbSelUpd(it){
+  const n = CB.sel.size; $("cbSelN").textContent = n + " 枚選んでいます"; ["cbAddTop", "cbAddEnd", "cbSelClr"].forEach(id => { $(id).disabled = !n; });
+  const ca = $("cbSelAll"); if (ca && it){ const sh = it.slice(0, CB.shown); ca.checked = sh.length > 0 && sh.every(x => CB.sel.has(x.c.id)); }
+}
+/* 選んだカードを再生順に入れる。すでに入っているカードは、位置を動かす（先頭か最後へ） */
+function plAdd(top){
+  if (!CB.sel.size) return; const shownIds = cbItems().map(x => x.c.id), ids = shownIds.filter(id => CB.sel.has(id)).concat([...CB.sel].filter(id => !shownIds.includes(id) && CARDS.some(c => c.id === id)));
+  if (!ids.length) return; const d = plData(), rest = d.ids.filter(id => !ids.includes(id));
+  plPut({ ids: top ? ids.concat(rest) : rest.concat(ids), off: d.off }); CB.sel.clear(); renderCb(); toast(ids.length + " 枚を再生順の" + (top ? "先頭" : "最後") + "に入れました", "ok", 2500);
+}
+$("cbAddTop").onclick = () => plAdd(true); $("cbAddEnd").onclick = () => plAdd(false); $("cbSelClr").onclick = () => { CB.sel.clear(); renderCb(); };
 function cbOpen(n){
   let i = list.indexOf(n); if (i < 0){ list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
   pi = i; stop(); setTab("play"); load(false).then(() => { window.scrollTo(0, 0); });
@@ -2559,18 +2600,23 @@ function plData(){ const m = S.pl && S.pl.main; return m ? { ids: (m.ids || []).
 function plIdx(){ const d = plData(), at = {}; CARDS.forEach((c, i) => at[c.id] = i); return d.ids.filter(id => id in at && !d.off.includes(id)).map(id => at[id]); }
 function plPut(d){ if (!S.pl) S.pl = {}; if (d.ids.length) S.pl.main = { ids: d.ids, off: d.off.filter(x => d.ids.includes(x)) }; else delete S.pl.main; st("pl", "main"); save(); refilter(); }
 function plTitle(id){ const c = CARDS.find(x => x.id === id); return c ? c.title : "（この端末にないカード）"; }
+let plAsk = null;
+function plCsApply(ids){ S.scope = "pl"; $("scopeSel").value = "pl"; plPut({ ids, off: [] }); toast("確認中の " + ids.length + " 枚で再生順を作り、再生する範囲を『再生順』にしました", "ok", 3500); if (CB.view === "pl") renderPl(); }
 function renderPl(){
   const v = $("plView"), d = plData(); v.innerHTML = "";
-  const c1 = el("div", "cbctl"), lab = el("label"), cb = el("input"); cb.type = "checkbox"; cb.id = "plOn"; cb.checked = !!S.plOn; lab.append(cb, document.createTextNode("この再生順で再生する（使っている間は、絞り込み・並べ方・シャッフルは効きません）"));
-  cb.onchange = () => { if (cb.checked && !plIdx().length){ cb.checked = false; toast("再生順にカードがありません。先にカードを入れてください", "ng", 3000); return; } S.plOn = cb.checked; save(); refilter(); };
-  c1.append(lab); v.append(c1);
+  const c1 = el("p", "small"); c1.textContent = "この再生順で再生するには、『プレイヤー』の上の「再生する範囲」を「再生順（プレイリスト）」にします（端末ごとの設定です）。"; v.append(c1);
   const c2 = el("div", "cbctl"); const mk = (id, t, f) => { const b = el("button", "grad"); b.type = "button"; b.id = id; b.textContent = t; b.onclick = f; c2.append(b); return b; };
   mk("plMake", "いまの絞り込みから作る", () => { const ids = [...new Set(baseList().map(i => CARDS[i].id))]; if (!ids.length){ toast("いまの絞り込みに合うカードがありません", "ng", 3000); return; }
     if (d.ids.length && !confirm("いまの再生順を、いまの絞り込み（" + ids.length + " 枚）で作り直します。よろしいですか？")) return; plPut({ ids, off: [] }); });
+  mk("plCs", "確認中だけで再生順を作る", () => { const byId = {}; CARDS.forEach(c => byId[c.id] = c); const ids = [...new Set(baseList(false, true).map(i => CARDS[i].id))].filter(id => csOf(byId[id]) === "c");
+    if (!ids.length){ toast("確認中のカードがありません", "ng", 3000); return; }
+    if (d.ids.length){ plAsk = ids; renderPl(); return; } plCsApply(ids); });
   mk("plRestore", "外した分を戻す", () => plPut({ ids: d.ids, off: [] }));
-  mk("plClear", "再生順を空にする", () => { if (!d.ids.length) return; if (!confirm("再生順を空にします。よろしいですか？")) return; S.plOn = false; plPut({ ids: [], off: [] }); });
+  mk("plClear", "再生順を空にする", () => { if (!d.ids.length) return; if (!confirm("再生順を空にします。よろしいですか？")) return; if (S.scope === "pl") S.scope = "filter"; plPut({ ids: [], off: [] }); });
   v.append(c2);
-  const n = el("p", "small"); n.textContent = d.ids.length ? d.ids.length + " 枚（今回は外す " + d.off.length + " 枚）。変更は自動で保存され、「☁ Googleドライブと同期」で他の端末にも入ります。「一覧」の表の「＋先頭に追加」でも入れられます。" : "まだ空です。「いまの絞り込みから作る」か、「一覧」の表の「＋先頭に追加」で入れてください。"; v.append(n);
+  if (plAsk){ const a = el("div", "plask"); a.id = "plAsk"; const t = el("span"); t.textContent = "いまの再生順（" + d.ids.length + " 枚）を、確認中の " + plAsk.length + " 枚で作り直します。よろしいですか？"; const y = el("button", "grad"); y.type = "button"; y.id = "plAskYes"; y.textContent = "上書きする"; y.onclick = () => { const ids = plAsk; plAsk = null; plCsApply(ids); };
+    const nn = el("button", "grad"); nn.type = "button"; nn.id = "plAskNo"; nn.textContent = "やめる"; nn.onclick = () => { plAsk = null; renderPl(); }; a.append(t, y, nn); v.append(a); }
+  const n = el("p", "small"); n.textContent = d.ids.length ? d.ids.length + " 枚（今回は外す " + d.off.length + " 枚）。変更は自動で保存され、「☁ Googleドライブと同期」で他の端末にも入ります。「一覧」の表でカードを選んで「再生順の先頭（最後）に追加」でも入れられます。" : "まだ空です。「いまの絞り込みから作る」「確認中だけで再生順を作る」か、「一覧」の表でカードを選んで追加してください。"; v.append(n);
   d.ids.forEach((id, k) => { const r = el("div", "plr" + (d.off.includes(id) ? " off" : "")), no = el("span", "pn"); no.textContent = String(k + 1);
     const t = el("span", "pt"); t.textContent = plTitle(id);
     const mv = (lbl, dk) => { const b = el("button", "grad"); b.type = "button"; b.textContent = lbl; b.setAttribute("aria-label", plTitle(id) + "を" + (dk < 0 ? "上へ" : "下へ")); b.disabled = k + dk < 0 || k + dk >= d.ids.length;
@@ -2582,8 +2628,9 @@ function renderPl(){
 $("cbvList").onclick = () => { CB.view = "list"; renderCb(); }; $("cbvPl").onclick = () => { CB.view = "pl"; renderCb(); };
 function setTab(t){ const cards = t === "cards"; $("app").classList.toggle("cb", cards);
   $("tabPlay").setAttribute("aria-selected", cards ? "false" : "true"); $("tabCards").setAttribute("aria-selected", cards ? "true" : "false");
-  if (cards) renderCb(); }
+  if (cards){ if (csDirty){ csDirty = false; refilter(); } renderCb(); } }
 $("plBrowse").onclick = () => { CB.shown = 50; setTab("cards"); window.scrollTo(0, 0); };
+$("scopeSel").onchange = () => { const v = $("scopeSel").value; if (v === "pl" && !plIdx().length){ $("scopeSel").value = scopeOf(); toast("再生順にカードがありません。先に『ブラウザ』でカードを入れてください", "ng", 3500); return; } S.scope = v; save(); refilter(); };
 $("tabPlay").onclick = () => setTab("play"); $("tabCards").onclick = () => { CB.shown = 50; setTab("cards"); };
 $("cbSort").onchange = () => { CB.key = $("cbSort").value; CB.shown = 50; renderCb(); };
 $("cbDir").onclick = () => { CB.dir = -CB.dir; renderCb(); };
