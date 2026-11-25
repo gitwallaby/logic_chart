@@ -371,7 +371,7 @@ body{padding-bottom:215px}
   </div>
 
   <div id="app" hidden>
-    <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">▶ 再生</button><button id="tabCards" role="tab" aria-selected="false">🗂 カード</button></div>
+    <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">プレイヤー</button><button id="tabCards" role="tab" aria-selected="false">ブラウザ</button></div>
     <section class="panel cbtab" id="cbTab">
       <div class="cbctl">
         <input type="search" id="cbQ" autocomplete="off" placeholder="この一覧をしぼる（題名・科目・タグ・出題・メモ）" aria-label="この一覧をしぼる">
@@ -381,7 +381,7 @@ body{padding-bottom:215px}
       <p class="small" id="cbCnt"></p>
       <div class="cbwrap"><table class="cbt" id="cbT"></table></div>
       <div class="act"><button class="grad" id="cbMore" hidden>50枚ふやす</button></div>
-      <p class="small">題名を押すと、「▶ 再生」でそのカードが開きます（そのまま直せます）。見出しを押すと並び替えます。上の絞り込み（科目・重要度・タグ・検索）がそのまま使われます。</p>
+      <p class="small">題名を押すと、「プレイヤー」でそのカードが開きます（そのまま直せます）。見出しを押すと並び替えます。上の絞り込み（科目・重要度・タグ・検索）がそのまま使われます。</p>
     </section>
     <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
     <div class="srch">
@@ -1939,7 +1939,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251507";
+const VER = "版 202611251525";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2483,7 +2483,7 @@ $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value =
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
 
-/* ---------- 「カード」タブ（カードブラウザ・第1段）：一覧表。見出しで並び替え。題名を押すと「再生」でそのカードを開く。インポートは小窓 ---------- */
+/* ---------- 「ブラウザ」タブ（第1段）：一覧表。見出しで並び替え。題名を押すと「プレイヤー」タブでそのカードを開く。インポートは小窓 ---------- */
 const CB = { key: "title", dir: 1, shown: 50, all: false, q: "" };
 const CBCOLS = [["title", "題名"], ["deck", "科目"], ["imp", "重要度"], ["tags", "タグ"], ["yr", "出題"], ["memo", "メモ"], ["rev", "学習の記録"]];
 function cbYrs(c){ const out = []; if (S.kian && Object.keys(S.kian).length) kEff(c).forEach(e => { const y = e.yr || ""; if (y){ const t = y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"; if (!out.includes(t)) out.push(t); } }); return out; }
