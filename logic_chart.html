@@ -136,6 +136,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
 .tabs{display:flex;gap:6px;margin:8px 0 0}.tabs button{flex:1;font:inherit;padding:8px 6px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tabs button[aria-selected=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}
 #app.cb > *:not(.tabs):not(#cbTab){display:none!important}#app:not(.cb) #cbTab{display:none}
+.plsum{margin:8px 0;font-size:13px}.plsum button{margin-left:6px}
 .cbctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0}.cbctl input[type=search]{flex:1;min-width:12rem;box-sizing:border-box;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
 .cbwrap{overflow:auto;max-height:70vh;border:1px solid var(--barline);border-radius:8px}.cbt{border-collapse:collapse;width:100%;font-size:13px}.cbt th,.cbt td{border-bottom:1px solid var(--barline);padding:6px 8px;text-align:left;vertical-align:top}
 .cbt th{position:sticky;top:0;background:var(--bar);z-index:2}.cbt th button{border:0;background:transparent;color:inherit;font:inherit;font-weight:bold;cursor:pointer;padding:0;white-space:nowrap}
@@ -314,9 +315,6 @@ details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding
 .tgrow button{height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
 .tgrow button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
 .tqrow{margin-top:6px}.tqsug{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;max-height:190px;overflow:auto}.tqsug button{font:inherit;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tqsug .small{margin:0}
-.sres{margin:6px 0;max-height:320px;overflow:auto}
-.sres button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--barline);background:transparent;color:var(--ink);font:inherit;padding:7px 2px;cursor:pointer}
-.sres .sn{font-size:12px;color:var(--sub);display:block;margin-top:2px}
 /* 文字を直す */
 .blk .w{color:var(--w)}
 .pt.ed{white-space:pre-wrap;outline:2px solid var(--current);outline-offset:3px;background:#1b1e23;cursor:text;border-radius:3px;-webkit-user-select:text;user-select:text}
@@ -373,29 +371,13 @@ body{padding-bottom:215px}
   <div id="app" hidden>
     <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">プレイヤー</button><button id="tabCards" role="tab" aria-selected="false">ブラウザ</button></div>
     <section class="panel cbtab" id="cbTab">
-      <div class="cbctl">
-        <input type="search" id="cbQ" autocomplete="off" placeholder="この一覧をしぼる（題名・科目・タグ・出題・メモ）" aria-label="この一覧をしぼる">
-        <select class="mini" id="cbSort" aria-label="並び替え"></select><button class="grad" id="cbDir" aria-label="昇順・降順を切り替え">↑ 昇順</button>
-      </div>
-      <div class="cbctl"><label><input type="checkbox" id="cbAll">絞り込みに関係なく全部のカードを出す</label><button class="grad" id="cbImp">📥 インポート</button></div>
-      <p class="small" id="cbCnt"></p>
-      <div class="cbwrap"><table class="cbt" id="cbT"></table></div>
-      <div class="act"><button class="grad" id="cbMore" hidden>50枚ふやす</button></div>
-      <p class="small">題名を押すと、「プレイヤー」でそのカードが開きます（そのまま直せます）。見出しを押すと並び替えます。上の絞り込み（科目・重要度・タグ・検索）がそのまま使われます。</p>
-    </section>
-    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
     <div class="srch">
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="impOpen" title="取り込みの小窓を開く">📥 インポート</button><button id="qX" hidden>解除</button></div>
       <div class="qrow tqrow"><input type="search" id="tqIn" autocomplete="off" placeholder="タグを探す（出題・判例・自分のタグ。例：2022、平成16）" aria-label="タグを探す"></div>
       <div class="tqsug" id="tqSug" hidden></div>
-      <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
-      <div class="sres" id="sres" hidden></div>
+      <div class="small" id="qInfo" hidden><span id="qCnt"></span></div>
     </div>
-    <div class="panel rec" id="rec">
-      <div id="recBody"></div>
-      <p class="small" id="recMsg"></p>
-    </div>
-    <details class="panel" id="fltTop"><summary>🎚 カードの表示方法・絞り込み</summary>
+    <details class="panel" id="fltTop" open><summary>🎚 並べ方・絞り込み（再生にも使われます）</summary>
       <h2 class="sech">カードの表示方法</h2>
       <h3>並べ方</h3>
       <select class="pick" id="fMode" aria-label="並べ方">
@@ -406,12 +388,6 @@ body{padding-bottom:215px}
       </select>
       <div class="chk"><label><input type="checkbox" id="fShuf">同じまとまりの中でシャッフルする（外すとカードファイルの順）</label></div>
       <div class="act"><button id="reshuf">並べ直す（まだ聞いていないカードを前に）</button></div>
-      <h3>自己評価</h3>
-      <div class="chk">
-        <label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label>
-        <label><input type="checkbox" id="fAuto">○△×を押したら次のカードへ進む</label>
-        <label><input type="checkbox" id="fGate">○△×を押さないと、次のカードへ進めない（自動で進むときも止まる）</label>
-      </div>
       <p class="small" id="cnt"></p>
       <p class="small" id="info"></p>
       <h2 class="sech">カードの絞り込み</h2>
@@ -426,9 +402,29 @@ body{padding-bottom:215px}
         <label><input type="checkbox" value="3">3 ざっくり</label>
         <label><input type="checkbox" value="4">卒業</label>
       </div>
-      <h3>音声</h3>
-      <div class="chk"><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
+      <h3>ほか</h3>
+      <div class="chk"><label><input type="checkbox" id="fWeak">×か△がついているカードだけ</label><label><input type="checkbox" id="fAu">音声ができているカードだけ</label></div>
     </details>
+      <div class="cbctl"><label>表の並び:</label><select class="mini" id="cbSort" aria-label="表の並び替え"></select><button class="grad" id="cbDir" aria-label="昇順・降順を切り替え">↑ 昇順</button></div>
+      <div class="cbctl"><label><input type="checkbox" id="cbAll">絞り込みに関係なく全部のカードを出す</label></div>
+      <p class="small" id="cbCnt"></p>
+      <div class="cbwrap"><table class="cbt" id="cbT"></table></div>
+      <div class="act"><button class="grad" id="cbMore" hidden>50枚ふやす</button></div>
+      <p class="small">題名を押すと、「プレイヤー」でそのカードが開きます（そのまま直せます）。検索・タグ・科目・重要度・並べ方を変えると、再生する順番もそのとおりに変わります。表の見出しで並び替えるのは、この表の見た目だけです（「表の並び」を「再生の順」にすると、再生する順に並びます）。</p>
+    </section>
+    <div class="plsum panel" id="plSum"><span id="plTxt"></span> <button class="grad" id="plBrowse">ブラウザで選び直す</button></div>
+    <details class="panel" id="plSet"><summary>⚙ 再生の設定</summary>
+      <h3>自己評価</h3>
+      <div class="chk">
+        <label><input type="checkbox" id="fAuto">○△×を押したら次のカードへ進む</label>
+        <label><input type="checkbox" id="fGate">○△×を押さないと、次のカードへ進めない（自動で進むときも止まる）</label>
+      </div>
+    </details>
+    <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
+    <div class="panel rec" id="rec">
+      <div id="recBody"></div>
+      <p class="small" id="recMsg"></p>
+    </div>
     <details class="panel" id="impTop"><summary>📥 インポート</summary>
       <h3>カードと音声</h3>
       <div class="act"><button class="grad" id="imp2">カードと音声を取り込み直す</button></div>
@@ -537,7 +533,7 @@ body{padding-bottom:215px}
     <div class="board" id="board"></div>
     <section class="panel memo" id="memoBox">
       <h3>📝 メモ（自分で書く欄。読み上げません）</h3>
-      <textarea id="memoIn" rows="3" placeholder="このカードについて、自由に書けます。書いたら自動で、この端末に保存されます（同期はされません）。" aria-label="このカードのメモ"></textarea>
+      <textarea id="memoIn" rows="3" placeholder="このカードについて、自由に書けます。書いたら自動で保存されます（「☁ Googleドライブと同期」で他の端末にも入ります）。" aria-label="このカードのメモ"></textarea>
       <div class="small" id="memoSt"></div>
     </section>
     <section class="panel kbot" id="kBot" hidden></section>
@@ -1208,7 +1204,7 @@ function countLine(){
 }
 
 function render(){
-  const c = ecard();
+  const c = ecard(); plSum();
   { const h = $("title"); h.textContent = ""; const np = document.createElement("span"); np.className = "np"; np.textContent = "再生中："; h.append(np, document.createTextNode(c.title)); }
   $("selDeck").value = deckOf(c); $("selDeck").classList.toggle("chg", !!S.deckOv[c.id]);
   $("selImp").value = String(impOf(c)); $("selImp").classList.toggle("chg", !!S.imp[c.id]);
@@ -1364,30 +1360,33 @@ function tagOk(c){
   const has = k => k === NOTAG ? !t.length : t.includes(k);
   return S.tagMode === "all" ? S.tagSel.every(has) : S.tagSel.some(has);
 }
-let sresOpen = false, lastNone = false;
+let lastNone = false;
+function filtText(){
+  const f = []; if (S.q) f.push("検索「" + S.q + "」");
+  if (S.tagSel.length) f.push("タグ「" + S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、") + "」");
+  const off = Object.keys(S.decks).filter(k => S.decks[k] === false); if (off.length) f.push("科目 " + off.length + " 個を外す");
+  if (S.imps.slice().sort().join() !== "1,2,3") f.push("重要度 " + S.imps.map(v => v === 4 ? "卒業" : v).join("・"));
+  if (S.weak) f.push("×か△のみ"); if (S.auOnly) f.push("音声ありのみ");
+  return f.length ? f.join(" ＋ ") : "絞り込みなし";
+}
+function plSum(){
+  const b = $("plTxt"); if (!b || !CARDS.length) return;
+  b.textContent = "いまの絞り込み: " + filtText() + "（" + list.length + " 枚中 " + (pi + 1) + " 枚目）";
+}
 function renderSearch(none){
-  lastNone = !!none; const box = $("sres"); box.innerHTML = "";
-  const has = !!(S.q || S.tagSel.length);
-  $("qX").hidden = !S.q; $("qInfo").hidden = !has; box.hidden = !(has && sresOpen);
-  if (!has) return;
-  const tn = S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、"), lab = [S.q ? "「" + S.q + "」" : "", S.tagSel.length ? "タグ「" + tn + "」" : ""].filter(Boolean).join(" ＋ ");
-  $("qCnt").textContent = lab + " で " + (none ? 0 : list.length) + " 枚が対象です"; $("qList").textContent = sresOpen ? "一覧を閉じる" : "一覧を開く";
-  const w = words()[0] || "", show = none ? [] : list.slice(0, 30);
-  show.forEach((ci, n) => { const c = CARDS[ci], b = el("button"); b.textContent = (n + 1) + ". [" + deckOf(c) + "] " + c.title;
-    const e = indexOf(c); let sn = "";
-    if (w) for (const s of e.sents){ const k = normQ(s).indexOf(w); if (k >= 0){ sn = (k > 12 ? "…" : "") + s.slice(Math.max(0, k - 12), k + 28) + "…"; break; } }
-    if (sn){ const x = el("span", "sn"); x.textContent = sn; b.append(x); }
-    b.onclick = () => { stop(); sresOpen = false; box.hidden = true; $("qList").textContent = "一覧を開く"; pi = n; load(false); window.scrollTo(0, 0); }; box.append(b); });
-  if (!none && list.length > 30){ const p = el("p", "small"); p.textContent = "ほか " + (list.length - 30) + " 枚（上の「いまの条件で…」の枚数は全部の数です）"; box.append(p); }
+  lastNone = !!none; const has = !!(S.q || S.tagSel.length);
+  $("qX").hidden = !S.q; $("qInfo").hidden = !has;
+  if (has){ const tn = S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、"), lab = [S.q ? "「" + S.q + "」" : "", S.tagSel.length ? "タグ「" + tn + "」" : ""].filter(Boolean).join(" ＋ ");
+    $("qCnt").textContent = lab + " で " + (none ? 0 : list.length) + " 枚が対象です"; }
+  plSum(); if ($("app").classList.contains("cb")) renderCb();
 }
 function refilter(){ const keep = card().id; buildList(keep); if (card().id !== keep){ stop(); load(false); } }
-function doSearch(){ S.q = $("qIn").value.trim(); sresOpen = !!S.q; save(); refilter(); renderSearch(lastNone); }
-$("qX").onclick = () => { S.q = ""; sresOpen = false; $("qIn").value = ""; save(); refilter(); renderSearch(false); };
-$("qList").onclick = () => { sresOpen = !sresOpen; renderSearch(lastNone); };
+function doSearch(){ S.q = $("qIn").value.trim(); save(); refilter(); renderSearch(lastNone); }
+$("qX").onclick = () => { S.q = ""; $("qIn").value = ""; save(); refilter(); renderSearch(false); };
 $("qGo").onclick = doSearch;
 $("qIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); doSearch(); $("qIn").blur(); } };
 $("qIn").onchange = doSearch;
-$("qClr").onclick = () => { S.q = ""; sresOpen = false; S.tagSel = []; $("qIn").value = ""; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); };
+$("qClr").onclick = () => { S.q = ""; S.tagSel = []; $("qIn").value = ""; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); };
 $("tagMode").onchange = e => { S.tagMode = e.target.value; save(); refilter(); };
 function allTags(){ const n = {}; CARDS.forEach(c => allTagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
 /* タグ検索欄：入力するとタグの候補（出題・判例・自分のタグ。枚数つき）が出る。選ぶと、そのタグが付いたカードに絞り、検索結果の一覧に出す */
@@ -1400,7 +1399,7 @@ function tqRender(){
   names.slice(0, 40).forEach(t => { const b = el("button"); b.type = "button"; b.textContent = t + " " + n[t]; b.onclick = () => tqPick(t); box.append(b); });
   if (names.length > 40){ const p = el("span", "small"); p.textContent = "ほか " + (names.length - 40) + " 個（もう少し文字を足すと絞れます）"; box.append(p); }
 }
-function tqPick(t){ S.tagSel = [t]; sresOpen = true; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); renderSearch(lastNone); }
+function tqPick(t){ S.tagSel = [t]; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); renderSearch(lastNone); }
 $("tqIn").oninput = tqRender;
 $("tqIn").onfocus = tqRender;
 $("tqIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); const b = $("tqSug").querySelector("button"); if (b) b.click(); } };
@@ -1939,7 +1938,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251521";
+const VER = "版 202611251548";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2484,25 +2483,25 @@ $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value =
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
 
 /* ---------- 「ブラウザ」タブ（第1段）：一覧表。見出しで並び替え。題名を押すと「プレイヤー」タブでそのカードを開く。インポートは小窓 ---------- */
-const CB = { key: "title", dir: 1, shown: 50, all: false, q: "" };
+const CB = { key: "", dir: 1, shown: 50, all: false };
 const CBCOLS = [["title", "題名"], ["deck", "科目"], ["imp", "重要度"], ["tags", "タグ"], ["yr", "出題"], ["memo", "メモ"], ["rev", "学習の記録"]];
 function cbYrs(c){ const out = []; if (S.kian && Object.keys(S.kian).length) kEff(c).forEach(e => { const y = e.yr || ""; if (y){ const t = y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"; if (!out.includes(t)) out.push(t); } }); return out; }
 function cbInfo(n){ const c = CARDS[n], r = S.rev[c.id], tg = allTagsOf(c), yr = cbYrs(c), memo = (S.memo && S.memo[c.id]) || "";
   return { n, c, title: c.title, deck: deckOf(c), imp: impOf(c), tags: tg, yr, memo, rev: r && r.g ? (GMARK[r.g] || "") + " " + (r.d || "") : "", revKey: r && r.d ? r.d + (r.g || "") : "" }; }
 function cbItems(){
-  const base = CB.all ? CARDS.map((c, i) => i) : [...new Set(list)], ws = normQ(CB.q).split(/\s+/).filter(Boolean);
+  const base = CB.all ? CARDS.map((c, i) => i) : [...new Set(list)];
   let it = base.map(cbInfo);
-  if (ws.length) it = it.filter(x => { const h = normQ([x.title, x.deck, x.tags.join(" "), x.yr.join(" "), x.memo].join(" ")).replace(/[\s　]+/g, ""); return ws.every(w => h.includes(w)); });
   const k = CB.key, d = CB.dir, cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   const key = x => k === "deck" ? deckNo(x.deck) : k === "imp" ? x.imp : k === "tags" ? x.tags.length : k === "yr" ? x.yr.join(",") : k === "memo" ? (x.memo ? 1 : 0) : k === "rev" ? x.revKey : x.title;
+  if (!k) return it;
   it.sort((a, b) => { const A = key(a), B = key(b); const r = (typeof A === "string" && typeof B === "string") ? A.localeCompare(B, "ja") : cmp(A, B); return (r || a.title.localeCompare(b.title, "ja")) * d; });
   return it;
 }
 function renderCb(){
-  const sel = $("cbSort"); if (!sel.options.length) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
+  const sel = $("cbSort"); if (!sel.options.length){ const o0 = el("option"); o0.value = ""; o0.textContent = "再生の順"; sel.append(o0); } if (sel.options.length === 1) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
   sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順"; $("cbAll").checked = CB.all;
   const it = cbItems(), show = it.slice(0, CB.shown), t = $("cbT"); t.innerHTML = "";
-  $("cbCnt").textContent = (CB.all ? "全部のカード" : "いまの絞り込みに合うカード") + " " + it.length + " 枚中 " + show.length + " 枚を表示";
+  $("cbCnt").textContent = (CB.all ? "全部のカード" : "いまの条件に合うカード") + " " + it.length + " 枚中 " + show.length + " 枚を表示";
   const hr = el("tr"); CBCOLS.forEach(([k, l]) => { const th = el("th"); th.setAttribute("scope", "col"); const b = el("button"); b.type = "button"; b.textContent = l + (CB.key === k ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === k) CB.dir = -CB.dir; else { CB.key = k; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); });
   const thd = el("thead"); thd.append(hr); t.append(thd);
   const tb = el("tbody");
@@ -2519,8 +2518,8 @@ function cbOpen(n){
 function setTab(t){ const cards = t === "cards"; $("app").classList.toggle("cb", cards);
   $("tabPlay").setAttribute("aria-selected", cards ? "false" : "true"); $("tabCards").setAttribute("aria-selected", cards ? "true" : "false");
   if (cards) renderCb(); }
+$("plBrowse").onclick = () => { CB.shown = 50; setTab("cards"); window.scrollTo(0, 0); };
 $("tabPlay").onclick = () => setTab("play"); $("tabCards").onclick = () => { CB.shown = 50; setTab("cards"); };
-$("cbQ").oninput = () => { CB.q = $("cbQ").value; CB.shown = 50; renderCb(); };
 $("cbSort").onchange = () => { CB.key = $("cbSort").value; CB.shown = 50; renderCb(); };
 $("cbDir").onclick = () => { CB.dir = -CB.dir; renderCb(); };
 $("cbAll").onchange = () => { CB.all = $("cbAll").checked; CB.shown = 50; renderCb(); };
@@ -2528,7 +2527,7 @@ $("cbMore").onclick = () => { CB.shown += 50; renderCb(); };
 /* インポートの小窓：これまでの「📥 インポート」の中身を、そのまま小窓に移す（トグルでなく、重ねて出す） */
 (function(){ const t = $("impTop"), body = $("impBody"); [...t.children].forEach(ch => { if (ch.tagName !== "SUMMARY") body.append(ch); }); t.hidden = true; })();
 const impShow = on => { $("impDlg").hidden = !on; if (on) $("impClose").focus(); };
-$("impOpen").onclick = () => impShow(true); $("cbImp").onclick = () => impShow(true); $("impClose").onclick = () => impShow(false);
+$("impOpen").onclick = () => impShow(true); $("impClose").onclick = () => impShow(false);
 $("impDlg").addEventListener("click", e => { if (e.target === $("impDlg")) impShow(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("impDlg").hidden) impShow(false); });
 </script>
