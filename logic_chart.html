@@ -132,6 +132,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .pt.q{font-size:13px}
 .c{color:var(--cyan)} .y{color:var(--yellow)}
 .recline{margin:2px 0}
+.qadiv{border-top:2px dashed var(--sub);margin:14px 0 10px;text-align:center;height:0;opacity:.75}.qadiv span{position:relative;top:-.8em;background:var(--board,#14171c);padding:0 .6em;font-size:11px;color:var(--sub)}
 .rdsel{margin-top:2px;font-size:13px}
 .pick{width:100%;box-sizing:border-box;min-height:44px;line-height:1.5;margin:8px 0 6px;padding:10px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:14px}
 .flag{font-size:12.5px;color:#b3261e;margin:4px 0}
@@ -1158,6 +1159,10 @@ function render(){
   });
   synced = !!(c.t && c.t.length === utts.length);
   qaIdx = qaOf(c);
+  /* 表面（問い）と裏面（答え）の境目に横線 */
+  { const rows = [...board.querySelectorAll(".row")], tgt = rows.find(r => r._row && +r.dataset.w >= qaIdx);
+    if (tgt && qaIdx > 0){ const dv = el("div", "qadiv"); dv.setAttribute("aria-hidden", "true"); const sp = el("span"); sp.textContent = "ここから裏面（答え）"; dv.append(sp);
+      const prev = tgt.previousElementSibling; (prev && prev.classList.contains("wire") ? prev : tgt).before(dv); } }
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
   update();
@@ -1820,7 +1825,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251230";
+const VER = "版 202611251300";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
