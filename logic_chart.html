@@ -357,6 +357,8 @@ body{padding-bottom:215px}
 .csbar .cs.on{font-weight:bold;color:#111}.csbar .cs-u.on{background:#c9ced6;border-color:#8b929e}.csbar .cs-c.on{background:#ffd966;border-color:#c99a00}.csbar .cs-m.on{background:#ff9a8a;border-color:#d1493a}.csbar .cs-d.on{background:#8fe0a6;border-color:#2f9e55}
 .csb{display:inline-block;border-radius:99px;padding:1px 9px;font-size:12px;border:1px solid var(--btnline)}.csb-c{background:#ffd966;color:#111}.csb-m{background:#ff9a8a;color:#111}.csb-d{background:#8fe0a6;color:#111}.csb-u{background:transparent}
 .scopelab{font-size:13px;margin-right:8px}.plask{margin:8px 0;padding:8px;border:1px solid #c99a00;border-radius:8px;font-size:13px}.plask button{margin-left:6px}
+.tgchips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.tgchip{border:1px solid #5c7a52;background:#3a4a35;color:#fff;border-radius:99px;padding:3px 10px;font:inherit;font-size:12.5px;cursor:pointer}
+.taglist{max-height:240px;overflow:auto;border:1px solid var(--barline);border-radius:8px;padding:6px 8px;margin:6px 0}.taglist .tgi{display:block;padding:4px 0;font-size:13.5px;cursor:pointer}.taglist .tgh{font-weight:bold;font-size:12.5px;margin:8px 0 2px;color:var(--sub)}
 </style>
 </head>
 <body>
@@ -378,8 +380,6 @@ body{padding-bottom:215px}
     <section class="panel cbtab" id="cbTab">
     <div class="srch">
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="impOpen" title="取り込みの小窓を開く">📥 インポート</button><button id="qX" hidden>解除</button></div>
-      <div class="qrow tqrow"><input type="search" id="tqIn" autocomplete="off" placeholder="タグを探す（出題・判例・自分のタグ。例：2022、平成16）" aria-label="タグを探す"></div>
-      <div class="tqsug" id="tqSug" hidden></div>
       <div class="small" id="qInfo" hidden><span id="qCnt"></span></div>
     </div>
     <details class="panel" id="fltTop" open><summary>🎚 並べ方・絞り込み（再生にも使われます）</summary>
@@ -396,8 +396,14 @@ body{padding-bottom:215px}
       <p class="small" id="cnt"></p>
       <p class="small" id="info"></p>
       <h2 class="sech">カードの絞り込み</h2>
-      <h3>タグ　<select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select></h3>
-      <div class="tgrow" id="fTag"></div>
+      <h3>タグ</h3>
+      <div class="act"><button id="tagTgl" type="button" aria-expanded="false">タグ ▼</button> <span class="small" id="tagSumm"></span></div>
+      <div class="tgchips" id="tagChips"></div>
+      <div id="tagPane" hidden>
+        <div class="qrow"><input type="search" id="tqIn" autocomplete="off" placeholder="タグの一覧を絞り込む（例：2022、平成16）" aria-label="タグの一覧を絞り込む"></div>
+        <div class="small">タグを2つ以上選んだとき: <select class="mini" id="tagMode" aria-label="タグの絞り込み方"><option value="any">どれか1つでもあるカード</option><option value="all">選んだ全部があるカード</option></select> <span id="tagModeNote"></span></div>
+        <div class="taglist" id="tagList"></div>
+      </div>
       <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
       <h3>科目　<button class="grad" id="dAll">全部選ぶ</button> <button class="grad" id="dNone">全部外す</button></h3><div class="chk" id="fDeck"></div>
       <h3>重要度（数字はPCの「重要度一覧.txt」で決まります）</h3>
@@ -544,11 +550,6 @@ body{padding-bottom:215px}
       <div class="act"><button class="grad" id="treeClr">このカードのツリーを全部消す</button></div>
     </section>
     <div class="board" id="board"></div>
-    <section class="panel memo" id="memoBox">
-      <h3>📝 メモ（自分で書く欄。読み上げません）</h3>
-      <textarea id="memoIn" rows="3" placeholder="このカードについて、自由に書けます。書いたら自動で保存されます（「☁ Googleドライブと同期」で他の端末にも入ります）。" aria-label="このカードのメモ"></textarea>
-      <div class="small" id="memoSt"></div>
-    </section>
     <section class="panel kbot" id="kBot" hidden></section>
 
     <details class="panel" id="setup">
@@ -1279,7 +1280,7 @@ function render(){
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
   renderKian();
-  renderMemo(); renderCs();
+  renderCs();
   update();
 }
 /* ---------- 隠して再生 ---------- */
@@ -1426,34 +1427,36 @@ $("qX").onclick = () => { S.q = ""; $("qIn").value = ""; save(); refilter(); ren
 $("qGo").onclick = doSearch;
 $("qIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); doSearch(); $("qIn").blur(); } };
 $("qIn").onchange = doSearch;
-$("qClr").onclick = () => { S.q = ""; S.tagSel = []; $("qIn").value = ""; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); };
-$("tagMode").onchange = e => { S.tagMode = e.target.value; save(); refilter(); };
+$("qClr").onclick = () => { S.q = ""; S.tagSel = []; $("qIn").value = ""; $("tqIn").value = ""; save(); renderTagFilter(); refilter(); };
+$("tagMode").onchange = e => { S.tagMode = e.target.value; save(); renderTagFilter(); refilter(); };
 function allTags(){ const n = {}; CARDS.forEach(c => allTagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
-/* タグ検索欄：入力するとタグの候補（出題・判例・自分のタグ。枚数つき）が出る。選ぶと、そのタグが付いたカードに絞り、検索結果の一覧に出す */
-function tqRender(){
-  const box = $("tqSug"), q = normQ($("tqIn").value).replace(/[\s\u3000]+/g, ""); box.innerHTML = "";
-  if (!q){ box.hidden = true; return; }
-  const n = allTags(), names = Object.keys(n).filter(t => normQ(t).replace(/[\s\u3000]+/g, "").includes(q)).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
-  box.hidden = false;
-  if (!names.length){ const p = el("span", "small"); p.textContent = "一致するタグはありません。"; box.append(p); return; }
-  names.slice(0, 40).forEach(t => { const b = el("button"); b.type = "button"; b.textContent = t + " " + n[t]; b.onclick = () => tqPick(t); box.append(b); });
-  if (names.length > 40){ const p = el("span", "small"); p.textContent = "ほか " + (names.length - 40) + " 個（もう少し文字を足すと絞れます）"; box.append(p); }
-}
-function tqPick(t){ S.tagSel = [t]; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); renderSearch(lastNone); }
-$("tqIn").oninput = tqRender;
-$("tqIn").onfocus = tqRender;
-$("tqIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); const b = $("tqSug").querySelector("button"); if (b) b.click(); } };
+/* タグの絞り込み：ふだんは閉じておく（「タグ ▼」で開く）。開くと、一覧を絞る欄・チェックボックスの一覧（枚数つき。高さに上限があり、中でスクロール）・選んだタグのチップ。自分のタグと、起案から自動で付くタグ（出題・関連判例）は見出しで分ける */
+let tagOpen = false;
 function renderTagFilter(){
-  const box = $("fTag"), n = allTags(), names = Object.keys(n).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
-  S.tagSel = S.tagSel.filter(t => t === NOTAG || t in n); box.innerHTML = "";
-  $("tagMode").hidden = !names.length;
-  if (!names.length){ const p = el("span", "small"); p.textContent = "まだタグがありません。カードの題名の下の「＋タグ」から付けられます。"; box.append(p); return; }
-  const none = CARDS.filter(c => !allTagsOf(c).length).length;
-  [NOTAG].concat(names).forEach(t => { const b = el("button"); b.textContent = t === NOTAG ? "タグなし " + none : t + " " + n[t];
-    b.setAttribute("aria-pressed", S.tagSel.includes(t) ? "true" : "false");
-    b.onclick = () => { S.tagSel = S.tagSel.includes(t) ? S.tagSel.filter(v => v !== t) : S.tagSel.concat([t]); save(); renderTagFilter(); refilter(); };
-    box.append(b); });
+  const n = allTags(), names = Object.keys(n).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
+  S.tagSel = S.tagSel.filter(t => t === NOTAG || t in n);
+  const tg = $("tagTgl"); tg.textContent = "タグ " + (tagOpen ? "▲" : "▼"); tg.setAttribute("aria-expanded", tagOpen ? "true" : "false");
+  $("tagSumm").textContent = names.length ? names.length + " 種類" + (S.tagSel.length ? "・" + S.tagSel.length + " 個を選択中" : "") : "まだタグがありません（カードの題名の下の「＋タグ」から付けられます）";
+  const ch = $("tagChips"); ch.innerHTML = "";
+  S.tagSel.forEach(t => { const nm = t === NOTAG ? "タグなし" : t, b = el("button", "tgchip"); b.type = "button"; b.textContent = nm + " ×"; b.setAttribute("aria-label", nm + " の選択を外す");
+    b.onclick = () => { S.tagSel = S.tagSel.filter(v => v !== t); save(); renderTagFilter(); refilter(); }; ch.append(b); });
+  $("tagModeNote").textContent = S.tagMode === "all" ? "（いまは: 選んだタグが全部ついているカードに絞ります）" : "（いまは: 選んだタグのどれか1つでもついているカードに絞ります）";
+  $("tagPane").hidden = !tagOpen; if (!tagOpen) return;
+  const q = normQ($("tqIn").value).replace(/[\s\u3000]+/g, ""), match = t => !q || normQ(t).replace(/[\s\u3000]+/g, "").includes(q);
+  const own = new Set(); CARDS.forEach(c => tagsOf(c).forEach(t => own.add(t)));
+  const none = CARDS.filter(c => !allTagsOf(c).length).length, box = $("tagList"); box.innerHTML = "";
+  const item = (t, label, cnt) => { const l = el("label", "tgi"), i = el("input"); i.type = "checkbox"; i.checked = S.tagSel.includes(t);
+    i.onchange = () => { S.tagSel = i.checked ? S.tagSel.concat([t]) : S.tagSel.filter(v => v !== t); save(); renderTagFilter(); refilter(); };
+    const sp = el("span", "small"); sp.textContent = " " + cnt + "枚"; l.append(i, document.createTextNode(" " + label), sp); return l; };
+  if (match("タグなし")) box.append(item(NOTAG, "タグなし", none));
+  [["自分のタグ", names.filter(t => own.has(t) && match(t))], ["自動タグ（出題・関連判例）", names.filter(t => !own.has(t) && match(t))]].forEach(([h, arr]) => {
+    if (!arr.length) return; const hh = el("div", "tgh"); hh.textContent = h + "（" + arr.length + "）"; box.append(hh);
+    arr.slice(0, 300).forEach(t => box.append(item(t, t, n[t])));
+    if (arr.length > 300){ const p = el("div", "small"); p.textContent = "ほか " + (arr.length - 300) + " 個（上の欄に文字を入れると絞れます）"; box.append(p); } });
+  if (!box.childNodes.length){ const p = el("div", "small"); p.textContent = "一致するタグはありません。"; box.append(p); }
 }
+$("tagTgl").onclick = () => { tagOpen = !tagOpen; renderTagFilter(); if (tagOpen) $("tqIn").focus(); };
+$("tqIn").oninput = () => renderTagFilter();
 function normTag(t){ return String(t || "").normalize("NFKC").replace(/[\s\u0001\u0002|]+/g, " ").trim().slice(0, 20); }
 function setTags(c, arr){
   if (sameArr(arr, c.tags || [])) delete S.tags[c.id]; else S.tags[c.id] = arr;
@@ -1957,7 +1960,7 @@ async function gSync(){
       await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
         body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
     S.gLast = Date.now(); save();
-    if (n){ migrateDbq(); tidyTx(); save(); try { CARDS = DATA.cards.concat(draftList()); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
+    if (n){ migrateDbq(); tidyTx(); migrateMemo(); save(); try { CARDS = DATA.cards.concat(draftList()); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
     try { const t = await gGet(DB_PLACE_FILE); if (t) dbPlaceAccept(t, "drive"); } catch(e){}
     gStatus(); gMsg($("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。"));
   } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e)); }
@@ -1977,7 +1980,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611252237";
+const VER = "版 202611252238";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2309,9 +2312,7 @@ function applyHash(){
     let cid = ""; try { cid = decodeURIComponent(mc[1]); } catch(e){}
     const cd = CARDS.find(c => c.id === cid);
     if (!cd){ toast("リンクで指定されたカードが、この端末のカードの中に見つかりません。ドライブと同期してから、もう一度開いてください。", "ng", 9000); return; }
-    let i = list.findIndex(n => CARDS[n].id === cd.id);
-    if (i < 0){ const n = CARDS.indexOf(cd); list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
-    pi = i; stop(); load(false).then(() => { window.scrollTo(0, 0); });
+    openCardAt(CARDS.indexOf(cd));
     history.replaceState(null, "", location.pathname + location.search);
     return;
   }
@@ -2319,9 +2320,7 @@ function applyHash(){
   const want = stripV(decodeURIComponent(m[1]));
   let hit = null; for (const cd of CARDS){ const o = dbItemIds(cd.id).find(z => z.base === want); if (o){ hit = { cd, o }; break; } }
   if (!hit){ $("dbPlMsg").textContent = "ツリーから指定されたブロック（" + want + "）が、この端末のカードの中に見つかりません。ドライブと同期してから、もう一度開いてください。"; return; }
-  let i = list.findIndex(n => CARDS[n].id === hit.cd.id);
-  if (i < 0){ const n = CARDS.indexOf(hit.cd); list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
-  pi = i; stop(); load(false).then(() => { treeSel = hit.o.n.k; renderTree(); const t = board.querySelector('.dbm[data-k="' + hit.o.n.k + '"]' + (hit.o.pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])'));
+  openCardAt(CARDS.indexOf(hit.cd)).then(() => { treeSel = hit.o.n.k; renderTree(); const t = board.querySelector('.dbm[data-k="' + hit.o.n.k + '"]' + (hit.o.pur ? '[data-t="趣旨"]' : ':not([data-t="趣旨"])'));
     if (t){ t.scrollIntoView({ block: "center" }); t.classList.add("dbhl"); setTimeout(() => t.classList.remove("dbhl"), 4000); } else { const tb = $("treeBox"); if (!tb.hidden) tb.scrollIntoView({ block: "center" }); } });
   history.replaceState(null, "", location.pathname + location.search);
 }
@@ -2374,7 +2373,7 @@ async function init(){
   Object.keys(S.grad || {}).forEach(id => { const c = byId[id]; if (c) S.imp[id] = S.grad[id] === 1 ? 4 : baseImp(c); }); S.grad = {};
   Object.keys(S.imp).forEach(id => { if (byId[id] && byId[id].imp === S.imp[id]) delete S.imp[id]; });
   Object.keys(S.deckOv).forEach(id => { if (byId[id] && byId[id].deck === S.deckOv[id]) delete S.deckOv[id]; });
-  tidyTx();
+  tidyTx(); migrateMemo();
   save();
   $("gcid").value = S.gcid || ""; gStatus(); if (S.gcid) loadGis().catch(() => {});
   const decks = [...new Set(CARDS.map(c => c.deck).concat(CARDS.map(deckOf)))].sort((a, b) => deckNo(a) - deckNo(b));
@@ -2412,16 +2411,16 @@ document.addEventListener("cut", e => { if (!blkKeysOn() || inField() || !selCol
 document.addEventListener("paste", e => { if (!blkKeysOn() || inField() || !blkClip || !selCollapsed()) return; const t = (e.clipboardData.getData("text/plain") || "").trim(); if (t !== blkClip.plain) return; e.preventDefault(); blkPaste(); });
 
 
-/* ---------- メモ欄：S.memo[カードid] = 自分で書いた文字。読み上げない。この端末だけに保存（同期しない） ---------- */
-let memoT = null;
-function memoFlush(){ if (memoT){ clearTimeout(memoT); memoT = null; } const ta = $("memoIn"), id = ta.dataset.id; if (!id) return;
-  const v = ta.value; if ((S.memo[id] || "") !== (v.trim() ? v : "")) st("memo", id); if (v.trim()) S.memo[id] = v; else delete S.memo[id]; save(); $("memoSt").textContent = v.trim() ? "保存しました（この端末）" : ""; }
-function renderMemo(){ const c = card(), ta = $("memoIn"); if (!c) return;
-  if (ta.dataset.id && ta.dataset.id !== c.id) memoFlush();
-  ta.dataset.id = c.id; if (document.activeElement !== ta || ta.dataset.shown !== c.id) ta.value = (S.memo && S.memo[c.id]) || ""; ta.dataset.shown = c.id; $("memoSt").textContent = ""; }
-$("memoIn").oninput = () => { $("memoSt").textContent = "書いています…"; if (memoT) clearTimeout(memoT); memoT = setTimeout(memoFlush, 600); };
-$("memoIn").onblur = memoFlush;
-window.addEventListener("pagehide", memoFlush);
+/* ---------- メモ欄は無くした。前に書いたメモは、補足の項目「メモ(移行)」として1回だけ移す（移したあとの S.memo は空。同期で古いメモが入ってきたときも同じ） ---------- */
+function migrateMemo(){
+  let n = 0; if (!S.memo) return 0; if (!S.kx) S.kx = {};
+  Object.keys(S.memo).forEach(id => { const tx = String(S.memo[id] || "");
+    if (tx.trim()){ const arr = (S.kx[id] || []).slice(), ex = arr.find(x => x.id === "memo-mig");
+      if (!ex){ arr.push({ id: "memo-mig", n: "メモ(移行)", t: tx }); S.kx[id] = arr; st("kx", id); n++; }
+      else if (!String(ex.t || "").includes(tx)){ ex.t = String(ex.t || "") + "\n\n" + tx; S.kx[id] = arr; st("kx", id); n++; } }
+    delete S.memo[id]; st("memo", id); });
+  if (n) save(); return n;
+}
 
 /* ---------- 起案チェック（CSV）：出題年度・関連判例を上、補足（拾った事実・拾い漏れ）を下に出す。S.kian[ファイル名] = { yr, at, rows:[{ q:設問, pt:出題趣旨, fa:拾った事実, mi:拾い漏れ, ro:[論証名], hj:[{ n:判例名, u:リンク, p:パス }], yr }] } ---------- */
 var KMAP = null;
@@ -2591,10 +2590,16 @@ function plAdd(top){
   plPut({ ids: top ? ids.concat(rest) : rest.concat(ids), off: d.off }); CB.sel.clear(); renderCb(); toast(ids.length + " 枚を再生順の" + (top ? "先頭" : "最後") + "に入れました", "ok", 2500);
 }
 $("cbAddTop").onclick = () => plAdd(true); $("cbAddEnd").onclick = () => plAdd(false); $("cbSelClr").onclick = () => { CB.sel.clear(); renderCb(); };
-function cbOpen(n){
+/* カードを1枚開く（ブラウザの題名・起案スプシからのリンク・ツリーからのリンク、全部この1つを通す）。編集の途中の状態を片付けてから開くので、どこから開いても、そのあと同じように直せる */
+function openCardAt(n){
+  try { if (edEl) commit(); } catch(e){}
+  try { if (txMode) setTx(false); } catch(e){}
+  try { if (editing) setEditing(false); } catch(e){}
+  edEl = null; edU = -1; blkLevel = ""; blkU = null; lpFired = false; clearTimeout(lpT);
   let i = list.indexOf(n); if (i < 0){ list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
-  pi = i; stop(); setTab("play"); load(false).then(() => { window.scrollTo(0, 0); });
+  pi = i; stop(); setTab("play"); return load(false).then(() => { window.scrollTo(0, 0); });
 }
+function cbOpen(n){ openCardAt(n); }
 /* ---------- 再生順（プレイリスト・1本）：S.pl.main = { ids:[カードid…], off:[今回は外すカードid…] }（同期あり=kind pl。端末ごとの「使う」は S.plOn）。使っている間は、絞り込み・並べ方・シャッフルは効かず、この順に再生する ---------- */
 function plData(){ const m = S.pl && S.pl.main; return m ? { ids: (m.ids || []).slice(), off: (m.off || []).slice() } : { ids: [], off: [] }; }
 function plIdx(){ const d = plData(), at = {}; CARDS.forEach((c, i) => at[c.id] = i); return d.ids.filter(id => id in at && !d.off.includes(id)).map(id => at[id]); }
