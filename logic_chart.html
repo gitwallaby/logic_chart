@@ -134,6 +134,16 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .recline{margin:2px 0}
 .ktop{margin:6px 0 2px;font-size:13px;line-height:1.7}.ktop .kyr{display:inline-block;background:#3a4a35;border:1px solid #5c7a52;border-radius:99px;padding:1px 10px;margin:0 6px 4px 0;font-size:12px}.ktop .kh{display:block;margin:2px 0}.ktop a{color:#8fc1ff}.ktop button{font:inherit;font-size:11.5px;margin-left:6px;padding:1px 8px;border-radius:6px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.ktop .khn{font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border-radius:99px}.ktop .khx{display:inline-block;font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border:1px dashed var(--btnline);border-radius:99px;color:var(--gray)}
 .memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
+.tabs{display:flex;gap:6px;margin:8px 0 0}.tabs button{flex:1;font:inherit;padding:8px 6px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tabs button[aria-selected=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}
+#app.cb > *:not(.tabs):not(#cbTab){display:none!important}#app:not(.cb) #cbTab{display:none}
+.cbctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0}.cbctl input[type=search]{flex:1;min-width:12rem;box-sizing:border-box;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
+.cbwrap{overflow:auto;max-height:70vh;border:1px solid var(--barline);border-radius:8px}.cbt{border-collapse:collapse;width:100%;font-size:13px}.cbt th,.cbt td{border-bottom:1px solid var(--barline);padding:6px 8px;text-align:left;vertical-align:top}
+.cbt th{position:sticky;top:0;background:var(--bar);z-index:2}.cbt th button{border:0;background:transparent;color:inherit;font:inherit;font-weight:bold;cursor:pointer;padding:0;white-space:nowrap}
+.cbt td:first-child,.cbt th:first-child{position:sticky;left:0;background:var(--bar);z-index:1;min-width:11rem}.cbt th:first-child{z-index:3}
+.cbt .cbT{border:0;background:transparent;color:#8fc1ff;font:inherit;text-align:left;cursor:pointer;padding:0;text-decoration:underline}.cbt td.nw{white-space:nowrap}
+#impOpen{margin-left:6px}
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px 10px}.ovl[hidden]{display:none}
+.ovlbox{background:var(--bar);border:1px solid var(--barline);border-radius:12px;max-width:44rem;width:100%;padding:12px 14px;box-sizing:border-box}.ovlhd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
 .kedit label{display:block;margin:6px 0 2px;font-size:12.5px}.kedit textarea,.kedit input{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:13.5px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:5px 8px;margin-top:2px}
 .kbot h3{margin:0 0 6px;font-size:14px}.kbot .kq{border-top:1px solid var(--barline);padding:8px 0;font-size:13px}.kbot .kq b{display:block;margin:4px 0 1px}.kbot pre{white-space:pre-wrap;margin:0;font:inherit;line-height:1.6}
 .qadiv{border-top:2px dashed var(--sub);margin:14px 0 10px;text-align:center;height:0;opacity:.75}.qadiv span{position:relative;top:-.8em;background:var(--board,#14171c);padding:0 .6em;font-size:11px;color:var(--sub)}
@@ -361,9 +371,21 @@ body{padding-bottom:215px}
   </div>
 
   <div id="app" hidden>
+    <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">▶ 再生</button><button id="tabCards" role="tab" aria-selected="false">🗂 カード</button></div>
+    <section class="panel cbtab" id="cbTab">
+      <div class="cbctl">
+        <input type="search" id="cbQ" autocomplete="off" placeholder="この一覧をしぼる（題名・科目・タグ・出題・メモ）" aria-label="この一覧をしぼる">
+        <select class="mini" id="cbSort" aria-label="並び替え"></select><button class="grad" id="cbDir" aria-label="昇順・降順を切り替え">↑ 昇順</button>
+      </div>
+      <div class="cbctl"><label><input type="checkbox" id="cbAll">絞り込みに関係なく全部のカードを出す</label><button class="grad" id="cbImp">📥 インポート</button></div>
+      <p class="small" id="cbCnt"></p>
+      <div class="cbwrap"><table class="cbt" id="cbT"></table></div>
+      <div class="act"><button class="grad" id="cbMore" hidden>50枚ふやす</button></div>
+      <p class="small">題名を押すと、「▶ 再生」でそのカードが開きます（そのまま直せます）。見出しを押すと並び替えます。上の絞り込み（科目・重要度・タグ・検索）がそのまま使われます。</p>
+    </section>
     <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
     <div class="srch">
-      <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="qX" hidden>解除</button></div>
+      <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="impOpen" title="取り込みの小窓を開く">📥 インポート</button><button id="qX" hidden>解除</button></div>
       <div class="qrow tqrow"><input type="search" id="tqIn" autocomplete="off" placeholder="タグを探す（出題・判例・自分のタグ。例：2022、平成16）" aria-label="タグを探す"></div>
       <div class="tqsug" id="tqSug" hidden></div>
       <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
@@ -528,6 +550,9 @@ body{padding-bottom:215px}
   </div>
 </main>
 
+<div class="ovl" id="impDlg" hidden role="dialog" aria-modal="true" aria-labelledby="impDlgT">
+  <div class="ovlbox"><div class="ovlhd"><b id="impDlgT">📥 インポート</b><button class="grad" id="impClose">閉じる</button></div><div id="impBody"></div></div>
+</div>
 <div class="ctl" id="ctl" hidden>
   <div class="ctl-in">
     <div class="sug" id="sug" hidden>○が、日をあけて3回続きました。卒業にしますか？<br>
@@ -1914,7 +1939,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251505";
+const VER = "版 202611251507";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2457,6 +2482,55 @@ $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value =
     toast("起案チェックを取り込みました", "ok"); renderKian(); renderTags(true); renderTagFilter(); refilter();
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
+
+/* ---------- 「カード」タブ（カードブラウザ・第1段）：一覧表。見出しで並び替え。題名を押すと「再生」でそのカードを開く。インポートは小窓 ---------- */
+const CB = { key: "title", dir: 1, shown: 50, all: false, q: "" };
+const CBCOLS = [["title", "題名"], ["deck", "科目"], ["imp", "重要度"], ["tags", "タグ"], ["yr", "出題"], ["memo", "メモ"], ["rev", "学習の記録"]];
+function cbYrs(c){ const out = []; if (S.kian && Object.keys(S.kian).length) kEff(c).forEach(e => { const y = e.yr || ""; if (y){ const t = y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"; if (!out.includes(t)) out.push(t); } }); return out; }
+function cbInfo(n){ const c = CARDS[n], r = S.rev[c.id], tg = allTagsOf(c), yr = cbYrs(c), memo = (S.memo && S.memo[c.id]) || "";
+  return { n, c, title: c.title, deck: deckOf(c), imp: impOf(c), tags: tg, yr, memo, rev: r && r.g ? (GMARK[r.g] || "") + " " + (r.d || "") : "", revKey: r && r.d ? r.d + (r.g || "") : "" }; }
+function cbItems(){
+  const base = CB.all ? CARDS.map((c, i) => i) : [...new Set(list)], ws = normQ(CB.q).split(/\s+/).filter(Boolean);
+  let it = base.map(cbInfo);
+  if (ws.length) it = it.filter(x => { const h = normQ([x.title, x.deck, x.tags.join(" "), x.yr.join(" "), x.memo].join(" ")).replace(/[\s　]+/g, ""); return ws.every(w => h.includes(w)); });
+  const k = CB.key, d = CB.dir, cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+  const key = x => k === "deck" ? deckNo(x.deck) : k === "imp" ? x.imp : k === "tags" ? x.tags.length : k === "yr" ? x.yr.join(",") : k === "memo" ? (x.memo ? 1 : 0) : k === "rev" ? x.revKey : x.title;
+  it.sort((a, b) => { const A = key(a), B = key(b); const r = (typeof A === "string" && typeof B === "string") ? A.localeCompare(B, "ja") : cmp(A, B); return (r || a.title.localeCompare(b.title, "ja")) * d; });
+  return it;
+}
+function renderCb(){
+  const sel = $("cbSort"); if (!sel.options.length) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
+  sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順"; $("cbAll").checked = CB.all;
+  const it = cbItems(), show = it.slice(0, CB.shown), t = $("cbT"); t.innerHTML = "";
+  $("cbCnt").textContent = (CB.all ? "全部のカード" : "いまの絞り込みに合うカード") + " " + it.length + " 枚中 " + show.length + " 枚を表示";
+  const hr = el("tr"); CBCOLS.forEach(([k, l]) => { const th = el("th"); th.setAttribute("scope", "col"); const b = el("button"); b.type = "button"; b.textContent = l + (CB.key === k ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === k) CB.dir = -CB.dir; else { CB.key = k; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); });
+  const thd = el("thead"); thd.append(hr); t.append(thd);
+  const tb = el("tbody");
+  show.forEach(x => { const tr = el("tr"); const td = (txt, cls) => { const e = el("td", cls); e.textContent = txt; tr.append(e); return e; };
+    const t0 = el("td"); const b = el("button", "cbT"); b.type = "button"; b.textContent = x.title; b.onclick = () => cbOpen(x.n); t0.append(b); tr.append(t0);
+    td(x.deck, "nw"); td(x.imp === 4 ? "卒" : String(x.imp), "nw"); td(x.tags.slice(0, 3).join("・") + (x.tags.length > 3 ? "…(+" + (x.tags.length - 3) + ")" : "")); td(x.yr.join("・")); td(x.memo ? "📝" : "", "nw"); td(x.rev, "nw"); tb.append(tr); });
+  t.append(tb);
+  const mo = $("cbMore"); mo.hidden = it.length <= show.length; mo.textContent = "50枚ふやす（あと " + (it.length - show.length) + " 枚）";
+}
+function cbOpen(n){
+  let i = list.indexOf(n); if (i < 0){ list.splice(Math.min(list.length, pi + 1), 0, n); i = pi + 1; fillPick(); }
+  pi = i; stop(); setTab("play"); load(false).then(() => { window.scrollTo(0, 0); });
+}
+function setTab(t){ const cards = t === "cards"; $("app").classList.toggle("cb", cards);
+  $("tabPlay").setAttribute("aria-selected", cards ? "false" : "true"); $("tabCards").setAttribute("aria-selected", cards ? "true" : "false");
+  if (cards) renderCb(); }
+$("tabPlay").onclick = () => setTab("play"); $("tabCards").onclick = () => { CB.shown = 50; setTab("cards"); };
+$("cbQ").oninput = () => { CB.q = $("cbQ").value; CB.shown = 50; renderCb(); };
+$("cbSort").onchange = () => { CB.key = $("cbSort").value; CB.shown = 50; renderCb(); };
+$("cbDir").onclick = () => { CB.dir = -CB.dir; renderCb(); };
+$("cbAll").onchange = () => { CB.all = $("cbAll").checked; CB.shown = 50; renderCb(); };
+$("cbMore").onclick = () => { CB.shown += 50; renderCb(); };
+/* インポートの小窓：これまでの「📥 インポート」の中身を、そのまま小窓に移す（トグルでなく、重ねて出す） */
+(function(){ const t = $("impTop"), body = $("impBody"); [...t.children].forEach(ch => { if (ch.tagName !== "SUMMARY") body.append(ch); }); t.hidden = true; })();
+const impShow = on => { $("impDlg").hidden = !on; if (on) $("impClose").focus(); };
+$("impOpen").onclick = () => impShow(true); $("cbImp").onclick = () => impShow(true); $("impClose").onclick = () => impShow(false);
+$("impDlg").addEventListener("click", e => { if (e.target === $("impDlg")) impShow(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("impDlg").hidden) impShow(false); });
 </script>
 </body>
 </html>
