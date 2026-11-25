@@ -134,6 +134,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .recline{margin:2px 0}
 .ktop{margin:6px 0 2px;font-size:13px;line-height:1.7}.ktop .kyr{display:inline-block;background:#3a4a35;border:1px solid #5c7a52;border-radius:99px;padding:1px 10px;margin:0 6px 4px 0;font-size:12px}.ktop .kh{display:block;margin:2px 0}.ktop a{color:#8fc1ff}.ktop button{font:inherit;font-size:11.5px;margin-left:6px;padding:1px 8px;border-radius:6px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.ktop .khn{font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border-radius:99px}.ktop .khx{display:inline-block;font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border:1px dashed var(--btnline);border-radius:99px;color:var(--gray)}
 .memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
+.kedit label{display:block;margin:6px 0 2px;font-size:12.5px}.kedit textarea,.kedit input{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:13.5px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:5px 8px;margin-top:2px}
 .kbot h3{margin:0 0 6px;font-size:14px}.kbot .kq{border-top:1px solid var(--barline);padding:8px 0;font-size:13px}.kbot .kq b{display:block;margin:4px 0 1px}.kbot pre{white-space:pre-wrap;margin:0;font:inherit;line-height:1.6}
 .qadiv{border-top:2px dashed var(--sub);margin:14px 0 10px;text-align:center;height:0;opacity:.75}.qadiv span{position:relative;top:-.8em;background:var(--board,#14171c);padding:0 .6em;font-size:11px;color:var(--sub)}
 .rdsel{margin-top:2px;font-size:13px}
@@ -577,7 +578,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, kov:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
@@ -599,7 +600,9 @@ async function importFiles(files){
     let back = 0;
     for (const f of files){ n++; msg("取り込み中… " + n + " / " + files.length + "（" + f.name + "）");
       if (f.name !== "data.json" && /\.json$/i.test(f.name)){            /* 「編集_日時.json」＝学習の記録の控え */
-        try { const o = JSON.parse(await f.text()); if (o && (o.study || o.figs || o.tags)){ mergeStudy(o.study || {});
+        try { const o = JSON.parse(await f.text()); if (o && (o.study || o.figs || o.tags || o.memo)){ mergeStudy(o.study || {});
+          Object.keys(o.memo || {}).forEach(id => { if (!S.memo[id]) S.memo[id] = o.memo[id]; });
+          Object.keys(o.kov || {}).forEach(id => { if (!S.kov[id]) S.kov[id] = o.kov[id]; });
           Object.keys(o.tags || {}).forEach(id => { if (!S.tags[id]) S.tags[id] = o.tags[id]; });
           /* 別の置き場所に引っ越したとき用：まだPCに入れていない直し（図・重要度・科目）も戻す */
           Object.keys(o.figs || {}).forEach(id => { if (!S.cv[id]) S.cv[id] = o.figs[id]; });
@@ -1151,10 +1154,10 @@ function setEditing(v){ if (v && dbMode) dbMode = false; editing = v; $("edit").
 $("edit").onclick = () => setEditing(!editing);
 $("editUndo").onclick = () => { const id = card().id; S.edits = S.edits.filter(e => e.id !== id); save(); render(); };
 $("editOut").onclick = async () => {
-  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
+  if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.memo).length && !Object.keys(S.kov).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
   const d = new Date(), z = n => String(n).padStart(2, "0");
   const name = "編集_" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes()) + ".json";
-  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
+  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
   /* claude.ai の中では保存の確認が出る。PCで再生ページ.htmlを直接開いたときは、そのままダウンロードする */
   let dl = null;
   try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch(e){}
@@ -1314,8 +1317,7 @@ function tagsOf(c){ return S.tags[c.id] || c.tags || []; }
 /* 起案チェックから自動で付くタグ（出題・関連判例の名前）。S.tags には入れない（取り込んだ起案データから毎回作る）。押すと絞り込み、×では外せない */
 function autoTagsOf(c){
   if (!S.kian || !Object.keys(S.kian).length) return [];
-  if (!KMAP || KMAP.ref !== CARDS) kBuild();
-  const ents = KMAP.per[c.id]; if (!ents || !ents.length) return [];
+  const ents = kEff(c); if (!ents.length) return [];
   const out = []; const add = t => { t = String(t || "").trim(); if (t && !out.includes(t)) out.push(t); };
   ents.forEach(e => { const y = e.yr || ""; if (y) add(y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"); });
   ents.forEach(e => (e.r.hj || []).forEach(h => add(h.n)));
@@ -1810,9 +1812,9 @@ $("txtAll").onclick = () => exportCards(false); $("txtChg").onclick = () => expo
 const G_FOLDER = "logic_chart_sync", G_FOLDER_OLD = "論証フローチャート同期", G_FILE = "編集データ.json", G_SCOPE = "https://www.googleapis.com/auth/drive.file";
 /* 名前を英語にそろえる前の名前。見つからないときは前の名前で探し、見つかったら新しい名前に直す（ドライブ側を先に直していなくても動く） */
 const OLD_NAME = { "decision_tree_inbox.json": "DB送信.json", "decision_tree_placement.json": "DB配置.json" };
-const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree]];
+const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree], ["memo", o => o.memo, () => S.memo], ["kov", o => o.kov, () => S.kov]];
 let gTok = "", gExp = 0, gBusy = false;
-function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, study: { rev: S.rev, log: S.log } }; }
+function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, study: { rev: S.rev, log: S.log } }; }
 function tsOf(kind, id, store, ts){ const k = kind + ":" + id; return ts && ts[k] ? ts[k] : ((kind === "cv" && store && store[id] && +store[id].stamp) || (kind === "new" && store && store[id] && +store[id].ts) || (kind === "dbq" && store && store[id] && +store[id].ts) || (kind === "tree" && store && store[id] && +store[id].ts) || 0); }
 /* 混ぜる：カード1枚ごとに、直した時刻が新しい方を採る（新しい方が「直しを消した」なら、消した方が勝つ）。戻り値＝この端末が書き換わった数 */
 function mergeSnap(o){
@@ -1912,7 +1914,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251410";
+const VER = "版 202611251505";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2350,7 +2352,7 @@ document.addEventListener("paste", e => { if (!blkKeysOn() || inField() || !blkC
 /* ---------- メモ欄：S.memo[カードid] = 自分で書いた文字。読み上げない。この端末だけに保存（同期しない） ---------- */
 let memoT = null;
 function memoFlush(){ if (memoT){ clearTimeout(memoT); memoT = null; } const ta = $("memoIn"), id = ta.dataset.id; if (!id) return;
-  const v = ta.value; if (v.trim()) S.memo[id] = v; else delete S.memo[id]; save(); $("memoSt").textContent = v.trim() ? "保存しました（この端末）" : ""; }
+  const v = ta.value; if ((S.memo[id] || "") !== (v.trim() ? v : "")) st("memo", id); if (v.trim()) S.memo[id] = v; else delete S.memo[id]; save(); $("memoSt").textContent = v.trim() ? "保存しました（この端末）" : ""; }
 function renderMemo(){ const c = card(), ta = $("memoIn"); if (!c) return;
   if (ta.dataset.id && ta.dataset.id !== c.id) memoFlush();
   ta.dataset.id = c.id; if (document.activeElement !== ta || ta.dataset.shown !== c.id) ta.value = (S.memo && S.memo[c.id]) || ""; ta.dataset.shown = c.id; $("memoSt").textContent = ""; }
@@ -2367,7 +2369,7 @@ function kYear(name){
   return (/prebar|予備/i.test(name) ? "予備" : "") + "(" + y + "・" + m[1].toUpperCase() + n + ")";
 }
 function kBuild(){ KMAP = {}; CARDS.forEach(c => { const k = kn(c.title); (KMAP[k] = KMAP[k] || []).push(c); });
-  const per = {}; Object.keys(S.kian || {}).forEach(src => { const d = S.kian[src]; (d.rows || []).forEach(r => (r.ro || []).forEach(nm => { const cs = KMAP[kn(nm)]; if (cs) { const c = cs[0]; (per[c.id] = per[c.id] || []).push({ src, yr: r.yr || d.yr || "", r }); } })); });
+  const per = {}; Object.keys(S.kian || {}).forEach(src => { const d = S.kian[src]; (d.rows || []).forEach(r => (r.ro || []).forEach(nm => { const cs = KMAP[kn(nm)]; if (cs) { const c = cs[0]; (per[c.id] = per[c.id] || []).push({ src, ek: src + "|" + kn(r.q).slice(0, 40), yr: r.yr || d.yr || "", r }); } })); });
   KMAP = { byTitle: KMAP, per, ref: CARDS }; }
 function kImport(text, fname){
   const rows = csvParse(text); if (rows.length < 2) throw new Error("データの行がありません（1行目は列の名前です）。");
@@ -2384,7 +2386,8 @@ function kImport(text, fname){
   const src = String(fname || "起案チェック").replace(/\.[A-Za-z0-9]+$/, "");
   if (!S.kian) S.kian = {}; S.kian[src] = { yr: kYear(src), at: Date.now(), rows: out }; save(); kBuild();
   const miss = []; let hit = 0; out.forEach(o => o.ro.forEach(nm => { if (KMAP.byTitle[kn(nm)]) hit++; else miss.push(nm); }));
-  return { src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
+  let kept = 0; Object.keys(KMAP.per).forEach(id => (KMAP.per[id] || []).forEach(e => { if (S.kov && S.kov[id] && S.kov[id][e.ek]) kept++; }));
+  return { kept, src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
 }
 function kCopy(t){ const done = () => toast("コピーしました", "ok", 2500);
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => kCopyOld(t, done)); else kCopyOld(t, done); }
@@ -2394,26 +2397,63 @@ function kCase(nm, p){
   if (!p){ const x = el("span", "khx"); x.textContent = nm; return x; }
   const b = el("button", "khn"); b.type = "button"; b.textContent = nm; b.title = "押すと、この判例のPDFのパスをコピーします"; b.onclick = () => kCopy(p); return b;
 }
+/* 起案チェックから入った内容(出題・関連判例・設問・出題趣旨・拾った事実・拾い漏れ)を bro が直した分: S.kov[カードid][ek] = { yr?, hj?, q?, pt?, fa?, mi? }。直した項目だけ入る。CSVを取り込み直しても、直した項目は上書きしない(直していない項目だけ新しいCSVの内容になる) */
+function kEff(c){
+  if (!KMAP || KMAP.ref !== CARDS) kBuild();
+  const m = (S.kov && S.kov[c.id]) || {};
+  return (KMAP.per[c.id] || []).map(e => { const o = m[e.ek] || {}, r = Object.assign({}, e.r);
+    ["q", "pt", "fa", "mi"].forEach(f => { if (o[f] !== undefined) r[f] = o[f]; }); if (o.hj !== undefined) r.hj = o.hj;
+    return { src: e.src, ek: e.ek, yr: o.yr !== undefined ? o.yr : e.yr, r, ed: Object.keys(o), base: e }; });
+}
+let kEd = null;
+const kHjText = a => (a || []).map(h => h.n + (h.p ? "｜" + h.p : "")).join("\n");
+const kHjParse = t => String(t || "").split(/\n/).map(l => l.trim()).filter(Boolean).map(l => { const i = l.search(/[｜|\t]/); return i < 0 ? { n: l, p: "" } : { n: l.slice(0, i).trim(), p: l.slice(i + 1).trim() }; });
+const kHjNorm = a => JSON.stringify((a || []).map(h => ({ n: h.n || "", p: h.p || "" })));
+function kSaveEdit(c, e, f){
+  const base = e.base, ov = {}, base_r = base.r;
+  if (f.yr.value.trim() !== (base.yr || "")) ov.yr = f.yr.value.trim();
+  const hj = kHjParse(f.hj.value); if (kHjNorm(hj) !== kHjNorm(base_r.hj)) ov.hj = hj;
+  ["q", "pt", "fa", "mi"].forEach(k => { if (f[k].value.trim() !== (base_r[k] || "")) ov[k] = f[k].value.trim(); });
+  if (!S.kov) S.kov = {}; const m = S.kov[c.id] || (S.kov[c.id] = {});
+  if (Object.keys(ov).length) m[e.ek] = ov; else delete m[e.ek];
+  if (!Object.keys(m).length) delete S.kov[c.id];
+  st("kov", c.id); save(); kEd = null; renderKian(); renderTags(true); renderTagFilter(); 
+}
+function kResetEdit(c, e){ const m = S.kov && S.kov[c.id]; if (m){ delete m[e.ek]; if (!Object.keys(m).length) delete S.kov[c.id]; st("kov", c.id); save(); } kEd = null; renderKian(); renderTags(true); renderTagFilter(); }
+function kEditor(c, e){
+  const w = el("div", "kedit"), mk = (lab, k, rows, val, ph) => { const l = el("label"); l.append(document.createTextNode(lab)); const t = el("textarea"); t.rows = rows; t.value = val || ""; if (ph) t.placeholder = ph; l.append(t); w.append(l); return t; };
+  const f = {}; f.yr = (() => { const l = el("label"); l.append(document.createTextNode("出題（例 予備(2022・R4)）")); const i = el("input"); i.value = e.yr || ""; l.append(i); w.append(l); return i; })();
+  f.hj = mk("関連判例（1行に1つ。名前｜PDFのパス。パスが無ければ名前だけ）", "hj", 3, kHjText(e.r.hj));
+  f.q = mk("設問", "q", 2, e.r.q); f.pt = mk("出題趣旨が求める要素", "pt", 3, e.r.pt); f.fa = mk("起案で拾った事実", "fa", 3, e.r.fa); f.mi = mk("拾い漏れの可能性がある事実", "mi", 3, e.r.mi);
+  const row = el("div", "act"); const sv = el("button", "grad"); sv.textContent = "保存"; sv.onclick = () => kSaveEdit(c, e, f);
+  const cn = el("button", "grad"); cn.textContent = "やめる"; cn.onclick = () => { kEd = null; renderKian(); };
+  const rs = el("button", "grad"); rs.textContent = "CSVの内容に戻す"; rs.onclick = () => { if (confirm("この項目の直しを全部消して、取り込んだCSVの内容に戻します。よろしいですか？")) kResetEdit(c, e); };
+  row.append(sv, cn, rs); w.append(row); const n = el("div", "small"); n.textContent = "直した項目は、CSVを取り込み直しても上書きされません(直していない項目だけ新しいCSVの内容になります)。"; w.append(n); return w;
+}
 function renderKian(){
   const top = $("kTop"), bot = $("kBot"); top.innerHTML = ""; bot.innerHTML = ""; top.hidden = bot.hidden = true;
-  const c = card(); if (!c || !S.kian || !Object.keys(S.kian).length) return; if (!KMAP || KMAP.ref !== CARDS) kBuild();
-  const ents = KMAP.per[c.id]; if (!ents || !ents.length) return;
+  const c = card(); if (!c || !S.kian || !Object.keys(S.kian).length) return;
+  const ents = kEff(c); if (!ents.length) return;
   const yrs = [], hj = new Map(), qs = [];
   ents.forEach(e => { const y = (e.yr || "") ? (e.yr.includes(deckOf(c)) ? e.yr : e.yr + "(" + deckOf(c) + ")") : ""; if (y && !yrs.includes(y)) yrs.push(y);
     (e.r.hj || []).forEach(h => { const k = h.n || h.p; if (k && !hj.has(k)) hj.set(k, h); else if (k && h.p && !hj.get(k).p) hj.get(k).p = h.p; }); qs.push(e); });
   if (yrs.length){ const l = el("span", "kh"); l.append(document.createTextNode("出題：")); yrs.forEach(y => { const b = el("span", "kyr"); b.textContent = y; l.append(b); }); top.append(l); }
   if (hj.size){ const l = el("span", "kh"); l.append(document.createTextNode("関連判例："));
     [...hj.values()].forEach(h => { const nm = h.n || "判例"; l.append(kCase(nm, h.p)); }); top.append(l); }
+  { const l = el("span", "kh"); const b = el("button"); b.type = "button"; b.textContent = "✎ 出題・判例・補足を直す"; b.onclick = () => { kEd = qs[0].ek; renderKian(); const k = $("kBot"); if (k.scrollIntoView) k.scrollIntoView({ block: "center" }); }; l.append(b); top.append(l); }
   top.hidden = !top.childNodes.length;
   const h3 = el("h3"); h3.textContent = "📎 補足（起案より。読み上げません）"; bot.append(h3);
-  qs.forEach(e => { const d = el("div", "kq"); const add = (lab, t) => { if (!t) return; const b = el("b"); b.textContent = lab; const pre = el("pre"); pre.textContent = t; d.append(b, pre); };
-    add("設問", e.r.q); add("出題趣旨が求める要素", e.r.pt); add("起案で拾った事実", e.r.fa); add("拾い漏れの可能性がある事実", e.r.mi); const f = el("div", "small"); f.textContent = "（" + e.src + "）"; d.append(f); bot.append(d); });
+  qs.forEach(e => { const d = el("div", "kq");
+    if (kEd === e.ek){ d.append(kEditor(c, e)); bot.append(d); return; }
+    const add = (lab, t) => { if (!t) return; const b = el("b"); b.textContent = lab; const pre = el("pre"); pre.textContent = t; d.append(b, pre); };
+    add("設問", e.r.q); add("出題趣旨が求める要素", e.r.pt); add("起案で拾った事実", e.r.fa); add("拾い漏れの可能性がある事実", e.r.mi);
+    const f = el("div", "small"); f.textContent = "（" + e.src + (e.ed.length ? "・直した項目あり" : "") + "） "; const eb = el("button", "grad"); eb.type = "button"; eb.textContent = "✎ 直す"; eb.onclick = () => { kEd = e.ek; renderKian(); }; f.append(eb); d.append(f); bot.append(d); });
   bot.hidden = false;
 }
 $("kIn").onclick = () => $("kFile").click();
 $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const out = $("kMsg"); out.textContent = "読み込み中…";
   try { const buf = await f.arrayBuffer(); let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e2){ text = new TextDecoder("shift_jis").decode(buf); }
-    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
+    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.kept ? "。直した項目のある " + r.kept + " 件は、直した内容をそのまま残しました" : "") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
     toast("起案チェックを取り込みました", "ok"); renderKian(); renderTags(true); renderTagFilter(); refilter();
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
