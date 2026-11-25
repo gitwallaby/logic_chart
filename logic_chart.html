@@ -306,6 +306,7 @@ details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding
 .pt.chg{box-shadow:-3px 0 0 var(--current)}
 .tbar{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 9px}
 .tbar button{border:1px solid var(--edge);background:#3a404a;color:var(--w);border-radius:7px;padding:6px 9px;font:inherit;font-size:12.5px;cursor:pointer}
+.tbar button.dng{border-color:#c0504d;color:#f3b8b6}
 .tbar button.go{background:var(--current);color:var(--board);font-weight:700;border-color:var(--current)}
 .tbar .sp{flex-basis:100%;height:0}
 /* 隠して再生・自己評価・記録 */
@@ -749,6 +750,15 @@ function openEd(u){
     runs.splice(a, b - a, { ch:"\n" }); redraw(runs, a + 1, a + 1); });
   pt.addEventListener("input", () => { if (edEl && edEl.querySelector("br,div,p")){ const v = selNow(), runs = runsOf(edEl); redraw(runs, v ? v[0] : runs.length, v ? v[1] : runs.length); } });
 }
+function mergeInto(u, now){
+  const cv = ensureCv(), A = refs[u - 1], B = refs[u];
+  const d = el("div"); d.innerHTML = A.p.h; const pr = trimRuns(runsOf(d)), ca = colOf(A), cb = colOf(B);
+  if (ca !== cb) now.forEach(r => { if (!r.c && r.ch !== "\n") r.c = cb || "w"; });      /* つなげても、もとの色が変わらないようにする */
+  const wasA = A.p.s, wasB = B.p.s; setPart(A.p, pr.concat([{ ch:"\n" }], now)); qaFix(cv, u - 1, wasA, A.p.s); if (wasB && u < cv.qa) cv.qa--;
+  if (B.b.p && B.b.p.length > 1) B.b.p.splice(B.b.p.indexOf(B.p), 1);
+  else { if (B.b.to && !A.b.to && A.b !== B.b) A.b.to = B.b.to;
+    B.row.b.splice(B.row.b.indexOf(B.b), 1); if (!B.row.b.length) B.sec.rows.splice(B.sec.rows.indexOf(B.row), 1); }
+}
 function edAct(a){
   if (a === "save"){ commit(); return; }
   if (a === "cancel"){ closeEd(); return; }
@@ -776,15 +786,39 @@ function edAct(a){
   if (a === "merge"){
     const u = edU, now = trimRuns(runsOf(edEl));
     if (!hasText(now)){ $("editMsg").textContent = "文が空です。"; return; }
-    if (u < 2 || u >= 1000000 || u === qaIdx || !refs[u - 1] || refs[u - 1].sec !== refs[u].sec){ $("editMsg").textContent = "この文は、前の文とつなげられません（表面と裏面の境目や、区切りの最初の文）。"; return; }
-    const cv = ensureCv(), A = refs[u - 1], B = refs[u];
-    const d = el("div"); d.innerHTML = A.p.h; const pr = trimRuns(runsOf(d)), ca = colOf(A), cb = colOf(B);
-    if (ca !== cb) now.forEach(r => { if (!r.c && r.ch !== "\n") r.c = cb || "w"; });      /* つなげても、もとの色が変わらないようにする */
-    const wasA = A.p.s, wasB = B.p.s; setPart(A.p, pr.concat([{ ch:"\n" }], now)); qaFix(cv, u - 1, wasA, A.p.s); if (wasB && u < cv.qa) cv.qa--;
-    if (B.b.p && B.b.p.length > 1) B.b.p.splice(B.b.p.indexOf(B.p), 1);
-    else { if (B.b.to && !A.b.to && A.b !== B.b) A.b.to = B.b.to;
-      B.row.b.splice(B.row.b.indexOf(B.b), 1); if (!B.row.b.length) B.sec.rows.splice(B.sec.rows.indexOf(B.row), 1); }
-    touch(); $("editMsg").textContent = ""; closeEd(); return;
+    if (u < 2 || u >= 1000000 || u === qaIdx || !refs[u - 1] || !refs[u] || refs[u - 1].sec !== refs[u].sec){ $("editMsg").textContent = "この文は、前の文とつなげられません（表面と裏面の境目や、区切りの最初の文）。"; return; }
+    mergeInto(u, now); touch(); $("editMsg").textContent = ""; closeEd(); return;
+  }
+  if (a === "mergeNext"){
+    const u = edU, v = u + 1, runs = trimRuns(runsOf(edEl));
+    if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return; }
+    if (u < 1 || v >= 1000000 || v === qaIdx || !refs[v] || !refs[u] || refs[v].sec !== refs[u].sec){ $("editMsg").textContent = "下のブロックとはつなげられません（いちばん下、表面と裏面の境目、区切りの境目）。"; return; }
+    const hasNext = htmlOf(runs, false) !== normH(refs[u].p.h);
+    const dN = el("div"); dN.innerHTML = refs[v].p.h; const nextRuns = trimRuns(runsOf(dN));
+    const cv = ensureCv(); if (hasNext){ const was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); }
+    mergeInto(v, nextRuns); touch(); $("editMsg").textContent = ""; closeEd(); return;
+  }
+  if (a === "add"){
+    const u = edU, runs = trimRuns(runsOf(edEl)); if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return; }
+    const changed = htmlOf(runs, false) !== normH(refs[u].p.h);
+    const cv = ensureCv(); if (changed){ const was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); }
+    const { b, row, sec } = refs[u], np = {}; setPart(np, Array.from("（新しいブロック：文を書き換えてください）").map(ch => ({ ch, c:"", m:"", b:0, n:0 })));
+    if (b.t) np.t = b.t;
+    sec.rows.splice(sec.rows.indexOf(row) + 1, 0, { b:[np] });
+    if (posOf(u) < cv.qa) cv.qa++;
+    touch(); $("editMsg").textContent = "下に新しいブロックを足しました（直列）。足したブロックをタップして、文を書き換えてください。"; toast("下にブロックを足しました", "ok"); closeEd(); return;
+  }
+  if (a === "del"){
+    const u = edU, cv0 = ensureCv(), R = refs[u];
+    if (!R){ return; }
+    if (cv0.qa <= 2 && posOf(u) < cv0.qa){ $("editMsg").textContent = "表面の最後のブロックは消せません。"; return; }
+    if (flatRows(cv0.sections).length <= 2 && !(R.b.p && R.b.p.length > 1)){ $("editMsg").textContent = "ブロックが少なすぎて、これ以上は消せません。"; return; }
+    if (!window.confirm("このブロックを消します。よいですか？\n（あとで「このカードの直しを全部取り消す」で、元に戻せます）")) return;
+    const wasS = R.p.s, pos = posOf(u);
+    if (R.b.p && R.b.p.length > 1) R.b.p.splice(R.b.p.indexOf(R.p), 1);
+    else { R.row.b.splice(R.row.b.indexOf(R.b), 1); if (!R.row.b.length){ R.sec.rows.splice(R.sec.rows.indexOf(R.row), 1); if (!R.sec.rows.length) cv0.sections.splice(cv0.sections.indexOf(R.sec), 1); } }
+    if (wasS && pos < cv0.qa) cv0.qa--;
+    touch(); $("editMsg").textContent = "ブロックを消しました。"; toast("ブロックを消しました", "ok"); closeEd(); return;
   }
   const v = selNow() || lastSel;
   if (a === "nall"){ const runs = runsOf(edEl), all = runs.filter(r => r.ch !== "\n"), on = !all.every(r => r.n); all.forEach(r => r.n = on ? 1 : 0); $("editMsg").textContent = on ? "この文ぜんぶを「音声なし」にしました（保存すると反映されます）。" : "この文の「音声なし」を戻しました（保存すると反映されます）。"; redraw(runs, 0, 0); return; }
@@ -843,6 +877,7 @@ function blkMenu(u){
   blkU = u; blkLevel = "0"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
   board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick"));
   const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (pt) pt.classList.add("pick");
+  if (pt && !card().draft){ blkLevel = "text"; openEd(u); }          /* ブロックを選んだら、そのまま文を直せる */
   blkDraw(); renderTree();
 }
 function blkGo(level){
@@ -886,12 +921,18 @@ function blkDraw(){
     return; }
   const BT = { text: [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"],["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","マーカーなし"],["b","太字"]],
     aud: [["n","選んだ範囲の音声なし：切替"],["nall","この文ぜんぶの音声なし：切替"]] };
-  ttl.textContent = blkLevel === "text" ? "文字の変更：書き換えたい文字を選んで、色・マーカー・太字（文字はそのまま打ち直せます）" : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたり、区切りを入れます" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  ttl.textContent = blkLevel === "text" ? "ブロックの編集：文字はそのまま打ち直せます。分けたい位置にカーソルを置いて「ここでブロックを分割」。色・マーカー・太字は、文字を選んでから押します。直したら「保存」" : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたり、区切りを入れます" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
   if (blkLevel === "fig"){
     const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
     [["split","ここで分ける"],["merge","前の文とつなげる"]].concat(first ? [] : yk ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
-  } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
+  } else {
+    if (blkLevel === "text"){
+      [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
+    }
+    (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
+  }
   add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
+  if (blkLevel === "text") add("その他の操作（図・音声・ツリー・枠）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
 }
 /* ---- 枠でまとめる：行（row）に fr:[枠の印…]、最初の行に fl:{枠の印:名前} を持たせる。図（S.cv）の一部なので、同期・書き出しにそのまま乗る ---- */
 let frU1 = null, frU2 = null, frWho = "end", frNameV = "";
@@ -1765,7 +1806,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611241800";
+const VER = "版 202611251130";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
