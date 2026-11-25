@@ -302,6 +302,7 @@ details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding
 .tgrow{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
 .tgrow button{height:32px;padding:0 11px;border-radius:999px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:13px;cursor:pointer}
 .tgrow button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.tqrow{margin-top:6px}.tqsug{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;max-height:190px;overflow:auto}.tqsug button{font:inherit;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tqsug .small{margin:0}
 .sres{margin:6px 0;max-height:320px;overflow:auto}
 .sres button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--barline);background:transparent;color:var(--ink);font:inherit;padding:7px 2px;cursor:pointer}
 .sres .sn{font-size:12px;color:var(--sub);display:block;margin-top:2px}
@@ -362,6 +363,8 @@ body{padding-bottom:215px}
     <div class="gsync"><button class="grad" id="gBtn">☁ Googleドライブと同期</button><button class="grad" id="ncBtn">＋新しいカード</button><button class="grad" id="treeTop">🌳 ツリー</button><span class="small" id="verTag"></span><span class="small" id="gMsg"></span></div>
     <div class="srch">
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo">探す</button><button id="qX" hidden>解除</button></div>
+      <div class="qrow tqrow"><input type="search" id="tqIn" autocomplete="off" placeholder="タグを探す（出題・判例・自分のタグ。例：2022、平成16）" aria-label="タグを探す"></div>
+      <div class="tqsug" id="tqSug" hidden></div>
       <div class="small" id="qInfo" hidden><span id="qCnt"></span>　<button class="grad" id="qList">一覧を開く</button></div>
       <div class="sres" id="sres" hidden></div>
     </div>
@@ -1337,13 +1340,15 @@ function tagOk(c){
 let sresOpen = false, lastNone = false;
 function renderSearch(none){
   lastNone = !!none; const box = $("sres"); box.innerHTML = "";
-  $("qX").hidden = !S.q; $("qInfo").hidden = !S.q; box.hidden = !(S.q && sresOpen);
-  if (!S.q) return;
-  $("qCnt").textContent = "「" + S.q + "」で " + (none ? 0 : list.length) + " 枚が対象です"; $("qList").textContent = sresOpen ? "一覧を閉じる" : "一覧を開く";
+  const has = !!(S.q || S.tagSel.length);
+  $("qX").hidden = !S.q; $("qInfo").hidden = !has; box.hidden = !(has && sresOpen);
+  if (!has) return;
+  const tn = S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、"), lab = [S.q ? "「" + S.q + "」" : "", S.tagSel.length ? "タグ「" + tn + "」" : ""].filter(Boolean).join(" ＋ ");
+  $("qCnt").textContent = lab + " で " + (none ? 0 : list.length) + " 枚が対象です"; $("qList").textContent = sresOpen ? "一覧を閉じる" : "一覧を開く";
   const w = words()[0] || "", show = none ? [] : list.slice(0, 30);
   show.forEach((ci, n) => { const c = CARDS[ci], b = el("button"); b.textContent = (n + 1) + ". [" + deckOf(c) + "] " + c.title;
     const e = indexOf(c); let sn = "";
-    for (const s of e.sents){ const k = normQ(s).indexOf(w); if (k >= 0){ sn = (k > 12 ? "…" : "") + s.slice(Math.max(0, k - 12), k + 28) + "…"; break; } }
+    if (w) for (const s of e.sents){ const k = normQ(s).indexOf(w); if (k >= 0){ sn = (k > 12 ? "…" : "") + s.slice(Math.max(0, k - 12), k + 28) + "…"; break; } }
     if (sn){ const x = el("span", "sn"); x.textContent = sn; b.append(x); }
     b.onclick = () => { stop(); sresOpen = false; box.hidden = true; $("qList").textContent = "一覧を開く"; pi = n; load(false); window.scrollTo(0, 0); }; box.append(b); });
   if (!none && list.length > 30){ const p = el("p", "small"); p.textContent = "ほか " + (list.length - 30) + " 枚（上の「いまの条件で…」の枚数は全部の数です）"; box.append(p); }
@@ -1355,9 +1360,23 @@ $("qList").onclick = () => { sresOpen = !sresOpen; renderSearch(lastNone); };
 $("qGo").onclick = doSearch;
 $("qIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); doSearch(); $("qIn").blur(); } };
 $("qIn").onchange = doSearch;
-$("qClr").onclick = () => { S.q = ""; sresOpen = false; S.tagSel = []; $("qIn").value = ""; save(); renderTagFilter(); refilter(); };
+$("qClr").onclick = () => { S.q = ""; sresOpen = false; S.tagSel = []; $("qIn").value = ""; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); };
 $("tagMode").onchange = e => { S.tagMode = e.target.value; save(); refilter(); };
 function allTags(){ const n = {}; CARDS.forEach(c => allTagsOf(c).forEach(t => n[t] = (n[t] || 0) + 1)); return n; }
+/* タグ検索欄：入力するとタグの候補（出題・判例・自分のタグ。枚数つき）が出る。選ぶと、そのタグが付いたカードに絞り、検索結果の一覧に出す */
+function tqRender(){
+  const box = $("tqSug"), q = normQ($("tqIn").value).replace(/[\s\u3000]+/g, ""); box.innerHTML = "";
+  if (!q){ box.hidden = true; return; }
+  const n = allTags(), names = Object.keys(n).filter(t => normQ(t).replace(/[\s\u3000]+/g, "").includes(q)).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
+  box.hidden = false;
+  if (!names.length){ const p = el("span", "small"); p.textContent = "一致するタグはありません。"; box.append(p); return; }
+  names.slice(0, 40).forEach(t => { const b = el("button"); b.type = "button"; b.textContent = t + " " + n[t]; b.onclick = () => tqPick(t); box.append(b); });
+  if (names.length > 40){ const p = el("span", "small"); p.textContent = "ほか " + (names.length - 40) + " 個（もう少し文字を足すと絞れます）"; box.append(p); }
+}
+function tqPick(t){ S.tagSel = [t]; sresOpen = true; $("tqIn").value = ""; $("tqSug").hidden = true; save(); renderTagFilter(); refilter(); renderSearch(lastNone); }
+$("tqIn").oninput = tqRender;
+$("tqIn").onfocus = tqRender;
+$("tqIn").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); const b = $("tqSug").querySelector("button"); if (b) b.click(); } };
 function renderTagFilter(){
   const box = $("fTag"), n = allTags(), names = Object.keys(n).sort((a, b) => n[b] - n[a] || (a < b ? -1 : 1));
   S.tagSel = S.tagSel.filter(t => t === NOTAG || t in n); box.innerHTML = "";
@@ -1380,7 +1399,7 @@ function addTags(raw){
   if (!sameArr(cur, tagsOf(c))) setTags(c, cur);
   if (over) $("editMsg").textContent = "1枚に付けられるタグは12個までです。";
 }
-function tagPick(t){ S.tagSel = [t]; save(); renderTagFilter(); refilter(); toast("タグ「" + t + "」が付いたカードに絞り込みました（解除は「検索とタグの絞り込みを外す」）", "ok", 3000); }
+function tagPick(t){ S.tagSel = [t]; save(); renderTagFilter(); refilter(); renderSearch(lastNone); toast("タグ「" + t + "」が付いたカードに絞り込みました（解除は「検索とタグの絞り込みを外す」）", "ok", 3000); }
 function renderTags(keep){
   const c = card(), box = $("tgs"); box.innerHTML = ""; if (!keep) $("tgNew").hidden = true;
   tagsOf(c).forEach(t => { const x = el("span", "tg"); const nb = el("button", "tgn"); nb.type = "button"; nb.textContent = t; nb.title = "押すと、このタグが付いたカードに絞り込みます"; nb.onclick = () => tagPick(t); x.append(nb);
@@ -1893,7 +1912,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251500";
+const VER = "版 202611251515";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
