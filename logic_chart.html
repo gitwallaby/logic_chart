@@ -113,6 +113,9 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .row.ladder>.blk::after{content:"";position:absolute;left:-17px;width:2px;top:-4px;bottom:-4px;background:var(--trace)}
 .row.ladder>.blk:first-of-type::after{top:-6px}
 .row.ladder>.blk:last-child::after{bottom:auto;height:24px}
+.blk.pairlit{outline:2px solid #ffd54a;outline-offset:2px;box-shadow:0 0 12px 3px rgba(255,213,74,.65);transition:box-shadow .15s}
+.blk[data-pr]{position:relative}
+.board.editing .blk[data-pr] .pt:first-child::after,.board.txm .blk[data-pr] .pt:first-child::after{content:" 🔗";font-size:11px;color:#ffd54a}
 .row.ladder>.blk.lf::after{top:18px}
 .row.ladder>.blk.lf:last-child::after{display:none}
 .row .jl{font-size:11px;color:var(--gray);line-height:1.2}
@@ -693,7 +696,7 @@ function mergeStudy(st){
 /* ---------- 図を組み立てる ---------- */
 function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function makeBlock(b){
-  const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : ""));
+  const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : "")); d._b = b; if (b.pr) d.dataset.pr = b.pr;
   if (b.c){ const c = el("div", "cond"); c.textContent = b.c; d.append(c); }
   const parts = b.p || [{ h: b.h, s: b.s, e: b.e, x: b.x }];
   const u0 = utts.length;
@@ -966,6 +969,7 @@ function closeEd(){ edEl = null; edU = -1; if (txMode){ blkLevel = blkU != null 
 function txTap(ev){
   if (blkLevel === "tree") return;
   if (blkLevel === "frame"){ frTap(ev); return; }
+  if (blkLevel === "pair"){ prTap(ev); return; }
   const pt = ev.target.closest(".pt[data-u],.pt[data-vu]");
   if (edEl && pt === edEl) return;
   if (!pt || +pt.dataset.u === 0){ if (!edEl && !ev.target.closest(".sec-hd")) $("editMsg").textContent = "このブロックは直せません。"; return; }
@@ -1010,6 +1014,7 @@ function blkGo(level){
   $("editMsg").textContent = "";
   if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; treeOpen = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
   if (level === "frame"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "frame"; frU1 = frU2 = blkU; frWho = "end"; frNameV = ""; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); frMark(); return; }
+  if (level === "pair"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "pair"; prU = blkU; blkDraw(); pairLit(refs[prU].b.pr || ""); return; }
   if (level === "line"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "line"; blkDraw(); return; }
   if (level === "0"){ if (edEl) closeEd(); dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = "0"; blkDraw(); renderTree(); return; }
   if (!edEl) openEd(blkU);
@@ -1026,9 +1031,14 @@ function blkDraw(){
   if (blkLevel === "0"){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
     [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => add(t, () => edAct(a), "", draft && a !== "undo" && a !== "redo").dataset.a = a);
-    add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字／直列・並列", () => blkGo("line"), "", draft);
+    add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字／直列・並列", () => blkGo("line"), "", draft); add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft);
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
+  if (blkLevel === "pair"){
+    const r = refs[prU]; if (!r){ blkGo("0"); return; }
+    const mem = r.b.pr ? [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === r.b.pr).length : 0;
+    ttl.textContent = "対応づけ：いまのブロックと完全に対応するブロックを、図の中でタップして選びます（もう一度タップで外す）。対応づけた組は、どれか1つを選ぶと一緒に光ります。いま " + (mem || 1) + " つの組";
+    add("このブロックの対応づけを、全部外す", () => prClear(), "dng", !r.b.pr); add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "line"){
     const r = refs[blkU]; if (!r){ blkGo("0"); return; }
     const row = r.row, ri = r.sec.rows.indexOf(row), bi = row.b.indexOf(r.b), nx = r.sec.rows[ri + 1];
@@ -1089,6 +1099,15 @@ function blkDraw(){
   add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
   if (blkLevel === "text") add("その他の操作（図・音声・ツリー・枠）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
 }
+let prU = null;
+function prTap(ev){
+  const pt = ev.target.closest(".pt[data-u],.pt[data-vu]"); if (!pt || +pt.dataset.u === 0) return; const u = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu);
+  const a = refs[prU], b = refs[u]; if (!a || !b) return; if (b.b === a.b){ $("editMsg").textContent = "いまのブロック自身です。ほかのブロックをタップしてください。"; return; }
+  const src = prU; ensureCv(); const A = refs[src], B = refs[u]; if (!A || !B) return; let gid = A.b.pr;
+  if (B.b.pr && B.b.pr === gid){ delete B.b.pr; if (gid && Object.values(refs).filter(x => x && x.b && x.b.pr === gid).length === 1){ delete A.b.pr; gid = ""; } }
+  else { if (!gid) gid = "p" + Date.now().toString(36); A.b.pr = gid; B.b.pr = gid; }
+  touch(); blkLevel = "pair"; render(); blkDraw(); pairLit(gid); $("editMsg").textContent = "✔ 対応づけを直しました。"; }
+function prClear(){ const src = prU; ensureCv(); const A = refs[src]; if (!A || !A.b.pr) return; const gid = A.b.pr; const seen = new Set(); Object.values(refs).forEach(x => { if (x && x.b && x.b.pr === gid && !seen.has(x.b)){ seen.add(x.b); delete x.b.pr; } }); touch(); blkLevel = "pair"; render(); blkDraw(); $("editMsg").textContent = "✔ 対応づけを外しました。"; }
 /* ---- 矢印・線の文字／直列・並列。row.via=上の矢印の文字、row.jl=[つながるブロックの間の線の文字…]、row.k=one/par/branch/ladder ---- */
 function lnOp(fn, msg){ const u = blkU; ensureCv(); const x = refs[u]; if (!x) return; fn(x); touch(); blkLevel = "line"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500); }
 function lnJoin(kind){ lnOp(x => { const rows = x.sec.rows, i = rows.indexOf(x.row), nx = rows[i + 1]; if (!nx) return; const jl = (x.row.jl || []).slice(); while (jl.length < x.row.b.length - 1) jl.push(""); if (nx.via) jl.push(nx.via); else jl.push("");
@@ -1720,17 +1739,20 @@ setInterval(() => { if (hasAudio && playing && !au.paused && card()){ try { loca
 let lpT = null, lpx = 0, lpy = 0;
 function lpTarget(e){ return e.target.closest && e.target.closest(".pt[data-u],.pt[data-vu],.sec-hd"); }
 function lpAct(t){ if (t.classList.contains("sec-hd")){ if (!txMode) setTx(true); } else blkMenu(+(t.dataset.u != null ? t.dataset.u : t.dataset.vu)); }
-board.addEventListener("pointerdown", e => { if (blkLevel === "tree" || blkLevel === "frame" || edEl || editing || e.button > 0) return; const t = lpTarget(e); if (!t || t.dataset.u === "0") return;
+board.addEventListener("pointerdown", e => { if (blkLevel === "tree" || blkLevel === "frame" || blkLevel === "pair" || edEl || editing || e.button > 0) return; const t = lpTarget(e); if (!t || t.dataset.u === "0") return;
   lpx = e.clientX; lpy = e.clientY; clearTimeout(lpT); lpT = setTimeout(() => { lpFired = true; setTimeout(() => { lpFired = false; }, 900); lpAct(t); }, 550); });
 ["pointerup", "pointercancel"].forEach(n => board.addEventListener(n, () => clearTimeout(lpT)));
 board.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lpx, e.clientY - lpy) > 10) clearTimeout(lpT); });
-board.addEventListener("contextmenu", e => { if (blkLevel === "tree" || blkLevel === "frame" || edEl || editing) return; const t = lpTarget(e); if (t && t.dataset.u !== "0"){ e.preventDefault(); clearTimeout(lpT); lpAct(t); } });
+board.addEventListener("contextmenu", e => { if (blkLevel === "tree" || blkLevel === "frame" || blkLevel === "pair" || edEl || editing) return; const t = lpTarget(e); if (t && t.dataset.u !== "0"){ e.preventDefault(); clearTimeout(lpT); lpAct(t); } });
 
 /* ---------- 操作 ---------- */
 $("play").onclick = () => thinking ? endThink(true) : playing ? stop() : start();
 $("selHide").onchange = e => { S.hide = e.target.value; allShown = false; save(); update(); };
 $("selThink").onchange = e => { S.think = +e.target.value; save(); };
 $("showAll").onclick = () => { if (allShown){ allShown = false; opened = new Set(); shownTo = Math.min(shownTo, qaIdx - 1); } else allShown = true; update(); };
+/* ---- 対応関係の光らせ方：対応づけたブロックは b.pr（同じ印）を持つ。どれか1つをタップすると、同じ印のブロックが一緒に光る。印は図の直し(S.cv)に入るので同期される ---- */
+function pairLit(gid){ board.querySelectorAll(".blk.pairlit").forEach(x => x.classList.remove("pairlit")); if (!gid) return 0; const m = [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === gid); if (m.length < 2) return 0; m.forEach(x => x.classList.add("pairlit")); return m.length; }
+board.addEventListener("click", e => { if (blkLevel === "pair") return; const b = e.target.closest && e.target.closest(".blk"); pairLit(b && b.dataset.pr ? b.dataset.pr : ""); }, true);
 board.addEventListener("click", e => { if (board.classList.contains("veil") && e.target.closest(".flow,.t-extra")){ allShown = true; update(); } });
 $("fWeak").onchange = e => { S.weak = e.target.checked; save(); relist(); };
 $("fAuto").onchange = e => { S.auto = e.target.checked; save(); };
@@ -2014,7 +2036,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611252242";
+const VER = "版 202611252244";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
