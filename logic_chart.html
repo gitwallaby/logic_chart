@@ -133,6 +133,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .c{color:var(--cyan)} .y{color:var(--yellow)}
 .recline{margin:2px 0}
 .ktop{margin:6px 0 2px;font-size:13px;line-height:1.7}.ktop .kyr{display:inline-block;background:#3a4a35;border:1px solid #5c7a52;border-radius:99px;padding:1px 10px;margin:0 6px 4px 0;font-size:12px}.ktop .kh{display:block;margin:2px 0}.ktop a{color:#8fc1ff}.ktop button{font:inherit;font-size:11.5px;margin-left:6px;padding:1px 8px;border-radius:6px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.ktop .khn{font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border-radius:99px}.ktop .khx{display:inline-block;font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border:1px dashed var(--btnline);border-radius:99px;color:var(--gray)}
+.memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
 .kbot h3{margin:0 0 6px;font-size:14px}.kbot .kq{border-top:1px solid var(--barline);padding:8px 0;font-size:13px}.kbot .kq b{display:block;margin:4px 0 1px}.kbot pre{white-space:pre-wrap;margin:0;font:inherit;line-height:1.6}
 .qadiv{border-top:2px dashed var(--sub);margin:14px 0 10px;text-align:center;height:0;opacity:.75}.qadiv span{position:relative;top:-.8em;background:var(--board,#14171c);padding:0 .6em;font-size:11px;color:var(--sub)}
 .rdsel{margin-top:2px;font-size:13px}
@@ -507,6 +508,11 @@ body{padding-bottom:215px}
       <div class="act"><button class="grad" id="treeClr">このカードのツリーを全部消す</button></div>
     </section>
     <div class="board" id="board"></div>
+    <section class="panel memo" id="memoBox">
+      <h3>📝 メモ（自分で書く欄。読み上げません）</h3>
+      <textarea id="memoIn" rows="3" placeholder="このカードについて、自由に書けます。書いたら自動で、この端末に保存されます（同期はされません）。" aria-label="このカードのメモ"></textarea>
+      <div class="small" id="memoSt"></div>
+    </section>
     <section class="panel kbot" id="kBot" hidden></section>
 
     <details class="panel" id="setup">
@@ -567,7 +573,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
@@ -1212,6 +1218,7 @@ function render(){
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
   renderKian();
+  renderMemo();
   update();
 }
 /* ---------- 隠して再生 ---------- */
@@ -1872,7 +1879,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251430";
+const VER = "版 202611251445";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2305,6 +2312,18 @@ document.addEventListener("keydown", e => {
 document.addEventListener("copy", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; if (!blkCopy(edU >= 0 ? edU : blkU)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); toast("ブロックをコピーしました（Ctrl+V か「下に貼り付け」で、選んでいるブロックの下に入ります）", "ok", 3500); });
 document.addEventListener("cut", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; const u = edU >= 0 ? edU : blkU; if (!blkCopy(u)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); delBlock(u, true); });
 document.addEventListener("paste", e => { if (!blkKeysOn() || inField() || !blkClip || !selCollapsed()) return; const t = (e.clipboardData.getData("text/plain") || "").trim(); if (t !== blkClip.plain) return; e.preventDefault(); blkPaste(); });
+
+
+/* ---------- メモ欄：S.memo[カードid] = 自分で書いた文字。読み上げない。この端末だけに保存（同期しない） ---------- */
+let memoT = null;
+function memoFlush(){ if (memoT){ clearTimeout(memoT); memoT = null; } const ta = $("memoIn"), id = ta.dataset.id; if (!id) return;
+  const v = ta.value; if (v.trim()) S.memo[id] = v; else delete S.memo[id]; save(); $("memoSt").textContent = v.trim() ? "保存しました（この端末）" : ""; }
+function renderMemo(){ const c = card(), ta = $("memoIn"); if (!c) return;
+  if (ta.dataset.id && ta.dataset.id !== c.id) memoFlush();
+  ta.dataset.id = c.id; if (document.activeElement !== ta || ta.dataset.shown !== c.id) ta.value = (S.memo && S.memo[c.id]) || ""; ta.dataset.shown = c.id; $("memoSt").textContent = ""; }
+$("memoIn").oninput = () => { $("memoSt").textContent = "書いています…"; if (memoT) clearTimeout(memoT); memoT = setTimeout(memoFlush, 600); };
+$("memoIn").onblur = memoFlush;
+window.addEventListener("pagehide", memoFlush);
 
 /* ---------- 起案チェック（CSV）：出題年度・関連判例を上、補足（拾った事実・拾い漏れ）を下に出す。S.kian[ファイル名] = { yr, at, rows:[{ q:設問, pt:出題趣旨, fa:拾った事実, mi:拾い漏れ, ro:[論証名], hj:[{ n:判例名, u:リンク, p:パス }], yr }] } ---------- */
 let KMAP = null;
