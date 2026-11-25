@@ -132,7 +132,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .pt.q{font-size:13px}
 .c{color:var(--cyan)} .y{color:var(--yellow)}
 .recline{margin:2px 0}
-.ktop{margin:6px 0 2px;font-size:13px;line-height:1.7}.ktop .kyr{display:inline-block;background:#3a4a35;border:1px solid #5c7a52;border-radius:99px;padding:1px 10px;margin:0 6px 4px 0;font-size:12px}.ktop .kh{display:block;margin:2px 0}.ktop a{color:#8fc1ff}.ktop button{font:inherit;font-size:11.5px;margin-left:6px;padding:1px 8px;border-radius:6px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}
+.ktop{margin:6px 0 2px;font-size:13px;line-height:1.7}.ktop .kyr{display:inline-block;background:#3a4a35;border:1px solid #5c7a52;border-radius:99px;padding:1px 10px;margin:0 6px 4px 0;font-size:12px}.ktop .kh{display:block;margin:2px 0}.ktop a{color:#8fc1ff}.ktop button{font:inherit;font-size:11.5px;margin-left:6px;padding:1px 8px;border-radius:6px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.ktop .khn{font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border-radius:99px}.ktop .khx{display:inline-block;font-size:12.5px;margin:0 6px 4px 0;padding:2px 10px;border:1px dashed var(--btnline);border-radius:99px;color:var(--gray)}
 .kbot h3{margin:0 0 6px;font-size:14px}.kbot .kq{border-top:1px solid var(--barline);padding:8px 0;font-size:13px}.kbot .kq b{display:block;margin:4px 0 1px}.kbot pre{white-space:pre-wrap;margin:0;font:inherit;line-height:1.6}
 .qadiv{border-top:2px dashed var(--sub);margin:14px 0 10px;text-align:center;height:0;opacity:.75}.qadiv span{position:relative;top:-.8em;background:var(--board,#14171c);padding:0 .6em;font-size:11px;color:var(--sub)}
 .rdsel{margin-top:2px;font-size:13px}
@@ -409,7 +409,7 @@ body{padding-bottom:215px}
       <div class="act"><button class="grad" id="csvIn">CSVを取り込む</button> <button class="grad" id="csvSample">CSVの見本</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
       <p class="small" id="csvMsg2"></p>
       <h3>起案チェック（CSV）</h3>
-      <p class="small">起案スプシの『起案チェック』タブを「ファイル→ダウンロード→CSV」で保存して選ぶと、関連論証のカードの上に出題年度と関連判例、下に補足（拾った事実・拾い漏れ）が出ます。同じ名前のファイルを選び直すと、置き換わります。</p>
+      <p class="small">起案スプシの『起案チェック』タブを「ファイル→ダウンロード→CSV」で保存して選ぶと、関連論証のカードの上に出題年度と関連判例（名前を押すと、PDFのパスがコピーされます）、下に補足（拾った事実・拾い漏れ）が出ます。同じ名前のファイルを選び直すと、置き換わります。</p>
       <div class="act"><button class="grad" id="kIn">起案チェックのCSVを選ぶ</button> <button class="grad" id="kClr">起案チェックのデータを全部消す</button><input type="file" id="kFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
       <p class="small" id="kMsg"></p>
       <p class="small">別の端末で直した内容（文字・図・タグ・重要度・科目・学習の記録・ツリー）は、「☁ Googleドライブと同期」で自動で入ります。</p>
@@ -1872,7 +1872,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251400";
+const VER = "版 202611251430";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2334,22 +2334,24 @@ function kImport(text, fname){
   const miss = []; let hit = 0; out.forEach(o => o.ro.forEach(nm => { if (KMAP.byTitle[kn(nm)]) hit++; else miss.push(nm); }));
   return { src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
 }
-function kCopy(t){ const done = () => toast("コピーしました：" + t.slice(0, 40), "ok", 2500);
+function kCopy(t){ const done = () => toast("コピーしました", "ok", 2500);
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => kCopyOld(t, done)); else kCopyOld(t, done); }
 function kCopyOld(t, done){ const a = el("textarea"); a.value = t; a.style.position = "fixed"; a.style.opacity = "0"; document.body.append(a); a.select(); try { document.execCommand("copy"); done(); } catch(e){ toast("コピーできませんでした", "ng"); } a.remove(); }
+/* 関連判例の名前＝ボタン。押すと『判例パス』をクリップボードにコピー。パスが無い判例は名前だけ（押せない）。リンクは使わない */
+function kCase(nm, p){
+  if (!p){ const x = el("span", "khx"); x.textContent = nm; return x; }
+  const b = el("button", "khn"); b.type = "button"; b.textContent = nm; b.title = "押すと、この判例のPDFのパスをコピーします"; b.onclick = () => kCopy(p); return b;
+}
 function renderKian(){
   const top = $("kTop"), bot = $("kBot"); top.innerHTML = ""; bot.innerHTML = ""; top.hidden = bot.hidden = true;
   const c = card(); if (!c || !S.kian || !Object.keys(S.kian).length) return; if (!KMAP || KMAP.ref !== CARDS) kBuild();
   const ents = KMAP.per[c.id]; if (!ents || !ents.length) return;
   const yrs = [], hj = new Map(), qs = [];
   ents.forEach(e => { const y = (e.yr || "") ? (e.yr.includes(deckOf(c)) ? e.yr : e.yr + "(" + deckOf(c) + ")") : ""; if (y && !yrs.includes(y)) yrs.push(y);
-    (e.r.hj || []).forEach(h => { const k = h.u || h.n; if (k && !hj.has(k)) hj.set(k, h); }); qs.push(e); });
+    (e.r.hj || []).forEach(h => { const k = h.n || h.p; if (k && !hj.has(k)) hj.set(k, h); else if (k && h.p && !hj.get(k).p) hj.get(k).p = h.p; }); qs.push(e); });
   if (yrs.length){ const l = el("span", "kh"); l.append(document.createTextNode("出題：")); yrs.forEach(y => { const b = el("span", "kyr"); b.textContent = y; l.append(b); }); top.append(l); }
   if (hj.size){ const l = el("span", "kh"); l.append(document.createTextNode("関連判例："));
-    [...hj.values()].forEach((h, i) => { const w = el("span"); if (i) w.append(document.createTextNode("　"));
-      if (h.u){ const a = el("a"); a.href = h.u; a.target = "_blank"; a.rel = "noopener"; a.textContent = h.n || "判例PDF"; w.append(a); } else w.append(document.createTextNode(h.n));
-      if (h.p){ const b = el("button"); b.textContent = "パスをコピー"; b.title = h.p; b.onclick = () => kCopy(h.p); w.append(b); }
-      l.append(w); }); top.append(l); }
+    [...hj.values()].forEach(h => { const nm = h.n || "判例"; l.append(kCase(nm, h.p)); }); top.append(l); }
   top.hidden = !top.childNodes.length;
   const h3 = el("h3"); h3.textContent = "📎 補足（起案より。読み上げません）"; bot.append(h3);
   qs.forEach(e => { const d = el("div", "kq"); const add = (lab, t) => { if (!t) return; const b = el("b"); b.textContent = lab; const pre = el("pre"); pre.textContent = t; d.append(b, pre); };
@@ -2359,7 +2361,7 @@ function renderKian(){
 $("kIn").onclick = () => $("kFile").click();
 $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const out = $("kMsg"); out.textContent = "読み込み中…";
   try { const buf = await f.arrayBuffer(); let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e2){ text = new TextDecoder("shift_jis").decode(buf); }
-    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.urlCols ? "" : "。判例のリンク列（判例リンク1〜3）が無いので、判例は名前だけ出ます") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、パスのコピーは出ません") + "。";
+    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
     toast("起案チェックを取り込みました", "ok"); renderKian();
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); $("kMsg").textContent = "消しました。"; };
