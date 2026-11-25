@@ -132,6 +132,8 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .pt.q{font-size:13px}
 .c{color:var(--cyan)} .y{color:var(--yellow)}
 .recline{margin:2px 0}
+.ktop{margin:6px 0 2px;font-size:13px;line-height:1.7}.ktop .kyr{display:inline-block;background:#3a4a35;border:1px solid #5c7a52;border-radius:99px;padding:1px 10px;margin:0 6px 4px 0;font-size:12px}.ktop .kh{display:block;margin:2px 0}.ktop a{color:#8fc1ff}.ktop button{font:inherit;font-size:11.5px;margin-left:6px;padding:1px 8px;border-radius:6px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}
+.kbot h3{margin:0 0 6px;font-size:14px}.kbot .kq{border-top:1px solid var(--barline);padding:8px 0;font-size:13px}.kbot .kq b{display:block;margin:4px 0 1px}.kbot pre{white-space:pre-wrap;margin:0;font:inherit;line-height:1.6}
 .qadiv{border-top:2px dashed var(--sub);margin:14px 0 10px;text-align:center;height:0;opacity:.75}.qadiv span{position:relative;top:-.8em;background:var(--board,#14171c);padding:0 .6em;font-size:11px;color:var(--sub)}
 .rdsel{margin-top:2px;font-size:13px}
 .pick{width:100%;box-sizing:border-box;min-height:44px;line-height:1.5;margin:8px 0 6px;padding:10px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);font:inherit;font-size:14px}
@@ -406,6 +408,10 @@ body{padding-bottom:215px}
       <p class="small">CSVの列：<b>題名・科目・重要度・表面・裏面</b>（必須）、タグ・ID（任意）。科目と重要度が空や一覧にない行は、取り込まれずに理由が出ます。書き方は 使い方.txt。</p>
       <div class="act"><button class="grad" id="csvIn">CSVを取り込む</button> <button class="grad" id="csvSample">CSVの見本</button><input type="file" id="csvFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
       <p class="small" id="csvMsg2"></p>
+      <h3>起案チェック（CSV）</h3>
+      <p class="small">起案スプシの『起案チェック』タブを「ファイル→ダウンロード→CSV」で保存して選ぶと、関連論証のカードの上に出題年度と関連判例、下に補足（拾った事実・拾い漏れ）が出ます。同じ名前のファイルを選び直すと、置き換わります。</p>
+      <div class="act"><button class="grad" id="kIn">起案チェックのCSVを選ぶ</button> <button class="grad" id="kClr">起案チェックのデータを全部消す</button><input type="file" id="kFile" accept=".csv,.tsv,.txt,text/csv" hidden></div>
+      <p class="small" id="kMsg"></p>
       <p class="small">別の端末で直した内容（文字・図・タグ・重要度・科目・学習の記録・ツリー）は、「☁ Googleドライブと同期」で自動で入ります。</p>
     </details>
     <details class="panel" id="expTop"><summary>📤 エクスポート</summary>
@@ -442,6 +448,7 @@ body{padding-bottom:215px}
       <select class="pick rdsel" id="selRd" aria-label="このカードの読み手"><option value="vv">読み手：VOICEVOX（PCで作った音声）</option><option value="tts">読み手：端末の読み上げ（Edge なら Microsoft の声）</option></select>
       <div class="flag" id="flag" hidden></div>
       <div class="small" id="src"></div>
+      <div class="ktop" id="kTop" hidden></div>
     </header>
     <div class="legend" aria-label="色の意味">
       <span><i class="sw" style="color:var(--cyan)">字</i>理由づけ</span>
@@ -500,6 +507,7 @@ body{padding-bottom:215px}
       <div class="act"><button class="grad" id="treeClr">このカードのツリーを全部消す</button></div>
     </section>
     <div class="board" id="board"></div>
+    <section class="panel kbot" id="kBot" hidden></section>
 
     <details class="panel" id="setup">
       <summary>🔑 クライアントID（Googleドライブ同期の設定）</summary>
@@ -559,7 +567,7 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
-let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
+let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", auOnly:false, edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
 try { Object.assign(S, JSON.parse(localStorage.getItem("rp_set") || "{}")); } catch(e){}
 if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
@@ -1203,6 +1211,7 @@ function render(){
       const prev = tgt.previousElementSibling; (prev && prev.classList.contains("wire") ? prev : tgt).before(dv); } }
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
+  renderKian();
   update();
 }
 /* ---------- 隠して再生 ---------- */
@@ -1863,7 +1872,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611251330";
+const VER = "版 202611251400";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2296,6 +2305,64 @@ document.addEventListener("keydown", e => {
 document.addEventListener("copy", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; if (!blkCopy(edU >= 0 ? edU : blkU)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); toast("ブロックをコピーしました（Ctrl+V か「下に貼り付け」で、選んでいるブロックの下に入ります）", "ok", 3500); });
 document.addEventListener("cut", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; const u = edU >= 0 ? edU : blkU; if (!blkCopy(u)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); delBlock(u, true); });
 document.addEventListener("paste", e => { if (!blkKeysOn() || inField() || !blkClip || !selCollapsed()) return; const t = (e.clipboardData.getData("text/plain") || "").trim(); if (t !== blkClip.plain) return; e.preventDefault(); blkPaste(); });
+
+/* ---------- 起案チェック（CSV）：出題年度・関連判例を上、補足（拾った事実・拾い漏れ）を下に出す。S.kian[ファイル名] = { yr, at, rows:[{ q:設問, pt:出題趣旨, fa:拾った事実, mi:拾い漏れ, ro:[論証名], hj:[{ n:判例名, u:リンク, p:パス }], yr }] } ---------- */
+let KMAP = null;
+const kn = t => String(t || "").normalize("NFKC").replace(/\s+/g, "").trim();
+function kYear(name){
+  const m = String(name || "").normalize("NFKC").match(/(?:^|[^A-Za-z])([RH])(\d{1,2})(?![0-9])/i); if (!m) return "";
+  const n = +m[2], y = m[1].toUpperCase() === "R" ? 2018 + n : 1988 + n;
+  return (/prebar|予備/i.test(name) ? "予備" : "") + "(" + y + "・" + m[1].toUpperCase() + n + ")";
+}
+function kBuild(){ KMAP = {}; CARDS.forEach(c => { const k = kn(c.title); (KMAP[k] = KMAP[k] || []).push(c); });
+  const per = {}; Object.keys(S.kian || {}).forEach(src => { const d = S.kian[src]; (d.rows || []).forEach(r => (r.ro || []).forEach(nm => { const cs = KMAP[kn(nm)]; if (cs) { const c = cs[0]; (per[c.id] = per[c.id] || []).push({ src, yr: r.yr || d.yr || "", r }); } })); });
+  KMAP = { byTitle: KMAP, per, ref: CARDS }; }
+function kImport(text, fname){
+  const rows = csvParse(text); if (rows.length < 2) throw new Error("データの行がありません（1行目は列の名前です）。");
+  const head = rows[0].map(h => String(h).normalize("NFKC")), col = (re, idx) => head.findIndex((h, i) => re.test(h) && (idx == null || (h.match(/([1-3])\s*$/) || [])[1] === String(idx)));
+  const ci = { q: head.findIndex(h => /設問/.test(h)), pt: head.findIndex(h => /出題趣旨/.test(h)), fa: head.findIndex(h => /拾った事実/.test(h)), mi: head.findIndex(h => /拾い漏れ/.test(h)), yr: head.findIndex(h => /出題年度|年度/.test(h)) };
+  const ro = [1, 2, 3].map(i => col(/関連論証/, i)), hn = [1, 2, 3].map(i => head.findIndex((h, j) => /関連判例/.test(h) && !/リンク|URL|パス|path/i.test(h) && (h.match(/([1-3])\s*$/) || [])[1] === String(i))),
+    hu = [1, 2, 3].map(i => head.findIndex(h => /判例/.test(h) && /リンク|URL/i.test(h) && (h.match(/([1-3])\s*$/) || [])[1] === String(i))),
+    hp = [1, 2, 3].map(i => head.findIndex(h => /判例/.test(h) && /パス|path/i.test(h) && (h.match(/([1-3])\s*$/) || [])[1] === String(i)));
+  if (ci.q < 0 && ci.fa < 0 && ro.every(i => i < 0)) throw new Error("『起案チェック』のCSVではないようです（設問・関連論証などの列が見つかりません）。");
+  const g = (r, i) => i >= 0 && r[i] != null ? String(r[i]).trim() : "";
+  const out = [];
+  rows.slice(1).forEach(r => { const o = { q: g(r, ci.q), pt: g(r, ci.pt), fa: g(r, ci.fa), mi: g(r, ci.mi), yr: g(r, ci.yr), ro: ro.map(i => g(r, i)).filter(Boolean), hj: [0, 1, 2].map(k => ({ n: g(r, hn[k]), u: g(r, hu[k]), p: g(r, hp[k]) })).filter(h => h.n || h.u || h.p) };
+    if (o.ro.length || o.q || o.fa) out.push(o); });
+  const src = String(fname || "起案チェック").replace(/\.[A-Za-z0-9]+$/, "");
+  if (!S.kian) S.kian = {}; S.kian[src] = { yr: kYear(src), at: Date.now(), rows: out }; save(); kBuild();
+  const miss = []; let hit = 0; out.forEach(o => o.ro.forEach(nm => { if (KMAP.byTitle[kn(nm)]) hit++; else miss.push(nm); }));
+  return { src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
+}
+function kCopy(t){ const done = () => toast("コピーしました：" + t.slice(0, 40), "ok", 2500);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => kCopyOld(t, done)); else kCopyOld(t, done); }
+function kCopyOld(t, done){ const a = el("textarea"); a.value = t; a.style.position = "fixed"; a.style.opacity = "0"; document.body.append(a); a.select(); try { document.execCommand("copy"); done(); } catch(e){ toast("コピーできませんでした", "ng"); } a.remove(); }
+function renderKian(){
+  const top = $("kTop"), bot = $("kBot"); top.innerHTML = ""; bot.innerHTML = ""; top.hidden = bot.hidden = true;
+  const c = card(); if (!c || !S.kian || !Object.keys(S.kian).length) return; if (!KMAP || KMAP.ref !== CARDS) kBuild();
+  const ents = KMAP.per[c.id]; if (!ents || !ents.length) return;
+  const yrs = [], hj = new Map(), qs = [];
+  ents.forEach(e => { const y = (e.yr || "") ? (e.yr.includes(deckOf(c)) ? e.yr : e.yr + "(" + deckOf(c) + ")") : ""; if (y && !yrs.includes(y)) yrs.push(y);
+    (e.r.hj || []).forEach(h => { const k = h.u || h.n; if (k && !hj.has(k)) hj.set(k, h); }); qs.push(e); });
+  if (yrs.length){ const l = el("span", "kh"); l.append(document.createTextNode("出題：")); yrs.forEach(y => { const b = el("span", "kyr"); b.textContent = y; l.append(b); }); top.append(l); }
+  if (hj.size){ const l = el("span", "kh"); l.append(document.createTextNode("関連判例："));
+    [...hj.values()].forEach((h, i) => { const w = el("span"); if (i) w.append(document.createTextNode("　"));
+      if (h.u){ const a = el("a"); a.href = h.u; a.target = "_blank"; a.rel = "noopener"; a.textContent = h.n || "判例PDF"; w.append(a); } else w.append(document.createTextNode(h.n));
+      if (h.p){ const b = el("button"); b.textContent = "パスをコピー"; b.title = h.p; b.onclick = () => kCopy(h.p); w.append(b); }
+      l.append(w); }); top.append(l); }
+  top.hidden = !top.childNodes.length;
+  const h3 = el("h3"); h3.textContent = "📎 補足（起案より。読み上げません）"; bot.append(h3);
+  qs.forEach(e => { const d = el("div", "kq"); const add = (lab, t) => { if (!t) return; const b = el("b"); b.textContent = lab; const pre = el("pre"); pre.textContent = t; d.append(b, pre); };
+    add("設問", e.r.q); add("出題趣旨が求める要素", e.r.pt); add("起案で拾った事実", e.r.fa); add("拾い漏れの可能性がある事実", e.r.mi); const f = el("div", "small"); f.textContent = "（" + e.src + "）"; d.append(f); bot.append(d); });
+  bot.hidden = false;
+}
+$("kIn").onclick = () => $("kFile").click();
+$("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const out = $("kMsg"); out.textContent = "読み込み中…";
+  try { const buf = await f.arrayBuffer(); let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e2){ text = new TextDecoder("shift_jis").decode(buf); }
+    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.urlCols ? "" : "。判例のリンク列（判例リンク1〜3）が無いので、判例は名前だけ出ます") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、パスのコピーは出ません") + "。";
+    toast("起案チェックを取り込みました", "ok"); renderKian();
+  } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
+$("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します。よろしいですか？")) return; S.kian = {}; save(); kBuild(); renderKian(); $("kMsg").textContent = "消しました。"; };
 </script>
 </body>
 </html>
