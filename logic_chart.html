@@ -44,6 +44,8 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .board{background:var(--board);color:var(--w);border-radius:10px;padding:14px 10px 18px;overflow-x:auto;position:relative}
 .frm{position:absolute;box-sizing:border-box;border:2px solid #7fd0c8;border-radius:12px;pointer-events:none;z-index:1}
 .frm .frl.tab{color:#7fd0c8}.board:not(.txm) .frm .frl.tab{display:none}.board.txm .frm .frl{pointer-events:auto;cursor:pointer}.frm.sel{box-shadow:0 0 0 3px rgba(255,154,60,.55)}
+.dh{display:none}.board.txm .row>.dh{display:flex;position:absolute;left:-16px;top:2px;width:26px;height:30px;align-items:center;justify-content:center;font-size:18px;color:#7fd0c8;cursor:grab;touch-action:none;z-index:3;user-select:none;-webkit-user-select:none;background:rgba(20,22,26,.6);border-radius:6px}
+.board.txm .frm .frl{touch-action:none}.row.dropb{box-shadow:0 -4px 0 0 #ffd54a}.row.dropa{box-shadow:0 4px 0 0 #ffd54a}.row.drgsrc{opacity:.45}
 .frm.l1{border-color:#e8c64a}.frm.l2{border-color:#c58ae8}.frm.l3{border-color:#f08a6b}
 .frm .frl{position:absolute;left:12px;top:-11px;background:var(--board);color:#7fd0c8;font-size:11.5px;font-weight:700;padding:0 7px;line-height:20px;border-radius:6px;white-space:nowrap;max-width:85%;overflow:hidden;text-overflow:ellipsis}
 .frm.l1 .frl{color:#e8c64a}.frm.l2 .frl{color:#c58ae8}.frm.l3 .frl{color:#f08a6b}
@@ -1149,6 +1151,31 @@ function frApply(){
   touch(); blkLevel = wasChg ? "fsel" : "0"; if (wasChg) frSelId = id; render(); blkDraw(); drawFrames();
   $("editMsg").textContent = "✔ " + (hi - lo + 1) + " 行を、枠でまとめました" + (name ? "（" + name + "）" : "") + "。"; toast("✔ 枠でまとめました（" + (hi - lo + 1) + " 行）", "ok");
 }
+/* ---- ドラッグで位置を変える：行（ブロック）や枠ごと、ほかの行の前後へ。枠が途中で分かれる動かし方は、元に戻して知らせる ---- */
+let drgMoved = false;
+function frContig(secs){ const all = flatRows(secs), sets = frSets(all); return Object.values(sets).every(f => { const a = [...f.idx].sort((x, y) => x - y); return a[a.length - 1] - a[0] + 1 === a.length; }); }
+function moveRows(group, target, after){
+  if (!group.length || group.includes(target)) return "same"; const base = flatRows(ecard().sections), gi = group.map(r => base.indexOf(r)), ti0 = base.indexOf(target); if (ti0 < 0 || gi.some(k => k < 0)) return "same";
+  const cv = ensureCv(), rows = flatRows(cv.sections), g = gi.map(k => rows[k]), tg = rows[ti0];
+  if (!tg || g.some(x => !x) || g.includes(tg)) return "same";
+  const bak = JSON.stringify([cv.sections, cv.qa]); let acc = 0, mark = null; for (const r of rows){ const n = r.b.reduce((m, b) => m + (b.p || [b]).filter(p => p.s).length, 0); if (!g.includes(r) && acc >= cv.qa && !mark) mark = r; acc += n; }
+  const secOf = r => cv.sections.find(sec => sec.rows.includes(r)), tsec = secOf(tg); g.forEach(r => { const sc = secOf(r); sc.rows.splice(sc.rows.indexOf(r), 1); });
+  const ti = tsec.rows.indexOf(tg) + (after ? 1 : 0); tsec.rows.splice(ti, 0, ...g);
+  cv.sections = cv.sections.filter(sec => sec.rows.length || sec === tsec); g.forEach(r => { if (secOf(r).rows[0] === r) delete r.via; });
+  if (!frContig(cv.sections)){ const o = JSON.parse(bak); cv.sections = o[0]; cv.qa = o[1]; render(); return "frame"; }
+  let q = 0, all2 = flatRows(cv.sections); if (mark){ for (const r of all2){ if (r === mark) break; q += r.b.reduce((m, b) => m + (b.p || [b]).filter(p => p.s).length, 0); } } else q = all2.reduce((m, r) => m + r.b.reduce((m2, b) => m2 + (b.p || [b]).filter(p => p.s).length, 0), 0);
+  cv.qa = q; touch(); render(); return "ok";
+}
+function drgStart(ev, group, handle){
+  if (!txMode || !group.length || (ev.button != null && ev.button > 0)) return; ev.preventDefault(); const x0 = ev.clientX, y0 = ev.clientY; let on = false, tgt = null, aft = false;
+  const clear = () => board.querySelectorAll(".row.dropb,.row.dropa,.row.drgsrc").forEach(e => e.classList.remove("dropb", "dropa", "drgsrc"));
+  const mv = e => { if (!on && Math.hypot(e.clientX - x0, e.clientY - y0) < 8) return; on = true; clear(); board.querySelectorAll(".row").forEach(e2 => { if (e2._row && group.includes(e2._row)) e2.classList.add("drgsrc"); });
+    const u = document.elementFromPoint ? document.elementFromPoint(e.clientX, e.clientY) : null, r = u && u.closest ? u.closest(".row") : null; tgt = null;
+    if (r && r._row && !group.includes(r._row)){ const bb = r.getBoundingClientRect(); aft = e.clientY > bb.top + bb.height / 2; tgt = r._row; r.classList.add(aft ? "dropa" : "dropb"); } };
+  const up = e => { document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up); document.removeEventListener("pointercancel", up); clear();
+    if (on){ drgMoved = true; setTimeout(() => { drgMoved = false; }, 0); if (tgt){ const res = moveRows(group, tgt, aft); if (res === "ok"){ blkLevel = "0"; blkU = null; blkDraw(); $("editMsg").textContent = "✔ 位置を変えました。"; toast("✔ 位置を変えました（戻すときは「もとに戻す」）", "ok", 3000); } else if (res === "frame"){ $("editMsg").textContent = "枠の途中には入れられません（枠の範囲が分かれてしまうため、動かしませんでした）。先に「枠で囲う範囲を変更」で枠を直してください。"; toast("枠の途中には入れられません", "ng", 6000); } } } };
+  document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up); document.addEventListener("pointercancel", up);
+}
 let frSelId = null, frChg = null;
 function frSelect(id){ if (edEl && !commit()) return; frSelId = id; frChg = null; blkLevel = "fsel"; dbMode = false; board.classList.remove("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); drawFrames(); }
 function frInfo(id){ const all = flatRows(ecard().sections), idx = []; all.forEach((r, i) => { if ((r.fr || []).includes(id)) idx.push(i); }); let label = ""; all.forEach(r => { if (r.fl && r.fl[id]) label = r.fl[id]; }); return { all, idx, label }; }
@@ -1184,7 +1211,7 @@ function drawFrames(){
     d.style.left = (x0 - br.left + board.scrollLeft - pad) + "px"; d.style.top = (y0 - br.top + board.scrollTop - pad - (f.label ? 4 : 0)) + "px";
     d.style.width = (x1 - x0 + pad * 2) + "px"; d.style.height = (y1 - y0 + pad * 2 + (f.label ? 4 : 0)) + "px";
     d.dataset.f = f.id; if (blkLevel === "fsel" && frSelId === f.id) d.classList.add("sel");
-    { const tb = el("span", "frl" + (f.label ? "" : " tab"), f.label || "枠"); tb.dataset.f = f.id; tb.onclick = e => { if (!txMode) return; e.stopPropagation(); frSelect(f.id); }; d.append(tb); } board.append(d); });
+    { const tb = el("span", "frl" + (f.label ? "" : " tab"), f.label || "枠"); tb.dataset.f = f.id; tb.onclick = e => { if (!txMode) return; e.stopPropagation(); if (drgMoved){ drgMoved = false; return; } frSelect(f.id); }; tb.onpointerdown = e => { if (!txMode) return; drgStart(e, flatRows(ecard().sections).filter(r => (r.fr || []).includes(f.id)), tb); }; d.append(tb); } board.append(d); });
 }
 try { new ResizeObserver(() => requestAnimationFrame(drawFrames)).observe(board); } catch(e){}
 window.addEventListener("resize", () => requestAnimationFrame(drawFrames));
@@ -1341,6 +1368,7 @@ function render(){
         if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
       const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
       if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
+      if (txMode){ const h = el("span", "dh", "⠿"); h.title = "ドラッグで、この行（ブロック）の位置を変えます"; h.setAttribute("aria-label", "この行を移動"); h.onpointerdown = e => drgStart(e, [row], h); r.append(h); }
       curRow = row; curSec = sec; row.b.forEach(b => r.append(makeBlock(b)));
       { const bl = [...r.children].filter(x => x.classList.contains("blk")); if (row.k === "ladder" && bl[0]) bl[0].classList.add("lf");
         if (row.jl && bl.length > 1) row.jl.forEach((t, i) => { if (!t || i >= bl.length - 1) return; const j = el("span", "jl"); j.textContent = t; j.dataset.i = i;
@@ -2061,7 +2089,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611252246";
+const VER = "版 202611252248";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
