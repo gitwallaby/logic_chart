@@ -86,6 +86,8 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .wire .lbl{position:absolute;left:10px;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:12px;color:var(--gray)}
 .wire.lit{background:var(--current)} .wire.lit::after{border-top-color:var(--current)}
 .yk .wire{margin-left:9px}
+.wire.lofd{background:transparent}.wire.lofd::after{display:none}
+.wire .lop{position:absolute;overflow:visible;pointer-events:none;z-index:1}.wire .lop path{fill:none;stroke:var(--trace);stroke-width:2}.wire .lop polygon{fill:var(--trace)}.wire.lit .lop path{stroke:var(--current)}.wire.lit .lop polygon{fill:var(--current)}
 
 .row{display:flex;justify-content:center;position:relative}
 .row.one>.blk{width:100%;max-width:34rem}
@@ -835,7 +837,13 @@ function posIn(node, off){ const r = document.createRange(); r.setStart(edEl, 0)
 function selNow(){ const s = getSelection(); if (!edEl || !s.rangeCount) return null; const r = s.getRangeAt(0);
   if (!edEl.contains(r.startContainer) || !edEl.contains(r.endContainer)) return null;
   return [posIn(r.startContainer, r.startOffset), posIn(r.endContainer, r.endOffset)]; }
-document.addEventListener("selectionchange", () => { const v = selNow(); if (v) lastSel = v; });
+document.addEventListener("selectionchange", () => { const v = selNow(); if (v) lastSel = v;
+  /* 文字を選んだ／選びなおした（範囲あり⇄なし）ときだけ、ボタンを「選択前」「選択後」に切り替える */
+  if (txMode && blkLevel === "text" && edEl && selOn() !== selWas) blkDraw(); });
+let selWas = false;
+function selOn(){ const v = selNow(); return !!(v && v[0] !== v[1]); }
+function selAllEd(){ if (!edEl) return; edEl.focus(); const r = document.createRange(); r.selectNodeContents(edEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); const v = selNow(); if (v) lastSel = v; blkDraw(); }
+function selOff(){ if (!edEl) return; const s = getSelection(); try { if (s.rangeCount) s.collapseToEnd(); } catch(e){} const v = selNow(); if (v) lastSel = v; blkDraw(); }
 function setCaret(a, b){
   const w = document.createTreeWalker(edEl, NodeFilter.SHOW_TEXT); let n, acc = 0, sa = null, sb = null;
   while ((n = w.nextNode())){ const L = n.data.length;
@@ -973,7 +981,7 @@ function txTap(ev){
   if (blkLevel === "tree") return;
   if (blkLevel === "frame"){ frTap(ev); return; }
   if (blkLevel === "pair"){ prTap(ev); return; }
-  const pt = ev.target.closest(".pt[data-u],.pt[data-vu]");
+  const pt = ev.target.closest(".pt[data-u],.pt[data-vu]") || ptNear(ev);       /* 文字のすき間を押しても、そのブロックの文を開く */
   if (edEl && pt === edEl) return;
   if (!pt || +pt.dataset.u === 0){ if (!edEl && !ev.target.closest(".sec-hd")) $("editMsg").textContent = "このブロックは直せません。"; return; }
   blkMenu(+(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu));
@@ -1018,6 +1026,7 @@ function blkGo(level){
   if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; treeOpen = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
   if (level === "frame"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "frame"; frU1 = frU2 = blkU; frWho = "end"; frNameV = ""; frChg = null; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); frMark(); return; }
   if (level === "pair"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "pair"; prU = blkU; blkDraw(); pairLit(refs[prU].b.pr || ""); return; }
+  if (level === "lside"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "lside"; blkDraw(); return; }
   if (level === "line"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "line"; blkDraw(); return; }
   if (level === "0"){ if (edEl) closeEd(); dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = "0"; blkDraw(); renderTree(); return; }
   if (!edEl) openEd(blkU);
@@ -1028,13 +1037,16 @@ function blkDraw(){
   const c = card(); if (!c || !txMode){ return; }
   const draft = !!c.draft, ttl = $("blkTitle");
   body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
-  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。"; return; }
+  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。ブロックの左端（左の線のあたり）を長押し（PCは右クリック）すると、左の線のメニューが出ます。"; return; }
   const q = blkU != null && refs[blkU] ? "" : "";
   const sample = (() => { const pt = board.querySelector(".pt.pick,.pt.ed"); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 18) : ""; })();
   if (blkLevel === "0"){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
-    [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => add(t, () => edAct(a), "", draft && a !== "undo" && a !== "redo").dataset.a = a);
-    add("文字の変更", () => blkGo("text"), "", draft); add("図の変更", () => blkGo("fig"), "", draft); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree")); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字／直列・並列", () => blkGo("line"), "", draft); add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft);
+    const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
+    add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
+    lab0("もとに戻す・コピー"); [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => add(t, () => edAct(a), "", draft && a !== "undo" && a !== "redo").dataset.a = a);
+    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字／直列・並列", () => blkGo("line"), "", draft); add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft); add("左の線（つなぎ方）", () => blkGo("lside"), "", draft);
+    lab0("音声・ツリー"); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree"));
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
   if (blkLevel === "fsel"){
@@ -1042,6 +1054,14 @@ function blkDraw(){
     ttl.textContent = "枠を選んでいます：「" + (I.label || "名前なし") + "」（" + I.idx.length + " 行）。枠の中は1つのまとまりです。";
     const nm = el("input"); nm.type = "text"; nm.id = "frName"; nm.maxLength = 30; nm.placeholder = "枠の名前（空でもよい）"; nm.setAttribute("aria-label", "枠の名前"); nm.value = I.label; body.before(nm);
     add("名前を保存", () => frRename(frSelId, nm.value.trim())); add("枠で囲う範囲を変更", () => frChange(frSelId), "go"); add("この枠を削除（中のブロックは残ります）", () => { if (confirm("この枠を削除します（中のブロックはそのまま残ります）。よろしいですか？")) frDelete(frSelId); }, "dng"); add("← 戻る", () => { frSelId = null; blkGo("0"); drawFrames(); }); return; }
+  if (blkLevel === "lside"){
+    const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
+    ttl.textContent = "左側の線：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線のつなぎ方を選びます";
+    const why = lsWhy(I);
+    [["down", "① 下のブロックと繋ぐ（逆L字）", !I.canDown], ["up", "② 上のブロックと繋ぐ（L字）", !I.canUp], ["upArrow", "③ 上のブロックと繋いで、矢印を伸ばす", !I.canUpArrow], ["none", "④ 矢印に変える（左の線をなくして、ふつうの直列に戻す）", !I.canNone]].forEach(([a, t, dis]) => add(t, () => lsOp(a), "", dis).dataset.a = "ls:" + a);
+    if (I.hasLo) add("線の下から出る矢印だけ消す（左の線は残す）", () => lsOp("loOff")).dataset.a = "ls:loOff";
+    const why2 = why.filter(Boolean); if (why2.length){ const n = el("div", "small"); n.textContent = "灰色のボタンの理由： " + why2.join(" ／ "); body.append(n); }
+    add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "pair"){
     const r = refs[prU]; if (!r){ blkGo("0"); return; }
     const mem = r.b.pr ? [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === r.b.pr).length : 0;
@@ -1086,26 +1106,29 @@ function blkDraw(){
     return; }
   const BT = { text: [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"],["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","マーカーなし"],["b","太字"]],
     aud: [["n","選んだ範囲の音声なし：切替"],["nall","この文ぜんぶの音声なし：切替"]] };
-  ttl.textContent = blkLevel === "text" ? "ブロックの編集：文字はそのまま打ち直せます。分けたい位置にカーソルを置いて「ここでブロックを分割」。色・マーカー・太字は、文字を選んでから押します。直したら「保存」" : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたり、区切りを入れます" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  const selOnNow = blkLevel === "text" && selOn(); selWas = selOnNow;
+  ttl.textContent = blkLevel === "text" ? (selOnNow ? "文字を選びました：色・マーカー・太字・音声なしを変えられます。選びなおすか「選択をやめる」で、ブロックの操作にもどります。直したら「保存」" : "ブロックの編集（文字を選ぶ前）：文はそのまま打ち直せます。分けたい位置にカーソルを置いて「ここでブロックを分割」。色などを変えたい文字を長押しして範囲を選ぶと、色・マーカーのボタンに切り替わります。直したら「保存」") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたり、区切りを入れます" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
   if (blkLevel === "fig"){
     const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
     [["split","ここで分ける"],["merge","前の文とつなげる"]].concat(first ? [] : yk ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   } else {
     if (blkLevel === "text"){
-      { const l = el("span", "lab"); l.textContent = "操作"; body.append(l); }
-      [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
-      [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
-    }
-    if (blkLevel === "text"){
       const lab = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
-      lab("文字色"); [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
-      lab("ハイライト"); [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","なし"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
-      add("太字", () => edAct("b")).dataset.a = "b";
-      lab("音声"); add("音声なし：切替", () => edAct("n")).dataset.a = "n"; add("この文ぜんぶ音声なし：切替", () => edAct("nall")).dataset.a = "nall";
+      if (!selOnNow){
+        /* 文字を選ぶ前：ブロックそのものの操作 */
+        lab("ブロックの操作"); [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
+        lab("文字の色などを変えるとき"); add("ブロック全体の文字を選ぶ", () => selAllEd()).dataset.a = "selall";
+      } else {
+        /* 文字を選んだ後：選んだ文字についての操作 */
+        lab("文字色"); [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
+        lab("ハイライト"); [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","なし"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
+        lab("太字・音声・ツリー"); add("太字", () => edAct("b")).dataset.a = "b"; add("音声なし：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
+        add("選択をやめる", () => selOff()).dataset.a = "seloff";
+      }
     } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   }
   add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
-  if (blkLevel === "text") add("その他の操作（図・音声・ツリー・枠）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
+  if (blkLevel === "text" && !selOnNow) add("その他の操作（もとに戻す・図・枠・矢印・音声・ツリー）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
 }
 let prU = null;
 function prTap(ev){
@@ -1118,8 +1141,81 @@ function prTap(ev){
 function prClear(){ const src = prU; ensureCv(); const A = refs[src]; if (!A || !A.b.pr) return; const gid = A.b.pr; const seen = new Set(); Object.values(refs).forEach(x => { if (x && x.b && x.b.pr === gid && !seen.has(x.b)){ seen.add(x.b); delete x.b.pr; } }); touch(); blkLevel = "pair"; render(); blkDraw(); $("editMsg").textContent = "✔ 対応づけを外しました。"; }
 /* ---- 矢印・線の文字／直列・並列。row.via=上の矢印の文字、row.jl=[つながるブロックの間の線の文字…]、row.k=one/par/branch/ladder ---- */
 function lnOp(fn, msg){ const u = blkU; ensureCv(); const x = refs[u]; if (!x) return; fn(x); touch(); blkLevel = "line"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500); }
-function lnJoin(kind){ lnOp(x => { const rows = x.sec.rows, i = rows.indexOf(x.row), nx = rows[i + 1]; if (!nx) return; const jl = (x.row.jl || []).slice(); while (jl.length < x.row.b.length - 1) jl.push(""); if (nx.via) jl.push(nx.via); else jl.push("");
-    while (nx.jl && jl.length < x.row.b.length - 1 + 0) jl.push(""); x.row.b = x.row.b.concat(nx.b); (nx.jl || []).forEach(t => jl.push(t)); const nb = x.row.b.length - 1; while (jl.length < nb) jl.push(""); x.row.k = x.row.b.length > 1 ? (x.row.k === "ladder" && kind === "par" ? "par" : kind) : "one"; if (jl.some(Boolean)) x.row.jl = jl; else delete x.row.jl; rows.splice(i + 1, 1); }, kind === "ladder" ? "下のブロックと並列にしました（左の線でつなぎます）。" : "下のブロックと横に並べました。"); }
+/* 行 i と、すぐ下の行を1つにまとめる（kind: "ladder"＝左の線でつなぐ／"par"＝横に並べる）。下の行の矢印の文字は、つながるブロックの間の線の文字になる */
+function joinRows(sec, i, kind){
+  const rows = sec.rows, row = rows[i], nx = rows[i + 1]; if (!row || !nx) return false;
+  const jl = (row.jl || []).slice(); while (jl.length < row.b.length - 1) jl.push(""); jl.push(nx.via || "");
+  row.b = row.b.concat(nx.b); (nx.jl || []).forEach(t => jl.push(t)); const nb = row.b.length - 1; while (jl.length < nb) jl.push("");
+  row.k = row.b.length > 1 ? (row.k === "ladder" && kind === "par" ? "par" : kind) : "one"; if (jl.some(Boolean)) row.jl = jl; else delete row.jl;
+  if (nx.lo) row.lo = 1; rows.splice(i + 1, 1); return true;
+}
+function lnJoin(kind){ lnOp(x => { joinRows(x.sec, x.sec.rows.indexOf(x.row), kind); }, kind === "ladder" ? "下のブロックと並列にしました（左の線でつなぎます）。" : "下のブロックと横に並べました。"); }
+/* ---- ブロックの左側の線のメニュー：左の線＝はしご（row.k==="ladder"）。row.lo=1 なら、左の線の下から回りこんで次の行へ向かう矢印を出す（drawLoops）。
+        ①下と繋ぐ（逆L）②上と繋ぐ（L）③上と繋いで矢印を伸ばす ④左の線をなくして直列に戻す。折衷型の「枠＋左の線＋次の規範への矢印」も、この部品（joinRows・row.lo）で作る ---- */
+const rowKind = r => r.k || "one";
+function lsInfo(u){
+  const R = refs[u]; if (!R || !R.row || !R.sec) return null; const rows = R.sec.rows, i = rows.indexOf(R.row), row = R.row, bi = row.b.indexOf(R.b), n = row.b.length, nx = rows[i + 1], pv = rows[i - 1];
+  const joinable = r => !!r && (rowKind(r) === "one" || rowKind(r) === "ladder"), same = (a, b) => JSON.stringify(a.fr || []) === JSON.stringify(b.fr || []);
+  const lad = rowKind(row) === "ladder" && n > 1, isLast = bi === n - 1, mine = joinable(row);
+  return { R, i, row, bi, n, lad, isLast, nx, pv, mine, joinable, same,
+    canDown: mine && isLast && joinable(nx) && same(row, nx),
+    canUp: mine && bi === 0 && joinable(pv) && same(row, pv),
+    canUpArrow: (lad && isLast && !row.lo) || (!lad && mine && n === 1 && joinable(pv) && same(row, pv)),
+    canNone: lad, hasLo: lad && isLast && !!row.lo };
+}
+function lsWhy(I){
+  const o = [], side = I.mine ? "" : "横に並んだブロックは左の線でつなげません";
+  if (!I.canDown) o.push("①は、" + (side || (I.lad && !I.isLast ? "すでに下のブロックと左の線でつながっています" : !I.nx ? "下にブロックがありません" : !I.joinable(I.nx) ? "下が横に並んだブロックです" : "下の行と枠の入り方が違います")));
+  if (!I.canUp) o.push("②は、" + (side || (I.bi > 0 ? "すでに上のブロックと左の線でつながっています" : !I.pv ? "上にブロックがありません" : !I.joinable(I.pv) ? "上が横に並んだブロックです" : "上の行と枠の入り方が違います")));
+  if (!I.canUpArrow) o.push("③は、" + (I.row.lo && I.lad && I.isLast ? "すでに矢印を伸ばしています" : I.lad && !I.isLast ? "左の線のいちばん下のブロックで使います" : side || (!I.pv ? "上にブロックがありません" : "上とつなげられません")));
+  if (!I.canNone) o.push("④は、このブロックに左の線がありません");
+  return o;
+}
+function lsOp(act){
+  const u = blkU; ensureCv(); const I = lsInfo(u); if (!I) return; let msg = "";
+  if (act === "down"){ if (!I.canDown) return; joinRows(I.R.sec, I.i, "ladder"); msg = "下のブロックと、左の線でつなぎました（逆L字）。"; }
+  else if (act === "up"){ if (!I.canUp) return; joinRows(I.R.sec, I.i - 1, "ladder"); msg = "上のブロックと、左の線でつなぎました（L字）。"; }
+  else if (act === "upArrow"){ if (!I.canUpArrow) return; let row = I.row; if (!I.lad){ joinRows(I.R.sec, I.i - 1, "ladder"); row = I.R.sec.rows[I.i - 1]; } row.lo = 1; msg = "上のブロックと左の線でつなぎ、線の下から次のブロックへ矢印を伸ばしました。"; }
+  else if (act === "none"){ if (!I.canNone) return; splitLadder(I.R.sec, I.i, I.bi); msg = "左の線をなくして、ふつうの矢印（直列）にしました。"; }
+  else if (act === "loOff"){ if (!I.hasLo) return; delete I.row.lo; msg = "線の下から出る矢印を消しました（左の線は残っています）。"; }
+  else return;
+  touch(); blkLevel = "lside"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500);
+}
+/* はしごの行 rows[i] から、bi 番目のブロックを左の線から外す（前と後ろは、まだ2つ以上あれば、それぞれ左の線のまま残る） */
+function splitLadder(sec, i, bi){
+  const rows = sec.rows, row = rows[i], b = row.b, jl = (row.jl || []).slice(), before = b.slice(0, bi), me = [b[bi]], after = b.slice(bi + 1);
+  const mk = arr => { const r = { b: arr }; if (arr.length > 1) r.k = "ladder"; if (row.fr) r.fr = row.fr.slice(); return r; }, first = r => { if (row.via) r.via = row.via; if (row.fl) r.fl = row.fl; if (row.lab) r.lab = row.lab; }, parts = [];
+  if (before.length){ const r = mk(before); first(r); const j = jl.slice(0, before.length - 1); if (j.some(Boolean)) r.jl = j; parts.push(r); }
+  { const r = mk(me); if (!before.length) first(r); else if (jl[bi - 1]) r.via = jl[bi - 1]; parts.push(r); }
+  if (after.length){ const r = mk(after); if (jl[bi]) r.via = jl[bi]; const j = jl.slice(bi + 1, bi + after.length); if (j.some(Boolean)) r.jl = j; if (row.lo && after.length > 1) r.lo = 1; parts.push(r); }
+  rows.splice(i, 1, ...parts);
+}
+function lsMenu(u){
+  if (!txMode) setTx(true);
+  if (edEl && !commit()) return;
+  blkU = u; blkLevel = "lside"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
+  board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick"));
+  const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (pt) pt.classList.add("pick");
+  blkDraw(); renderTree();
+}
+/* 左の線の下から出る矢印（row.lo）を、行と行のあいだの矢印（.wire）の中に描く：線の下 → 右へ → 次の行のブロックの上で矢印の先。配置は画面の大きさに合わせて測る（実機で確認） */
+function drawLoops(){
+  board.querySelectorAll(".lop").forEach(x => x.remove()); board.querySelectorAll(".wire.lofd").forEach(w => w.classList.remove("lofd"));
+  board.querySelectorAll(".wire.lof").forEach(w => {
+    const a = w.previousElementSibling, b = w.nextElementSibling; if (!a || !b || !a.classList.contains("ladder")) return;
+    const bl = [...a.children].filter(x => x.classList && x.classList.contains("blk")); if (bl.length < 2) return;
+    const f = bl[0].getBoundingClientRect(), l = bl[bl.length - 1].getBoundingClientRect(), wr = w.getBoundingClientRect(), nb = b.querySelector(".blk") || b, nr = nb.getBoundingClientRect();
+    if (!(l.height > 0) || !(wr.height > 0) || !(nr.width > 0)) return;
+    const tx = f.left - 16, ty = l.top + 19, cx = nr.left + nr.width / 2, ey = wr.bottom - 1; if (cx <= tx + 8) return;
+    const X = cx - tx, H = Math.max(12, ey - ty), ym = Math.max(6, Math.min(H - 10, (wr.top + wr.bottom) / 2 - ty)), NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "lop"); svg.setAttribute("width", String(Math.ceil(X + 8))); svg.setAttribute("height", String(Math.ceil(H + 2)));
+    svg.style.left = (tx - wr.left - 1) + "px"; svg.style.top = (ty - wr.top) + "px";
+    const path = document.createElementNS(NS, "path"); path.setAttribute("d", "M1," + 0 + " V" + ym + " H" + (X + 1) + " V" + (H - 6)); svg.append(path);
+    const tri = document.createElementNS(NS, "polygon"); tri.setAttribute("points", (X - 4) + "," + (H - 6) + " " + (X + 6) + "," + (H - 6) + " " + (X + 1) + "," + H); svg.append(tri);
+    w.append(svg); w.classList.add("lofd");
+  });
+}
+{ const _df = drawFrames; drawFrames = function(){ _df.apply(this, arguments); try { drawLoops(); } catch(e){} }; }
 /* ---- 枠でまとめる：行（row）に fr:[枠の印…]、最初の行に fl:{枠の印:名前} を持たせる。図（S.cv）の一部なので、同期・書き出しにそのまま乗る ---- */
 let frU1 = null, frU2 = null, frWho = "end", frNameV = "";
 const flatRows = secs => { const o = []; secs.forEach(sec => sec.rows.forEach(r => o.push(r))); return o; };
@@ -1364,7 +1460,7 @@ function render(){
     s.append(hd);
     if (txMode && secEd === si) s.append(secEditor(si));
     sec.rows.forEach((row, ri) => {
-      if (ri > 0){ const w = el("div", "wire" + (row.via ? " via" : "")); w.dataset.w = utts.length;
+      if (ri > 0){ const w = el("div", "wire" + (row.via ? " via" : "") + (sec.rows[ri - 1].lo && sec.rows[ri - 1].k === "ladder" ? " lof" : "")); w.dataset.w = utts.length;
         if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
       const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
       if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
@@ -1788,15 +1884,45 @@ setInterval(() => {
 /* 再生位置を覚えておく（Braveが落ちても、開き直せば同じカードの同じ位置から続けられる） */
 setInterval(() => { if (hasAudio && playing && !au.paused && card()){ try { localStorage.setItem("rp_pos", JSON.stringify({ id: card().id, t: Math.round(au.currentTime * 10) / 10 })); } catch(e){} } }, 3000);
 
-/* 長押し：盤面全体で受ける（ブロックの文・見出しの行）。PCは右クリック */
-let lpT = null, lpx = 0, lpy = 0;
-function lpTarget(e){ return e.target.closest && e.target.closest(".pt[data-u],.pt[data-vu],.sec-hd"); }
+/* 長押し：盤面全体で受ける（ブロックの文・見出しの行・ブロックの左端）。PCは右クリック */
+let lpT = null, lpx = 0, lpy = 0, lpAt = 0, lpDone = false, lpDoneAt = 0;
+/* 押した場所が文字のすき間（ブロックの余白・「→」の行など）でも、同じブロックの、押した高さにいちばん近い文を対象にする（スマホは指が文字に当たらないことが多いため） */
+function ptNear(e){
+  const b = e.target && e.target.closest && e.target.closest(".blk"); if (!b || !board.contains(b)) return null;
+  const pts = [...b.querySelectorAll(".pt[data-u],.pt[data-vu]")]; if (!pts.length) return null;
+  let best = pts[0], bd = 1e9; pts.forEach(p => { const r = p.getBoundingClientRect(), y = e.clientY || 0, d = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; if (d < bd){ bd = d; best = p; } });
+  return best;
+}
+function lpTarget(e){ const t = e.target; if (!t || !t.closest) return null; return t.closest(".pt[data-u],.pt[data-vu],.sec-hd") || ptNear(e); }
 function lpAct(t){ if (t.classList.contains("sec-hd")){ if (!txMode) setTx(true); } else blkMenu(+(t.dataset.u != null ? t.dataset.u : t.dataset.vu)); }
-board.addEventListener("pointerdown", e => { if (blkLevel === "tree" || blkLevel === "frame" || blkLevel === "pair" || blkLevel === "fsel" || edEl || editing || e.button > 0) return; const t = lpTarget(e); if (!t || t.dataset.u === "0") return;
-  lpx = e.clientX; lpy = e.clientY; clearTimeout(lpT); lpT = setTimeout(() => { lpFired = true; setTimeout(() => { lpFired = false; }, 900); lpAct(t); }, 550); });
-["pointerup", "pointercancel"].forEach(n => board.addEventListener(n, () => clearTimeout(lpT)));
-board.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lpx, e.clientY - lpy) > 10) clearTimeout(lpT); });
-board.addEventListener("contextmenu", e => { if (blkLevel === "tree" || blkLevel === "frame" || blkLevel === "pair" || blkLevel === "fsel" || edEl || editing) return; const t = lpTarget(e); if (t && t.dataset.u !== "0"){ e.preventDefault(); clearTimeout(lpT); lpAct(t); } });
+/* ブロックの左端（はしごの行は、左の線のあたりまで）を押したか。押したら、そのブロックを返す */
+function leftBlk(e){
+  const t = e.target; if (!t || !t.closest || !board.contains(t)) return null; const row = t.closest(".row"); if (!row) return null;
+  const y = e.clientY || 0, x = e.clientX || 0; let best = null, bd = 1e9;
+  [...row.children].filter(c => c.classList && c.classList.contains("blk")).forEach(b => { const r = b.getBoundingClientRect(), d = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; if (d < bd){ bd = d; best = b; } });
+  if (!best || bd > 12) return null; const r = best.getBoundingClientRect();
+  return x >= r.left - (row.classList.contains("ladder") ? 26 : 0) && x <= r.left + 8 ? best : null;
+}
+function uOfBlk(b){ const p = b && b.querySelector(".pt[data-u],.pt[data-vu]"); return p ? +(p.dataset.u != null ? p.dataset.u : p.dataset.vu) : null; }
+/* 長押しが成立したら1回だけ実行する（タイマーと、ブラウザの contextmenu の両方から呼ばれても二重にならない） */
+function lpGo(fn){ const now = Date.now(); if (lpDone && now - lpDoneAt < 700) return; lpDone = true; lpDoneAt = now; clearTimeout(lpT); lpFired = true; setTimeout(() => { lpFired = false; }, 900); fn(); }
+/* 長押しを無視する場面：ツリー・枠・対応づけの選択中、「改行を直す」中、いま直している文そのもの（その中の長押しは文字の範囲選択に使う）。
+   別のブロックを直している最中の長押しは、これまで無視されていた（スマホで長押ししても開けない原因）ので、受け付ける */
+const lpBusy = () => blkLevel === "tree" || blkLevel === "frame" || blkLevel === "pair" || blkLevel === "fsel" || editing;
+function lpSkip(t){ return lpBusy() || !t || t.dataset.u === "0" || (edEl && t === edEl); }
+/* 押した場所から、長押しで実行することを決める（左端なら左の線のメニュー、文なら編集） */
+function lpPlan(e){
+  if (lpBusy()) return null;
+  const lb = leftBlk(e); if (lb){ const u = uOfBlk(lb); return u == null ? null : () => lsMenu(u); }
+  const t = lpTarget(e); return lpSkip(t) ? null : () => lpAct(t);
+}
+board.addEventListener("pointerdown", e => { if (e.button > 0 || (e.target.closest && e.target.closest(".dh,.frl,button,input,select,textarea"))) return; const fn = lpPlan(e); if (!fn) return;
+  lpx = e.clientX; lpy = e.clientY; lpAt = Date.now(); lpDone = false; clearTimeout(lpT); lpT = setTimeout(() => lpGo(fn), 450); });
+board.addEventListener("pointerup", () => clearTimeout(lpT));
+/* ブラウザが先に「長押しの動作」（文字の選択・メニュー）を始めると pointercancel が来る。それが長押しの途中なら、タイマーは止めない（早い pointercancel はスクロールの始まりなので止める） */
+board.addEventListener("pointercancel", () => { if (Date.now() - lpAt < 300) clearTimeout(lpT); });
+board.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lpx, e.clientY - lpy) > 16) clearTimeout(lpT); });
+board.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("button,input,select,textarea")) return; const fn = lpPlan(e); if (!fn) return; e.preventDefault(); lpGo(fn); });
 
 /* ---------- 操作 ---------- */
 $("play").onclick = () => thinking ? endThink(true) : playing ? stop() : start();
@@ -2089,7 +2215,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611252248";
+const VER = "版 202611261738";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2371,7 +2497,7 @@ function dbRows(){
   return rows;
 }
 const _render = render; render = function(){ _render.apply(this, arguments); try { applyDbMarks(); blkPick(); renderTree(); drawFrames(); frMark(); } catch(e){} };
-function blkPick(){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); if (txMode && blkU != null && blkLevel === "0"){ const pt = board.querySelector('.pt[data-u="' + blkU + '"],.pt[data-vu="' + blkU + '"]'); if (pt) pt.classList.add("pick"); } }
+function blkPick(){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); if (txMode && blkU != null && (blkLevel === "0" || blkLevel === "lside")){ const pt = board.querySelector('.pt[data-u="' + blkU + '"],.pt[data-vu="' + blkU + '"]'); if (pt) pt.classList.add("pick"); } }
 const TREE_URL = "https://gitwallaby.github.io/decisions/decisions.html";
 const DB_PLACE_FILE = "decision_tree_placement.json";
 /* 送るidと同じ計算（バージョンは動かさない）。効果1つのまとまりごとに、末尾が -v2 などになる */
