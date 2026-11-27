@@ -402,7 +402,7 @@ body{padding-bottom:215px}
     <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">プレイヤー</button><button id="tabCards" role="tab" aria-selected="false">ブラウザ</button></div>
     <section class="panel cbtab" id="cbTab">
     <div class="srch">
-      <div class="cbctl cbtop"><button class="grad" id="ordOpen" type="button" title="再生順（プレイリスト）の窓を開く">↕ 表示順</button><button class="grad" id="fltOpen" type="button" title="科目・進捗・状態・重要度などの絞り込みの窓を開く">🎚 絞り込み</button></div>
+      <div class="cbctl cbtop"><button class="grad" id="ordOpen" type="button" title="カードを並べる順番（並べ方・シャッフルなど）の窓を開く">↕ 表示順</button><button class="grad" id="fltOpen" type="button" title="科目・進捗・状態・重要度などで、カードを選ぶ窓を開く">🎚 絞り込み</button></div>
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo" type="button" aria-label="検索" title="検索">🔍</button><button id="tqMode" type="button" aria-pressed="false" title="タグで探す（押すと、ワード検索とタグ検索が切り替わります）">タグ検索</button><button id="impOpen" title="取り込みの小窓を開く">📥 インポート</button><button id="qX" hidden>解除</button></div>
       <div class="qrow tgrow" id="tagRow" hidden><button id="tagPick" type="button">タグを選択</button><span class="small" id="tagSumm"></span></div>
       <div class="tsug" id="tagSug" hidden></div>
@@ -410,7 +410,8 @@ body{padding-bottom:215px}
       <p class="small" id="cbFilt"></p>
       <div class="small" id="qInfo" hidden><span id="qCnt"></span></div>
     </div>
-    <details class="panel" id="fltTop" open><summary>🎚 並べ方・絞り込み（再生にも使われます）</summary>
+    <details class="panel" id="fltTop" open><summary>🎚 絞り込み・並べ方</summary>
+      <div id="ordPart">
       <h2 class="sech">カードの表示方法</h2>
       <h3>並べ方</h3>
       <select class="pick" id="fMode" aria-label="並べ方">
@@ -423,6 +424,7 @@ body{padding-bottom:215px}
       <div class="act"><button id="reshuf">並べ直す（まだ聞いていないカードを前に）</button></div>
       <p class="small" id="cnt"></p>
       <p class="small" id="info"></p>
+      </div>
       <h2 class="sech">カードの絞り込み</h2>
       <div class="act"><button id="qClr">検索とタグの絞り込みを外す</button></div>
       <h3>科目　<button class="grad" id="dAll">全部選ぶ</button> <button class="grad" id="dNone">全部外す</button></h3><div class="chk" id="fDeck"></div>
@@ -442,8 +444,7 @@ body{padding-bottom:215px}
     </details>
       <div id="cbListView">
       <div class="cbctl"><label>表の並び:</label><select class="mini" id="cbSort" aria-label="表の並び替え"></select><button class="grad" id="cbDir" aria-label="昇順・降順を切り替え">↑ 昇順</button></div>
-      <div class="cbctl"><label for="cbScope">表に出すカード:</label><select class="mini" id="cbScope" aria-label="表に出すカード"><option value="pl">再生順に入っているカードだけ</option><option value="filter">いまの絞り込みに合うカード</option><option value="all">全部のカード</option></select></div>
-      <div class="cbctl" id="cbSelBar"><span class="small" id="cbSelN">0 枚選んでいます</span> <button class="grad" id="cbAddTop" type="button">選んだカードを再生順の先頭に追加</button> <button class="grad" id="cbAddEnd" type="button">選んだカードを再生順の最後に追加</button> <button class="grad" id="cbSelClr" type="button">選びを外す</button><br><button class="grad" id="cbBTag" type="button">🏷 タグを足す</button> <button class="grad" id="cbBChg" type="button">✎ 状態・重要度・タグを変える</button> <button class="grad" id="cbBDel" type="button">🏷 タグを外す</button> <button class="grad dng" id="cbBCard" type="button">🗑 カードを削除</button></div>
+      <div class="cbctl" id="cbSelBar" hidden><b class="small" id="cbSelN">選択中 0 枚</b> <button class="grad" id="cbAddTop" type="button">選んだカードを再生順の先頭に追加</button> <button class="grad" id="cbAddEnd" type="button">選んだカードを再生順の最後に追加</button> <button class="grad" id="cbSelClr" type="button">選びを外す</button><br><button class="grad" id="cbBTag" type="button">🏷 タグを足す</button> <button class="grad" id="cbBChg" type="button">✎ 状態・重要度・タグを変える</button> <button class="grad" id="cbBDel" type="button">🏷 タグを外す</button> <button class="grad dng" id="cbBCard" type="button">🗑 カードを削除</button></div>
       <p class="small" id="cbCnt"></p>
       <div class="cbwrap"><table class="cbt" id="cbT"></table></div>
       <div class="act"><button class="grad" id="cbMore" hidden>50枚ふやす</button></div>
@@ -584,7 +585,7 @@ body{padding-bottom:215px}
   <div class="ovlbox"><div class="ovlhd"><b id="impDlgT">📥 インポート</b><button class="grad" id="impClose">閉じる</button></div><div id="impBody"></div></div>
 </div>
 <div class="ovl" id="ordDlg" hidden role="dialog" aria-modal="true" aria-labelledby="ordDlgT">
-  <div class="ovlbox"><div class="ovlhd"><b id="ordDlgT">↕ 表示順（再生順）</b><button class="grad" id="ordClose">閉じる</button></div><div id="plView"></div></div>
+  <div class="ovlbox"><div class="ovlhd"><b id="ordDlgT">↕ 表示順（並べ替え）</b><button class="grad" id="ordClose">閉じる</button></div><p class="small">ここは、カードを並べる順番だけを決めます（カードを減らすことはしません）。減らすのは『絞り込み』と検索です。</p><div id="ordBody"></div><details class="panel" id="plDet"><summary>再生順（プレイリスト）を直す</summary><div id="plView"></div></details></div>
 </div>
 <div class="ovl" id="fltDlg" hidden role="dialog" aria-modal="true" aria-labelledby="fltDlgT">
   <div class="ovlbox"><div class="ovlhd"><b id="fltDlgT">🎚 絞り込み</b><button class="grad" id="fltClose">閉じる</button></div><div id="fltBody"></div></div>
@@ -2376,7 +2377,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271339";
+const VER = "版 202611271410";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2954,16 +2955,13 @@ $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg
 
 /* ---------- 「ブラウザ」タブ（第1段）：一覧表。見出しで並び替え。題名を押すと「プレイヤー」タブでそのカードを開く。インポートは小窓 ---------- */
 const CB = { key: "", dir: 1, shown: 50, sc: "pl", sel: new Set() };
-function cbScopeEff(){ return CB.sc === "pl" && !plData().ids.length ? "filter" : CB.sc; }
+function cbScopeEff(){ return "filter"; }   /* 表は常に「絞り込みの条件（初期は自信あり◎を除く）に合うカード」。毎回、全カードから選び直し、検索とタグはその中から探す */
 const CBCOLS = [["title", "題名"], ["deck", "科目"], ["imp", "重要度"], ["tags", "タグ"], ["yr", "出題"], ["pg", "進捗"], ["cs", "状態"], ["rev", "学習の記録"]];
 function cbYrs(c){ const out = []; if (S.kian && Object.keys(S.kian).length) kEff(c).forEach(e => { const y = e.yr || ""; if (y){ const t = y.includes(deckOf(c)) ? y : y + "(" + deckOf(c) + ")"; if (!out.includes(t)) out.push(t); } }); return out; }
 function cbInfo(n){ const c = CARDS[n], r = S.rev[c.id], tg = allTagsOf(c), yr = cbYrs(c), cs = csOf(c);
   return { n, c, title: c.title, deck: deckOf(c), imp: impOf(c), tags: tg, yr, cs, pg: progOf(c), rev: r && r.g ? (GMARK[r.g] || "") + " " + (r.d || "") : "", revKey: r && r.d ? r.d + (r.g || "") : "" }; }
 function cbItems(){
-  const sc = cbScopeEff(); let base;
-  if (sc === "all") base = CARDS.map((c, i) => i);
-  else if (sc === "pl"){ const at = {}; CARDS.forEach((c, i) => at[c.id] = i); base = plData().ids.filter(id => id in at).map(id => at[id]).filter(i => qOk(CARDS[i]) && tagOk(CARDS[i])); }   /* 再生順のカード（再生順の並び）。検索の言葉とタグだけ効く */
-  else base = [...new Set(scopeOf() === "filter" ? list : baseList(false))];
+  const base = [...new Set(baseList(false))];
   let it = base.map(cbInfo);
   const k = CB.key, d = CB.dir, cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   const key = x => k === "deck" ? deckNo(x.deck) : k === "imp" ? x.imp : k === "tags" ? x.tags.length : k === "yr" ? x.yr.join(",") : k === "cs" ? CSORD.indexOf(x.cs) : k === "pg" ? PGORD.indexOf(x.pg) : k === "rev" ? x.revKey : x.title;
@@ -2975,9 +2973,9 @@ function renderCb(){
   if (!$("ordDlg").hidden) renderPl();
   $("cbFilt").textContent = "いまの絞り込み: " + filtText();
   const sel = $("cbSort"); if (!sel.options.length){ const o0 = el("option"); o0.value = ""; o0.textContent = "再生の順"; sel.append(o0); } if (sel.options.length === 1) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
-  sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順"; $("cbScope").value = CB.sc;
+  sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順";
   const it = cbItems(), show = it.slice(0, CB.shown), t = $("cbT"); t.innerHTML = "";
-  $("cbCnt").textContent = ({ all: "全部のカード", pl: "再生順に入っているカード（検索の言葉とタグだけ効きます）", filter: "いまの条件に合うカード" }[cbScopeEff()]) + (CB.sc === "pl" && cbScopeEff() !== "pl" ? "（再生順が空なので、いまの絞り込みを出しています）" : "") + " " + it.length + " 枚中 " + show.length + " 枚を表示";
+  $("cbCnt").textContent = "いまの条件（絞り込み＋検索）に合うカード " + it.length + " 枚中 " + show.length + " 枚を表示";
   const hr = el("tr"); CBCOLS.forEach(([k, l]) => { const th = el("th"); th.setAttribute("scope", "col"); if (k === "title"){ const ca = el("input"); ca.type = "checkbox"; ca.id = "cbSelAll"; ca.setAttribute("aria-label", "見えている行を全部選ぶ・全部外す"); ca.checked = show.length > 0 && show.every(x => CB.sel.has(x.c.id));
       ca.onchange = () => { show.forEach(x => { if (ca.checked) CB.sel.add(x.c.id); else CB.sel.delete(x.c.id); }); renderCb(); }; th.append(ca, document.createTextNode(" ")); } const b = el("button"); b.type = "button"; b.textContent = l + (CB.key === k ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === k) CB.dir = -CB.dir; else { CB.key = k; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); });
   { const th = el("th"); th.textContent = "再生順"; hr.append(th); }
@@ -2994,7 +2992,7 @@ function renderCb(){
   const mo = $("cbMore"); mo.hidden = it.length <= show.length; mo.textContent = "50枚ふやす（あと " + (it.length - show.length) + " 枚）";
 }
 function cbSelUpd(it){
-  const n = CB.sel.size; $("cbSelN").textContent = n + " 枚選んでいます"; ["cbAddTop", "cbAddEnd", "cbSelClr", "cbBTag", "cbBChg", "cbBDel", "cbBCard"].forEach(id => { $(id).disabled = !n; });
+  const n = CB.sel.size; $("cbSelN").textContent = "選択中 " + n + " 枚"; $("cbSelBar").hidden = !n; ["cbAddTop", "cbAddEnd", "cbSelClr", "cbBTag", "cbBChg", "cbBDel", "cbBCard"].forEach(id => { $(id).disabled = !n; });
   const ca = $("cbSelAll"); if (ca && it){ const sh = it.slice(0, CB.shown); ca.checked = sh.length > 0 && sh.every(x => CB.sel.has(x.c.id)); }
 }
 /* 選んだカードを再生順に入れる。すでに入っているカードは、位置を動かす（先頭か最後へ） */
@@ -3096,7 +3094,6 @@ $("scopeSel").onchange = () => { const v = $("scopeSel").value; if (v === "pl" &
 $("tabPlay").onclick = () => setTab("play"); $("tabCards").onclick = () => { CB.shown = 50; setTab("cards"); };
 $("cbSort").onchange = () => { CB.key = $("cbSort").value; CB.shown = 50; renderCb(); };
 $("cbDir").onclick = () => { CB.dir = -CB.dir; renderCb(); };
-$("cbScope").onchange = () => { CB.sc = $("cbScope").value; CB.shown = 50; renderCb(); };
 $("cbMore").onclick = () => { CB.shown += 50; renderCb(); };
 /* インポートの小窓：これまでの「📥 インポート」の中身を、そのまま小窓に移す（トグルでなく、重ねて出す） */
 (function(){ const t = $("impTop"), body = $("impBody"); [...t.children].forEach(ch => { if (ch.tagName !== "SUMMARY") body.append(ch); }); t.hidden = true; })();
@@ -3113,6 +3110,7 @@ $("fltOpen").onclick = () => dlgShow("flt", true); $("fltClose").onclick = () =>
 $("tagPick").onclick = () => dlgShow("tag", true); $("tagClose").onclick = () => dlgShow("tag", false);
 $("bulkClose").onclick = () => dlgShow("bulk", false);
 document.addEventListener("keydown", e => { if (e.key === "Escape") Object.keys(DLGS).forEach(k => { if (!$(DLGS[k]).hidden) dlgShow(k, false); }); });
+$("ordBody").append($("ordPart"));
 (function(){ const t = $("fltTop"), body = $("fltBody"); [...t.children].forEach(ch => { if (ch.tagName !== "SUMMARY") body.append(ch); }); t.hidden = true; })();
 </script>
 </body>
