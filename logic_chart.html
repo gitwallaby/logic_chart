@@ -119,7 +119,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .row.ladder>.blk::after{content:"";position:absolute;left:-17px;width:2px;top:-4px;bottom:-4px;background:var(--trace)}
 .row.ladder>.blk:first-of-type::after{top:-6px}
 .row.ladder>.blk:last-child::after{bottom:auto;height:24px}
-.wire.wih{visibility:hidden}.blk.pairlit,.blk.pairon{outline:2px solid #ffd54a;outline-offset:2px;box-shadow:0 0 12px 3px rgba(255,213,74,.65);transition:box-shadow .15s}
+.blk.hasmk{position:relative;margin-left:34px}.row.one>.blk.hasmk{width:calc(100% - 34px)}.mkg{position:absolute;left:-31px;top:50%;transform:translateY(-50%);font-size:24px;line-height:1;font-weight:700;pointer-events:none}.mkp{color:#7fd0c8}.mkm{color:#f08a6b}.mkt{color:#ffd54a}.wire.wih{visibility:hidden}.blk.pairlit,.blk.pairon{outline:2px solid #ffd54a;outline-offset:2px;box-shadow:0 0 12px 3px rgba(255,213,74,.65);transition:box-shadow .15s}
 .blk[data-pr]{position:relative}
 .board.editing .blk[data-pr] .pt:first-child::after,.board.txm .blk[data-pr] .pt:first-child::after{content:" 🔗";font-size:11px;color:#ffd54a}
 .row.ladder>.blk.lf::after{top:18px}
@@ -752,6 +752,8 @@ function mergeStudy(st){
 
 /* ---------- 図を組み立てる ---------- */
 function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+const MKS = { "+": ["⊕", "mkp"], "p": ["⊕", "mkp"], "⊕": ["⊕", "mkp"], "-": ["⊖", "mkm"], "m": ["⊖", "mkm"], "⊖": ["⊖", "mkm"], "▲": ["▲", "mkt"], "t": ["▲", "mkt"] };
+function mkSet(u, k){ ensureCv(); const R = refs[u]; if (!R) return; if (k) R.b.mk = k; else delete R.b.mk; touch(); blkLevel = "0"; render(); blkDraw(); $("editMsg").textContent = k ? "✔ 左の印をつけました。" : "✔ 左の印を外しました。"; }
 function makeBlock(b){
   const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : "")); d._b = b; if (b.pr) d.dataset.pr = b.pr;
   if (b.c){ const c = el("div", "cond"); c.textContent = b.c; d.append(c); }
@@ -776,6 +778,7 @@ function makeBlock(b){
   }
   else if (d.querySelector(".pt[data-vu]")) d.onclick = e => { if (txMode) txTap(e); };    /* 音声のないメモだけのブロックも、直すときはタップできる */
   if (b.to){ const t = el("span", "to"); t.textContent = "→ " + b.to; d.append(t); }
+  { const mg = MKS[b.mk]; if (mg){ d.classList.add("hasmk"); const g = el("span", "mkg " + mg[1], mg[0]); g.setAttribute("aria-hidden", "true"); d.append(g); } }   /* 左の空きの印（⊕プラス面・⊖マイナス面・▲批判）。b.mk に入る。知らない値は無視 */
   return d;
 }
 function makeStep(st){
@@ -1121,6 +1124,8 @@ function blkDraw(){
     const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
     lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
+    { const cmk = refs[blkU] && refs[blkU].b.mk; lab0("左の印（理由づけのプラス面・マイナス面、反対説への批判）"); [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => { const mb = add((MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, () => mkSet(blkU, k), "", draft); mb.dataset.a = "mk:" + k; });
+      if (cmk) add("左の印を外す", () => mkSet(blkU, ""), "", draft).dataset.a = "mk:"; }
     lab0("音声"); add("音声の有無の切替", () => blkGo("aud"), "", draft);
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は、上の「🌳 ツリー」ボタンから使えます）。";
     return; }
@@ -2407,7 +2412,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271424";
+const VER = "版 202611271425";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
