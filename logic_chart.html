@@ -151,7 +151,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
 .tabs{display:flex;gap:6px;margin:8px 0 0}.tabs button{flex:1;font:inherit;padding:8px 6px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tabs button[aria-selected=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}
 #app.cb > *:not(.tabs):not(#cbTab){display:none!important}#app:not(.cb) #cbTab{display:none}
-.cbv button[aria-pressed=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}.plnote{color:#e8c070}.plscope{border:1px solid #7a6a3a;background:rgba(232,192,112,.1);border-radius:6px;padding:7px 9px;margin:6px 0;font-size:13px}.plscope.on{border-color:#4f8a5a;background:rgba(111,195,120,.1)}.plh{cursor:grab;touch-action:none;user-select:none;padding:4px 8px;font-size:18px;color:#9fb3a0;border-radius:4px;background:rgba(255,255,255,.05)}.plr.sel{background:rgba(120,170,230,.14)}.plr.drag{opacity:.45}.plr.dropb{box-shadow:0 -3px 0 0 #6fc3ff}.plr.dropa{box-shadow:0 3px 0 0 #6fc3ff}.plr input.plsel{width:20px;height:20px}.plr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid var(--barline);padding:5px 0;font-size:13px}.plr .pn{width:2.2em;text-align:right;color:var(--sub)}.plr .pt{flex:1;min-width:8rem}.plr.off .pt{text-decoration:line-through;opacity:.55}
+.cbv button[aria-pressed=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}.plnote{color:#e8c070}.board.hassg{padding-left:50px!important}.sgl{position:absolute;overflow:visible;pointer-events:none;z-index:1}.sgl path{fill:none;stroke:var(--trace);stroke-width:2}.sgl polygon{fill:var(--trace)}.wire.sgd{background:transparent}.wire.sgd::after{display:none}.blk.sgplus{outline:3px solid #7fd0c8;outline-offset:1px}.blk.sgminus{outline:3px solid #ffb04a;outline-offset:1px}.plscope{border:1px solid #7a6a3a;background:rgba(232,192,112,.1);border-radius:6px;padding:7px 9px;margin:6px 0;font-size:13px}.plscope.on{border-color:#4f8a5a;background:rgba(111,195,120,.1)}.plh{cursor:grab;touch-action:none;user-select:none;padding:4px 8px;font-size:18px;color:#9fb3a0;border-radius:4px;background:rgba(255,255,255,.05)}.plr.sel{background:rgba(120,170,230,.14)}.plr.drag{opacity:.45}.plr.dropb{box-shadow:0 -3px 0 0 #6fc3ff}.plr.dropa{box-shadow:0 3px 0 0 #6fc3ff}.plr input.plsel{width:20px;height:20px}.plr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid var(--barline);padding:5px 0;font-size:13px}.plr .pn{width:2.2em;text-align:right;color:var(--sub)}.plr .pt{flex:1;min-width:8rem}.plr.off .pt{text-decoration:line-through;opacity:.55}
 .plsum{margin:8px 0;font-size:13px}.plsum button{margin-left:6px}
 .cbctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0}.cbctl input[type=search]{flex:1;min-width:12rem;box-sizing:border-box;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
 .cbwrap{overflow:auto;max-height:70vh;border:1px solid var(--barline);border-radius:8px}.cbt{border-collapse:collapse;width:100%;font-size:13px}.cbt th,.cbt td{border-bottom:1px solid var(--barline);padding:6px 8px;text-align:left;vertical-align:top}
@@ -823,7 +823,7 @@ function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({},
    refs[u] = u番目の文が、図のどこにあるか { p:文, b:ブロック, row:行, sec:区切り } */
 let secEd = -1;
 let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0, treeOpen = false, treeSz = 1, treeFlash = 0;
-let msMode = false, msel = [], msAnchor = null, msCard = null;
+let msMode = false, msel = [], msAnchor = null, msCard = null, sg = null;
 /* 枠の色（要件の枠・ブロックをまとめる枠で共通）。色を増やすときは、ここに1行足すだけ：[名前, 色] */
 const FC = { g: ["緑水色", "#7fd0c8"], l: ["薄い水色", "#c4ecf7"], y: ["黄色", "#ffd54a"] };
 (function(){ const sty = document.createElement("style"); sty.textContent = ".rq{border:1.5px solid #7fd0c8;border-radius:4px;padding:0 2px;margin:0 1px}" + Object.keys(FC).map(k => ".rq-" + k + "{border-color:" + FC[k][1] + "}").join(""); document.head.append(sty); })();
@@ -1074,7 +1074,7 @@ function setTx(v){
   txMode = v; if (v){ dbMode = false; blkLevel = ""; blkU = null; if (playing) stop(); }
   $("blkBar").hidden = !v; document.body.classList.toggle("txon", v); blkDraw(); render(); renderTree();
 }
-$("blkEnd").onclick = () => { if (msMode || msel.length){ msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); } setTx(false); };
+$("blkEnd").onclick = () => { sg = null; if (msMode || msel.length){ msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); } setTx(false); };
 $("blkUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
   const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの未同期の直しを取り消しました。"; load(false, true); };
 /* 長押し（PCは右クリック）：編集を始めて、そのブロックのメニューを出す */
@@ -1126,6 +1126,8 @@ function blkDraw(){
     lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
     { const cmk = refs[blkU] && refs[blkU].b.mk; lab0("左の印（理由づけのプラス面・マイナス面、反対説への批判）"); [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => { const mb = add((MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, () => mkSet(blkU, k), "", draft); mb.dataset.a = "mk:" + k; });
       if (cmk) add("左の印を外す", () => mkSet(blkU, ""), "", draft).dataset.a = "mk:"; }
+    lab0("理由づけのまとめ（折衷型）"); add("⊕⊖でまとめる（プラス面・マイナス面・次の規範を選んで、1回で）", () => sgStart(), "", draft).dataset.a = "sg:start";
+    if (refs[blkU] && refs[blkU].row && refs[blkU].row.sg) add("このまとまりの左の線と矢印を消す（枠と印は残ります）", () => sgRemove(blkU), "dng").dataset.a = "sg:rm";
     lab0("音声"); add("音声の有無の切替", () => blkGo("aud"), "", draft);
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は、上の「🌳 ツリー」ボタンから使えます）。";
     return; }
@@ -1152,6 +1154,7 @@ function blkDraw(){
     const why2 = why.filter(Boolean); if (why2.length){ const n = el("div", "small"); n.textContent = "灰色のボタンの理由： " + why2.join(" ／ "); body.append(n); }
     add("← 戻る", () => blkGo("lside")); return; }
   if (blkLevel === "multi"){ msDraw(body, ttl, add); return; }
+  if (blkLevel === "sgw"){ sgDraw(body, ttl, add); return; }
   if (blkLevel === "pair"){
     const r = refs[prU]; if (!r){ blkGo("0"); return; }
     const mem = r.b.pr ? [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === r.b.pr).length : 0;
@@ -1222,8 +1225,10 @@ function msPaint(){
   if (!board) return; const c = card(); if (msCard && c && c.id !== msCard){ msel = []; msAnchor = null; }
   board.querySelectorAll(".blk.msel").forEach(x => x.classList.remove("msel")); if (!txMode) return;
   msel.forEach(u => { const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'), bk = pt && pt.closest(".blk"); if (bk) bk.classList.add("msel"); });
+  board.querySelectorAll(".blk.sgplus,.blk.sgminus").forEach(x => x.classList.remove("sgplus", "sgminus"));
+  if (sg) [["plus", "sgplus"], ["minus", "sgminus"]].forEach(([k, cl]) => sg[k].forEach(u => { const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'), bk = pt && pt.closest(".blk"); if (bk) bk.classList.add(cl); }));
 }
-function msAfter(){ msel.sort((a, b) => a - b); blkU = null; blkLevel = (msMode || msel.length) ? "multi" : ""; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); msPaint(); blkDraw(); }
+function msAfter(){ msel.sort((a, b) => a - b); blkU = null; if (sg && sg.step === 3 && msel.length > 1) msel = [msAnchor != null && msel.includes(msAnchor) ? msAnchor : msel[msel.length - 1]]; blkLevel = sg ? "sgw" : (msMode || msel.length) ? "multi" : ""; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); msPaint(); blkDraw(); }
 function msTap(ev){
   const pt = ev.target.closest(".pt[data-u],.pt[data-vu]") || ptNear(ev); if (!pt || +pt.dataset.u === 0) return;
   const u = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu); if (edEl && !commit()) return; const rep = msRep(u); if (rep == null) return;
@@ -1234,7 +1239,7 @@ function msTap(ev){
   msAnchor = rep; msAfter();
 }
 function msStart(u){ if (edEl && !commit()) return; msMode = true; msel = []; msAnchor = null; if (u != null && refs[u]){ const r = msRep(u); msel = [r]; msAnchor = r; msCard = card().id; } $("blkMs").setAttribute("aria-pressed", "true"); board.classList.add("msm"); try { getSelection().removeAllRanges(); } catch(e){} msAfter(); }
-function msStop(){ msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); board.classList.remove("msm"); blkLevel = ""; msPaint(); blkDraw(); }
+function msStop(){ sg = null; msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); board.classList.remove("msm"); blkLevel = ""; msPaint(); blkDraw(); }
 $("blkMs").onclick = () => { if (msMode) msStop(); else { if (!txMode) setTx(true); msStart(null); } };
 /* 選んだブロックでできる操作の条件。空の文字＝できる／文字あり＝できない理由 */
 function msPlan(){
@@ -1281,6 +1286,97 @@ function msGo(a){
   if (a === "del"){ if (!window.confirm(reps.length + " 個のブロックを消します。よいですか？\n（Ctrl+Z か、「未同期の直しを全部取消し」で、元に戻せます）")) return;
     ensureCv(); for (let k = allUs.length - 1; k >= 0; k--){ if (refs[allUs[k]]) delBlock(allUs[k], true); }
     msel = []; msAnchor = null; blkU = null; blkLevel = msMode ? "multi" : ""; msPaint(); blkDraw(); return; }
+}
+/* ---- ⊕⊖でまとめる（折衷型・g202611271603）：プラス面・マイナス面・次の規範を順に選んで1回でまとめる。①それぞれを枠で囲う(row.fr/fl、色は cv.fp) ②ブロックに ⊕/⊖ の印(b.mk) ③まとまりの左の線と、線の下から次の規範への矢印を、まとまりの行(row.sg=まとまりid、row.sk='+'|'-'、最後の行の row.sa=1)に持たせて drawSplits が描く。S.cv に入るので同期・取り消しに乗る ---- */
+function sgStart(){
+  if (edEl && !commit()) return; if (!txMode) setTx(true);
+  sg = { step: 1, plus: [], minus: [], norm: null }; msMode = true; msel = []; msAnchor = null; msCard = card().id; blkU = null;
+  $("blkMs").setAttribute("aria-pressed", "true"); board.classList.add("msm"); try { getSelection().removeAllRanges(); } catch(e){}
+  $("editMsg").textContent = ""; msAfter();
+}
+function sgNext(){
+  if (!sg) return; const cur = msel.slice();
+  if (sg.step === 1){ sg.plus = cur; msel = []; msAnchor = null; sg.step = 2; }
+  else if (sg.step === 2){ sg.minus = cur; msel = []; msAnchor = null; sg.step = 3; }
+  $("editMsg").textContent = ""; msAfter();
+}
+function sgBack(){
+  if (!sg) return; if (sg.step === 2){ msel = sg.plus.slice(); sg.plus = []; sg.step = 1; } else if (sg.step === 3){ msel = sg.minus.slice(); sg.minus = []; sg.step = 2; }
+  msAnchor = null; $("editMsg").textContent = ""; msAfter();
+}
+const sgLab = a => a.map(u => { const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 8) + "…" : "?"; }).join("、");
+function sgDraw(body, ttl, add){
+  const n = msel.length, st = sg.step;
+  ttl.textContent = st === 1 ? "⊕⊖でまとめる ①/③ プラス面（理由づけ①②など）のブロックを、タップして選びます（もう一度タップで外れます）。続いた行で、1行に1つのブロックだけ。いま " + n + " 個"
+    : st === 2 ? "⊕⊖でまとめる ②/③ マイナス面のブロックを、タップして選びます。プラス面のすぐ上か下の、続いた行です。いま " + n + " 個（プラス面 " + sg.plus.length + " 個は緑の枠）"
+    : "⊕⊖でまとめる ③/③ 次の規範のブロックを1つ、タップして選びます（マイナス面・プラス面のすぐ下の行）。なければ『次の規範なし』で。いま " + n + " 個";
+  if (st === 1) add("次へ（マイナス面を選ぶ）", () => sgNext(), "go", !n).dataset.a = "sg:next";
+  if (st === 2){ add("次へ（次の規範を選ぶ）", () => sgNext(), "go", !n).dataset.a = "sg:next"; add("← 戻る（プラス面を選び直す）", () => sgBack()).dataset.a = "sg:back"; }
+  if (st === 3){ add("まとめる（次の規範へ矢印を伸ばす）", () => sgGo(true), "go", n !== 1).dataset.a = "sg:go"; add("まとめる（次の規範なし。線だけ）", () => sgGo(false), "", false).dataset.a = "sg:go0"; add("← 戻る（マイナス面を選び直す）", () => sgBack()).dataset.a = "sg:back"; }
+  if (n) add("選びなおす（この段階の選択だけやめる）", () => { msel = []; msAnchor = null; msAfter(); }).dataset.a = "sg:clear";
+  add("やめる", () => msStop()).dataset.a = "sg:off";
+}
+function sgPlan(P, M, N){
+  const all = flatRows(ecard().sections), rowOf = u => refs[u] && refs[u].row;
+  if (!P.length) return { err: "プラス面のブロックを1つ以上選んでください。" }; if (!M.length) return { err: "マイナス面のブロックを1つ以上選んでください。" };
+  const pr = P.map(rowOf), mr = M.map(rowOf); if (pr.concat(mr).some(r => !r)) return { err: "選んだブロックが見つかりません。もう一度選び直してください。" };
+  if (pr.concat(mr).some(r => r.b.length !== 1 || rowKind(r) !== "one")) return { err: "横に並んだブロックや、左の線でつながったブロックは使えません（1行に1つだけのブロックを選んでください）。" };
+  const idx = rs => [...new Set(rs.map(r => all.indexOf(r)))].sort((a, b) => a - b), pI = idx(pr), mI = idx(mr);
+  if (pI.some(i => i < 0) || mI.some(i => i < 0)) return { err: "選んだブロックが見つかりません。もう一度選び直してください。" };
+  if (pI.some(i => mI.includes(i))) return { err: "同じブロックを、プラス面とマイナス面の両方には入れられません。" };
+  const cont = a => a.every((v, i) => !i || v === a[i - 1] + 1);
+  if (!cont(pI)) return { err: "プラス面のブロックは、続いた行でなければいけません（間に別のブロックがあります）。" };
+  if (!cont(mI)) return { err: "マイナス面のブロックは、続いた行でなければいけません（間に別のブロックがあります）。" };
+  const run = pI.concat(mI).sort((a, b) => a - b); if (!cont(run)) return { err: "プラス面とマイナス面は、すき間なく続いた行でなければいけません。" };
+  const secs = new Set(pr.concat(mr).map(r => ecard().sections.find(sc => sc.rows.includes(r)))); if (secs.size !== 1) return { err: "表面・裏面など、区切りをまたいでいます。同じ区切りの中のブロックを選んでください。" };
+  if (run.some(i => all[i].sg)) return { err: "すでに⊕⊖のまとまりに入っているブロックがあります。先に、そのまとまりの線を消してください。" };
+  const reuse = { p: null, m: null };
+  for (const f of Object.values(frSets(all))){ const inter = run.filter(i => f.idx.has(i)).length; if (!inter) continue; const same = a => f.idx.size === a.length && a.every(i => f.idx.has(i));
+    if (same(pI)){ reuse.p = f.id; continue; } if (same(mI)){ reuse.m = f.id; continue; } if (inter === run.length) continue;
+    return { err: "すでにある枠と、半分だけ重なっています。枠は、ぴったり中か、ぴったり外になるように選んでください。" }; }
+  let nrow = null;
+  if (N != null){ nrow = rowOf(N); const ni = nrow ? all.indexOf(nrow) : -1; if (ni < 0) return { err: "次の規範のブロックが見つかりません。" };
+    if (ni !== run[run.length - 1] + 1) return { err: "次の規範は、プラス面・マイナス面のすぐ下の行のブロックを選んでください。" };
+    if (secs.values().next().value.rows.indexOf(nrow) < 0) return { err: "次の規範が、別の区切りにあります。" }; }
+  return { pI, mI, run, nrow, reuse };
+}
+function sgGo(withNorm){
+  if (!sg) return; const N = withNorm ? (msel.length === 1 ? msel[0] : null) : null; if (withNorm && N == null){ $("editMsg").textContent = "次の規範のブロックを1つ選んでください。"; return; }
+  const pl = sgPlan(sg.plus, sg.minus, N); if (pl.err){ $("editMsg").textContent = pl.err; toast(pl.err, "ng", 6000); return; }
+  const cv = ensureCv(), rows = flatRows(cv.sections), stamp = Date.now().toString(36), sid = "s" + stamp;
+  const grp = (I, k, label, col, reuse) => { I.forEach(i => { rows[i].sk = k; rows[i].b[0].mk = k; });
+    if (reuse) return; const id = "f" + stamp + (k === "+" ? "p" : "m"); I.forEach(i => { rows[i].fr = (rows[i].fr || []).concat(id); }); rows[I[0]].fl = Object.assign({}, rows[I[0]].fl, { [id]: label }); cv.fp = cv.fp || {}; cv.fp[id] = { c: col }; };
+  grp(pl.pI, "+", "⊕ プラス面", "g", pl.reuse.p); grp(pl.mI, "-", "⊖ マイナス面", "y", pl.reuse.m);
+  pl.run.forEach(i => { rows[i].sg = sid; }); if (pl.nrow) rows[pl.run[pl.run.length - 1]].sa = 1;
+  const nP = pl.pI.length, nM = pl.mI.length; touch(); msStop(); render(); blkDraw(); drawFrames();
+  const msg = "⊕プラス面(" + nP + "行)と⊖マイナス面(" + nM + "行)を枠で囲い、左の線でつなぎました" + (pl.nrow ? "。線の下から、次の規範へ矢印を伸ばしました" : "") + "。（Ctrl+Z か「未同期の直しを全部取消し」で戻せます）";
+  $("editMsg").textContent = "✔ " + msg; toast("✔ ⊕⊖でまとめました", "ok", 3000);
+}
+function sgRemove(u){
+  const R = refs[u]; if (!R || !R.row || !R.row.sg) return; ensureCv(); const id = R.row.sg; flatRows(ecard().sections).forEach(r => { if (r.sg === id){ delete r.sg; delete r.sk; delete r.sa; } });
+  touch(); blkLevel = "0"; render(); blkDraw(); drawFrames(); $("editMsg").textContent = "✔ まとまりの左の線と矢印を消しました（枠と⊕⊖の印は残っています）。";
+}
+/* まとまりの左の線(背骨)と、各グループの枝、線の下から次の規範への矢印を、ボードの上に重ねて描く */
+function drawSplits(){
+  board.querySelectorAll(".sgl").forEach(x => x.remove()); board.querySelectorAll(".wire.sgd").forEach(w => w.classList.remove("sgd"));
+  const G = {}; board.querySelectorAll(".row").forEach(e => { if (e._row && e._row.sg) (G[e._row.sg] = G[e._row.sg] || []).push(e); });
+  const br = board.getBoundingClientRect(), NS = "http://www.w3.org/2000/svg";
+  Object.values(G).forEach(els => {
+    const rc = els.map(e => e.getBoundingClientRect()); if (!rc.length || !(rc[0].height > 0)) return;
+    const nfr = Math.max(...els.map(e => (e._row.fr || []).length), 1), minL = Math.min(...rc.map(r => r.left)), tx = minL - (8 + 8 * (nfr - 1)) - 14, y0 = rc[0].top + 14, yB = rc[rc.length - 1].bottom;
+    const last = els[els.length - 1], w = last._row.sa ? last.nextElementSibling : null, nx = w && w.classList.contains("wire") ? w.nextElementSibling : null, nb = nx && (nx.querySelector(".blk") || nx), nr = nb && nb.getBoundingClientRect(), wr = w && w.getBoundingClientRect();
+    const arrow = !!(nr && nr.width > 0 && wr && last._row.sa), cx = arrow ? nr.left + nr.width / 2 : 0, ey = arrow ? nr.top - 2 : 0;
+    let d = "", yEnd = yB; const ym = arrow ? Math.max(yB + 4, (wr.top + wr.bottom) / 2) : yB;
+    ["+", "-"].forEach(k => { const ii = els.map((e, i) => i).filter(i => els[i]._row.sk === k); if (!ii.length) return; const top = rc[ii[0]].top, bot = rc[ii[ii.length - 1]].bottom, yy = (top + bot) / 2 - y0, fl = Math.max(...ii.map(i => (els[i]._row.fr || []).length), 1), xe = Math.min(...ii.map(i => rc[i].left)) - (8 + 8 * (fl - 1)) - tx;
+      d += " M0," + yy + " H" + Math.max(4, xe); });
+    const Wd = arrow && cx > tx + 8 ? cx - tx + 8 : 14, spineEnd = arrow && cx > tx + 8 ? ym - y0 : yB - y0;
+    d = "M0,0 V" + spineEnd + d; let tri = "";
+    if (arrow && cx > tx + 8){ const X = cx - tx, H = Math.max(14, ey - y0); d += " M0," + spineEnd + " H" + X + " V" + (H - 6); tri = (X - 5) + "," + (H - 6) + " " + (X + 5) + "," + (H - 6) + " " + X + "," + H; w.classList.add("sgd"); yEnd = ey; }
+    const svg = document.createElementNS(NS, "svg"); svg.setAttribute("class", "sgl"); svg.setAttribute("width", String(Math.ceil(Wd + 4))); svg.setAttribute("height", String(Math.ceil(yEnd - y0 + 6)));
+    svg.style.left = (tx - br.left + board.scrollLeft) + "px"; svg.style.top = (y0 - br.top + board.scrollTop) + "px";
+    const path = document.createElementNS(NS, "path"); path.setAttribute("d", d); svg.append(path); if (tri){ const pg = document.createElementNS(NS, "polygon"); pg.setAttribute("points", tri); svg.append(pg); }
+    board.append(svg);
+  });
 }
 function prTap(ev){
   const pt = ev.target.closest(".pt[data-u],.pt[data-vu]"); if (!pt || +pt.dataset.u === 0) return; const u = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu);
@@ -1367,7 +1463,7 @@ function drawLoops(){
   });
 }
 { const _rd = render; render = function(){ const x = _rd.apply(this, arguments); try { msPaint(); } catch(e){} return x; }; }
-{ const _df = drawFrames; drawFrames = function(){ _df.apply(this, arguments); try { drawLoops(); } catch(e){} }; }
+{ const _df = drawFrames; drawFrames = function(){ try { board.classList.toggle("hassg", [...board.querySelectorAll(".row")].some(e => e._row && e._row.sg)); } catch(e){} _df.apply(this, arguments); try { drawLoops(); } catch(e){} try { drawSplits(); } catch(e){} }; }
 /* ---- 枠でまとめる：行（row）に fr:[枠の印…]、最初の行に fl:{枠の印:名前} を持たせる。図（S.cv）の一部なので、同期・書き出しにそのまま乗る ---- */
 let frU1 = null, frU2 = null, frWho = "end", frNameV = "";
 const flatRows = secs => { const o = []; secs.forEach(sec => sec.rows.forEach(r => o.push(r))); return o; };
@@ -2412,7 +2508,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271506";
+const VER = "版 202611271607";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
