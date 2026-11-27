@@ -44,7 +44,8 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .board{background:var(--board);color:var(--w);border-radius:10px;padding:14px 10px 18px;overflow-x:auto;position:relative}
 .frm{position:absolute;box-sizing:border-box;border:2px solid #7fd0c8;border-radius:12px;pointer-events:none;z-index:1}
 .frm .frl.tab{color:#7fd0c8}.board:not(.txm) .frm .frl.tab{display:none}.board.txm .frm .frl{pointer-events:auto;cursor:pointer}.frm.sel{box-shadow:0 0 0 3px rgba(255,154,60,.55)}
-.dh{display:none}.board.txm .row>.dh{display:flex;position:absolute;left:-16px;top:2px;width:26px;height:30px;align-items:center;justify-content:center;font-size:18px;color:#7fd0c8;cursor:grab;touch-action:none;z-index:3;user-select:none;-webkit-user-select:none;background:rgba(20,22,26,.6);border-radius:6px}
+.dh,.mh{display:none}.board.txm .row>.dh,.board.txm .row>.mh{display:flex;position:absolute;top:2px;height:30px;align-items:center;justify-content:center;font-size:18px;color:#7fd0c8;touch-action:none;z-index:3;user-select:none;-webkit-user-select:none;background:rgba(20,22,26,.6);border-radius:6px}
+.board.txm .row>.mh{left:-16px;width:26px;cursor:pointer;font-weight:700;border:1px solid rgba(127,208,200,.5)}.board.txm .row>.dh{right:-8px;width:24px;cursor:grab}
 .board.txm .frm .frl{touch-action:none}.row.dropb{box-shadow:0 -4px 0 0 #ffd54a}.row.dropa{box-shadow:0 4px 0 0 #ffd54a}.row.drgsrc{opacity:.45}
 .frm.l1{border-color:#e8c64a}.frm.l2{border-color:#c58ae8}.frm.l3{border-color:#f08a6b}
 .frm .frl{position:absolute;left:12px;top:-11px;background:var(--board);color:#7fd0c8;font-size:11.5px;font-weight:700;padding:0 7px;line-height:20px;border-radius:6px;white-space:nowrap;max-width:85%;overflow:hidden;text-overflow:ellipsis}
@@ -304,7 +305,11 @@ body.sheeton{padding-bottom:46vh}body.sheeton[data-tsz="0"]{padding-bottom:100px
 #treeList .pu{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #2f855a;font-size:12px;color:#2f6f4f;background:rgba(47,133,90,.08);border-radius:0 8px 8px 0}
 #treeList .pu a{margin-left:6px;color:var(--te)}#treeList .src{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #d6aa1f;font-size:12px;color:var(--sub)}
 #treeList a.pl{color:var(--tb);text-decoration:underline;font-size:11.5px}#treeList .un{font-size:11px;color:var(--sub)}
-.pt.pick{outline:2px solid #e8c64a;outline-offset:2px;border-radius:4px}
+.pt.pick{outline:1px dashed rgba(232,198,74,.55);outline-offset:2px;border-radius:4px}
+.edtag{position:absolute;top:-11px;right:8px;z-index:4;font-size:11px;line-height:18px;padding:0 9px;border-radius:9px;pointer-events:none;white-space:nowrap}
+.edtag.on{background:#4fd8ff;color:#06222b;font-weight:700}.edtag.sel{background:#3a3f48;color:#c7ccd4;font-weight:400}
+.blk:has(.edtag){position:relative}
+.blkbar .bt.typing{color:#4fd8ff}
 details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding:2px 10px}details.sub>summary{cursor:pointer;font-weight:600;padding:8px 0}
 #editTxt{width:100%;height:90px;margin-top:8px;font-size:12px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
 .tree .trow{margin:6px 0}.tree .trow input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px}
@@ -332,7 +337,7 @@ details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding
 .tqrow{margin-top:6px}.tqsug{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;max-height:190px;overflow:auto}.tqsug button{font:inherit;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tqsug .small{margin:0}
 /* 文字を直す */
 .blk .w{color:var(--w)}
-.pt.ed{white-space:pre-wrap;outline:2px solid var(--current);outline-offset:3px;background:#1b1e23;cursor:text;border-radius:3px;-webkit-user-select:text;user-select:text}
+.pt.ed{white-space:pre-wrap;outline:3px solid #4fd8ff;outline-offset:3px;background:#10303a;box-shadow:0 0 0 7px rgba(79,216,255,.22);caret-color:#4fd8ff;cursor:text;border-radius:4px;-webkit-user-select:text;user-select:text}
 .board.txm .blk:not(.t-subj) .pt[data-u]:not(.ed),.board.txm .pt[data-vu]:not(.ed){outline:1px dashed rgba(243,236,210,.35);outline-offset:2px;cursor:text}
 .pt.chg{box-shadow:-3px 0 0 var(--current)}
 .tbar{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 9px}
@@ -470,7 +475,7 @@ body{padding-bottom:215px}
       <p class="small" id="kMsg"></p>
       <p class="small">別の端末で直した内容（文字・図・タグ・重要度・科目・学習の記録・ツリー）は、「☁ Googleドライブと同期」で自動で入ります。</p>
     </details>
-    <details class="panel" id="expTop"><summary>📤 エクスポート</summary>
+    <details class="panel" id="expTop" hidden><summary>📤 エクスポート</summary>
       <h3>直した内容（PC用）</h3>
       <p class="small">文字・図・タグ・重要度・科目・メモ・補足・再生順の直しは、「☁ Googleドライブと同期」で渡ります。控えを取るときは、ドライブ logic_chart_sync の『編集データ.json』をコピーしてください（「改行を直す」の直しは同期に入りません）。</p>
       <div class="act" hidden><button class="grad" id="editOut" hidden>直した内容を書き出す</button></div>
@@ -541,7 +546,7 @@ body{padding-bottom:215px}
       <div class="bt" id="blkTitle"></div>
       <div class="tbar" id="blkBody"></div>
       <p class="small" id="editMsg"></p>
-      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkUndo">このカードの直しを全部取り消す</button><button class="go" id="blkEnd">編集を終わる</button></div>
+      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkUndo">未同期の直しを全部取消し</button><button class="go" id="blkEnd" title="編集モードを終わります。打ちかけの文があれば、自動で保存してから終わります">編集モードを終わる</button></div>
     </div>
     <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
       <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeDb" title="このカードのツリーを、DB（判断ロジックツリー）の画面で開きます">🌳 DBで開く ↗</button><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
@@ -842,7 +847,6 @@ document.addEventListener("selectionchange", () => { const v = selNow(); if (v) 
   if (txMode && blkLevel === "text" && edEl && selOn() !== selWas) blkDraw(); });
 let selWas = false;
 function selOn(){ const v = selNow(); return !!(v && v[0] !== v[1]); }
-function selAllEd(){ if (!edEl) return; edEl.focus(); const r = document.createRange(); r.selectNodeContents(edEl); const s = getSelection(); s.removeAllRanges(); s.addRange(r); const v = selNow(); if (v) lastSel = v; blkDraw(); }
 function selOff(){ if (!edEl) return; const s = getSelection(); try { if (s.rangeCount) s.collapseToEnd(); } catch(e){} const v = selNow(); if (v) lastSel = v; blkDraw(); }
 function setCaret(a, b){
   const w = document.createTreeWalker(edEl, NodeFilter.SHOW_TEXT); let n, acc = 0, sa = null, sb = null;
@@ -857,7 +861,8 @@ function openEd(u){
   const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (!pt) return;
   if (playing) stop();
   edEl = pt; edU = u; lastSel = null; pt._dirty = false; pt.addEventListener("input", () => { pt._dirty = true; });
-  pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.focus();
+  pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.setAttribute("inputmode", "text"); pt.setAttribute("enterkeyhint", "enter"); pt.focus();
+  board.querySelectorAll(".edtag").forEach(x => x.remove()); { const bk = pt.closest(".blk"); if (bk){ const tg = el("span", "edtag on", "✎ 文字入力中"); tg.setAttribute("aria-hidden", "true"); bk.append(tg); } }
   pt.addEventListener("beforeinput", e => {                            /* 改行キー：その場に改行の文字を入れる */
     if (e.inputType !== "insertParagraph" && e.inputType !== "insertLineBreak") return;
     e.preventDefault(); const v = selNow() || lastSel; if (!v) return;
@@ -890,7 +895,7 @@ function delBlock(u, noConfirm){
   const cv0 = ensureCv(), R = u != null ? refs[u] : null; if (!R){ $("editMsg").textContent = "消すブロックを、先に選んでください。"; return; }
   if (cv0.qa <= 2 && posOf(u) < cv0.qa){ $("editMsg").textContent = "表面の最後のブロックは消せません。"; return; }
   if (flatRows(cv0.sections).length <= 2 && !(R.b.p && R.b.p.length > 1)){ $("editMsg").textContent = "ブロックが少なすぎて、これ以上は消せません。"; return; }
-  if (!noConfirm && !window.confirm("このブロックを消します。よいですか？\n（「もとに戻す」か、「このカードの直しを全部取り消す」で、元に戻せます）")) return;
+  if (!noConfirm && !window.confirm("このブロックを消します。よいですか？\n（Ctrl+Z か、「未同期の直しを全部取消し」で、元に戻せます）")) return;
   const wasS = R.p.s, pos = posOf(u);
   if (R.b.p && R.b.p.length > 1) R.b.p.splice(R.b.p.indexOf(R.p), 1);
   else { R.row.b.splice(R.row.b.indexOf(R.b), 1); if (!R.row.b.length){ R.sec.rows.splice(R.sec.rows.indexOf(R.row), 1); if (!R.sec.rows.length) cv0.sections.splice(cv0.sections.indexOf(R.sec), 1); } }
@@ -958,15 +963,12 @@ function edAct(a){
   if (a === "undo"){ if (edEl && edEl._dirty){ try { document.execCommand("undo"); } catch(e){} } else undoCard(false); return; }
   if (a === "redo"){ if (edEl && edEl._dirty){ try { document.execCommand("redo"); } catch(e){} } else undoCard(true); return; }
   const v = selNow() || lastSel;
-  if (a === "nall"){ const runs = runsOf(edEl), all = runs.filter(r => r.ch !== "\n"), on = !all.every(r => r.n); all.forEach(r => r.n = on ? 1 : 0); $("editMsg").textContent = on ? "この文ぜんぶを「音声なし」にしました（保存すると反映されます）。" : "この文の「音声なし」を戻しました（保存すると反映されます）。"; redraw(runs, 0, 0); return; }
+  if (a !== "n") return;
   const runs = runsOf(edEl), noSel = !v || v[0] === v[1];
-  if (noSel && txMode && blkLevel === "text"){ $("editMsg").textContent = "文字を選ばなかったので、このブロック全体に変更しました（一部だけ変えたいときは、文字を長押しして範囲を選んでから押します）。"; }
-  else if (noSel){ $("editMsg").textContent = "色や太字、音声なしを変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
-  else $("editMsg").textContent = "";
-  const lo = noSel ? 0 : Math.min(v[0], v[1]), hi = noSel ? runs.length : Math.max(v[0], v[1]), part = runs.slice(lo, hi).filter(r => r.ch !== "\n");
-  if (a === "b"){ const on = !part.every(r => r.b); part.forEach(r => r.b = on ? 1 : 0); }
-  else if (a === "n"){ const on = !part.every(r => r.n); part.forEach(r => r.n = on ? 1 : 0); }
-  else { const [k, val] = a.split(":"); part.forEach(r => r[k] = val); }
+  if (noSel){ $("editMsg").textContent = "音声の有無を変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
+  $("editMsg").textContent = "";
+  const lo = Math.min(v[0], v[1]), hi = Math.max(v[0], v[1]), part = runs.slice(lo, hi).filter(r => r.ch !== "\n");
+  { const on = !part.every(r => r.n); part.forEach(r => r.n = on ? 1 : 0); }
   redraw(runs, lo, hi);
 }
 function commit(){
@@ -976,7 +978,7 @@ function commit(){
   if (htmlOf(runs, false) !== normH(refs[u].p.h)){ const cv = ensureCv(), was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); touch(); }
   $("editMsg").textContent = ""; closeEd(); return true;
 }
-function closeEd(){ edEl = null; edU = -1; if (txMode){ blkLevel = blkU != null ? "0" : ""; blkDraw(); } load(false, true); }
+function closeEd(){ board.querySelectorAll(".edtag").forEach(x => x.remove()); edEl = null; edU = -1; if (txMode){ blkLevel = blkU != null ? "0" : ""; blkDraw(); } load(false, true); }
 function txTap(ev){
   if (blkLevel === "tree") return;
   if (blkLevel === "frame"){ frTap(ev); return; }
@@ -1010,7 +1012,7 @@ function setTx(v){
 }
 $("blkEnd").onclick = () => setTx(false);
 $("blkUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
-  const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの直しを取り消しました。"; load(false, true); };
+  const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの未同期の直しを取り消しました。"; load(false, true); };
 /* 長押し（PCは右クリック）：編集を始めて、そのブロックのメニューを出す */
 function blkMenu(u){
   if (!txMode) setTx(true);
@@ -1021,31 +1023,40 @@ function blkMenu(u){
   if (pt && !card().draft){ blkLevel = "text"; openEd(u); }          /* ブロックを選んだら、そのまま文を直せる */
   blkDraw(); renderTree();
 }
+/* ブロック左の「⋯」：その行の先頭のブロックの「その他の操作」を開く（文を打つ画面ではなく、図・枠・矢印・関係線・音声・ツリーの一覧） */
+function moreMenu(u){
+  if (!txMode) setTx(true);
+  if (edEl && !commit()) return;
+  blkU = u; blkLevel = "0"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
+  try { getSelection().removeAllRanges(); } catch(e){}
+  board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick"));
+  const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (pt) pt.classList.add("pick");
+  blkDraw(); renderTree(); blkPick();
+}
 function blkGo(level){
   $("editMsg").textContent = "";
   if (level === "tree"){ if (edEl && !commit()) return; blkLevel = "tree"; dbMode = true; treeOpen = true; board.classList.add("dbm"); board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); dbLastSel = null; blkDraw(); renderTree(); return; }
   if (level === "frame"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "frame"; frU1 = frU2 = blkU; frWho = "end"; frNameV = ""; frChg = null; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); frMark(); return; }
   if (level === "pair"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "pair"; prU = blkU; blkDraw(); pairLit(refs[prU].b.pr || ""); return; }
-  if (level === "lside"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "lside"; blkDraw(); return; }
+  if (level === "lside" || level === "lchg"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = level; blkDraw(); return; }
   if (level === "line"){ if (edEl && !commit()) return; if (blkU == null || !refs[blkU]) return; dbMode = false; board.classList.remove("dbm"); blkLevel = "line"; blkDraw(); return; }
   if (level === "0"){ if (edEl) closeEd(); dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = "0"; blkDraw(); renderTree(); return; }
   if (!edEl) openEd(blkU);
   if (!edEl) return; blkLevel = level; blkDraw();
 }
 function blkDraw(){
-  blkDrawClean(); const body = $("blkBody"); body.innerHTML = ""; const add = (t, f, k, dis) => { const b = el("button", k || ""); b.textContent = t; if (dis) b.disabled = true; else b.onclick = e => { e.stopPropagation(); f(); }; body.append(b); return b; };
+  blkDrawClean(); { const t0 = $("blkTitle"); if (t0) t0.classList.remove("typing"); } const body = $("blkBody"); body.innerHTML = ""; const add = (t, f, k, dis) => { const b = el("button", k || ""); b.textContent = t; if (dis) b.disabled = true; else b.onclick = e => { e.stopPropagation(); f(); }; body.append(b); return b; };
   const c = card(); if (!c || !txMode){ return; }
   const draft = !!c.draft, ttl = $("blkTitle");
   body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
-  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。ブロックの左端（左の線のあたり）を長押し（PCは右クリック）すると、左の線のメニューが出ます。"; return; }
+  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。ブロック左の「⋯」を押すと「その他の操作」、長押しすると「関係線」のメニューが出ます（ブロックの左端の長押し・PCは右クリックでも、関係線が出ます）。"; return; }
   const q = blkU != null && refs[blkU] ? "" : "";
   const sample = (() => { const pt = board.querySelector(".pt.pick,.pt.ed"); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 18) : ""; })();
   if (blkLevel === "0"){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
     const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
-    lab0("もとに戻す・コピー"); [["undo","↶ もとに戻す"],["redo","↷ やり直す"],["copy","ブロックをコピー"],["cut","ブロックを切り取り"],["paste","下に貼り付け"]].forEach(([a, t]) => add(t, () => edAct(a), "", draft && a !== "undo" && a !== "redo").dataset.a = a);
-    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字／直列・並列", () => blkGo("line"), "", draft); add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft); add("左の線（つなぎ方）", () => blkGo("lside"), "", draft);
+    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字", () => blkGo("line"), "", draft); add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
     lab0("音声・ツリー"); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree"));
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
@@ -1056,12 +1067,17 @@ function blkDraw(){
     add("名前を保存", () => frRename(frSelId, nm.value.trim())); add("枠で囲う範囲を変更", () => frChange(frSelId), "go"); add("この枠を削除（中のブロックは残ります）", () => { if (confirm("この枠を削除します（中のブロックはそのまま残ります）。よろしいですか？")) frDelete(frSelId); }, "dng"); add("← 戻る", () => { frSelId = null; blkGo("0"); drawFrames(); }); return; }
   if (blkLevel === "lside"){
     const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
-    ttl.textContent = "左側の線：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線のつなぎ方を選びます";
+    ttl.textContent = "関係線：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線まわりを直します";
+    add("線を変える（左の線のつなぎ方）", () => blkGo("lchg"), "go").dataset.a = "ls:chg"; add("線の横に接続詞等を付ける", () => blkGo("line")).dataset.a = "ls:word";
+    add("← 戻る", () => blkGo("0")); return; }
+  if (blkLevel === "lchg"){
+    const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
+    ttl.textContent = "関係線 ＞ 線を変える：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線のつなぎ方を選びます";
     const why = lsWhy(I);
     [["down", "① 下のブロックと繋ぐ（逆L字）", !I.canDown], ["up", "② 上のブロックと繋ぐ（L字）", !I.canUp], ["upArrow", "③ 上のブロックと繋いで、矢印を伸ばす", !I.canUpArrow], ["none", "④ 矢印に変える（左の線をなくして、ふつうの直列に戻す）", !I.canNone]].forEach(([a, t, dis]) => add(t, () => lsOp(a), "", dis).dataset.a = "ls:" + a);
     if (I.hasLo) add("線の下から出る矢印だけ消す（左の線は残す）", () => lsOp("loOff")).dataset.a = "ls:loOff";
     const why2 = why.filter(Boolean); if (why2.length){ const n = el("div", "small"); n.textContent = "灰色のボタンの理由： " + why2.join(" ／ "); body.append(n); }
-    add("← 戻る", () => blkGo("0")); return; }
+    add("← 戻る", () => blkGo("lside")); return; }
   if (blkLevel === "pair"){
     const r = refs[prU]; if (!r){ blkGo("0"); return; }
     const mem = r.b.pr ? [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === r.b.pr).length : 0;
@@ -1069,8 +1085,8 @@ function blkDraw(){
     add("このブロックの対応づけを、全部外す", () => prClear(), "dng", !r.b.pr); add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "line"){
     const r = refs[blkU]; if (!r){ blkGo("0"); return; }
-    const row = r.row, ri = r.sec.rows.indexOf(row), bi = row.b.indexOf(r.b), nx = r.sec.rows[ri + 1];
-    ttl.textContent = "矢印・線の文字／直列・並列：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」まわりを直します";
+    const row = r.row, ri = r.sec.rows.indexOf(row), bi = row.b.indexOf(r.b);
+    ttl.textContent = "矢印・線の文字：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」まわりを直します";
     const lab = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     const field = (id, val, ph, quick, onSave) => { const w = el("div", "lnrow"); const i = el("input"); i.type = "text"; i.id = id; i.maxLength = 12; i.value = val || ""; i.placeholder = ph; i.setAttribute("aria-label", ph); w.append(i);
       quick.forEach(q => { const b = el("button"); b.type = "button"; b.textContent = q; b.onclick = e => { e.stopPropagation(); i.value = q; }; w.append(b); });
@@ -1078,13 +1094,7 @@ function blkDraw(){
     if (ri > 0){ lab("①このブロックの上の矢印の横の文字（例：そこで）"); field("lnVia", row.via, "矢印の文字（空で消す）", ["そこで", "したがって", "しかし"], v => lnOp(x => { if (v) x.row.via = v; else delete x.row.via; }, v ? "矢印の文字を入れました。" : "矢印の文字を消しました。")); }
     else lab("①このブロックは区切りの最初なので、上に矢印はありません。");
     if (row.b.length > 1 && bi < row.b.length - 1){ lab("②このブロックと、つながる次のブロックの間の線の文字"); field("lnJl", (row.jl || [])[bi], "線の文字（空で消す）", ["又は", "かつ", "そして"], v => lnOp(x => { const a = (x.row.jl || []).slice(); while (a.length < x.row.b.length - 1) a.push(""); a[x.row.b.indexOf(x.b)] = v; x.row.jl = a.some(Boolean) ? a : undefined; if (!x.row.jl) delete x.row.jl; }, v ? "線の文字を入れました。" : "線の文字を消しました。")); }
-    else lab("②線の文字は、同じ行に並んだブロック（並列）の間に入れられます。下の『並列にする』のあとで入れてください。");
-    lab("③直列・並列");
-    if (row.b.length > 1) add("この行を直列にする（ブロックを上から1つずつに分ける）", () => lnOp(x => { const rows = x.sec.rows, i = rows.indexOf(x.row), first = x.row, parts = first.b.map((b, k) => { const n = { b: [b] }; if (first.fr) n.fr = first.fr.slice(); if (k === 0){ if (first.via) n.via = first.via; if (first.fl) n.fl = first.fl; if (first.lab) n.lab = first.lab; } return n; }); rows.splice(i, 1, ...parts); }, "直列にしました。"));
-    if (nx){ const same = JSON.stringify(row.fr || []) === JSON.stringify(nx.fr || []);
-      add("下のブロックと並列にする（左の線でつなぐ）", () => lnJoin("ladder"), "", !same); add("下のブロックと横に並べる（並列）", () => lnJoin("par"), "", !same);
-      if (!same) { const n = el("div", "small"); n.textContent = "※下の行と枠の入り方が違うので、並列にはできません（先に枠を外すか、同じ枠にそろえてください）。"; body.append(n); } }
-    else lab("下に続くブロックが無いので、『並列にする』は出ません。");
+    else lab("②線の文字は、左の線でつながったブロックの間に入れられます（先に「関係線」でつないでください）。");
     add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "frame"){
     const R = frRange(), n = R ? R.hi - R.lo + 1 : 0;
@@ -1104,31 +1114,30 @@ function blkDraw(){
     add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => blkGo("0"));
     selShowUpdate();
     return; }
-  const BT = { text: [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"],["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","マーカーなし"],["b","太字"]],
-    aud: [["n","選んだ範囲の音声なし：切替"],["nall","この文ぜんぶの音声なし：切替"]] };
+  const BT = { aud: [["n","選んだ範囲の音声の有無：切替"]] };
   const selOnNow = blkLevel === "text" && selOn(); selWas = selOnNow;
-  ttl.textContent = blkLevel === "text" ? (selOnNow ? "文字を選びました：色・マーカー・太字・音声なしを変えられます。選びなおすか「選択をやめる」で、ブロックの操作にもどります。直したら「保存」" : "ブロックの編集（文字を選ぶ前）：文はそのまま打ち直せます。分けたい位置にカーソルを置いて「ここでブロックを分割」。色などを変えたい文字を長押しして範囲を選ぶと、色・マーカーのボタンに切り替わります。直したら「保存」") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたり、区切りを入れます" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直したら「この文を保存」" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。分けたい位置にカーソルを置いて「ここでブロックを分割」。直したら「この文を保存」。ほかの操作は、ブロック左の「⋯」ボタンから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  ttl.classList.toggle("typing", blkLevel === "text" && !!edEl);
   if (blkLevel === "fig"){
     const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
-    [["split","ここで分ける"],["merge","前の文とつなげる"]].concat(first ? [] : yk ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
+    [["split","ここで分ける"],["merge","前の文とつなげる"]].forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   } else {
     if (blkLevel === "text"){
       const lab = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
       if (!selOnNow){
         /* 文字を選ぶ前：ブロックそのものの操作 */
+        const rf0 = refs[blkU != null ? blkU : edU], first0 = !rf0 || rf0.sec.rows.indexOf(rf0.row) < 1, yk0 = c.kind === "yk";
+        add("⌨ 入力を始める（キーボードが出ないとき）", () => { if (edEl){ edEl.focus(); } }, "go").dataset.a = "kbd";
         lab("ブロックの操作"); [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
-        lab("文字の色などを変えるとき"); add("ブロック全体の文字を選ぶ", () => selAllEd()).dataset.a = "selall";
+        if (!first0) (yk0 ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
       } else {
         /* 文字を選んだ後：選んだ文字についての操作 */
-        lab("文字色"); [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
-        lab("ハイライト"); [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","なし"]].forEach(([a, t]) => add(t, () => edAct(a)).dataset.a = a);
-        lab("太字・音声・ツリー"); add("太字", () => edAct("b")).dataset.a = "b"; add("音声なし：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
+        lab("音声・ツリー"); add("選んだ範囲の音声の有無：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
         add("選択をやめる", () => selOff()).dataset.a = "seloff";
       }
     } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   }
-  add("保存", () => edAct("save"), "go").dataset.a = "save"; add("やめる", () => edAct("cancel")).dataset.a = "cancel";
-  if (blkLevel === "text" && !selOnNow) add("その他の操作（もとに戻す・図・枠・矢印・音声・ツリー）", () => { if (edEl && !commit()) return; blkGo("0"); }).dataset.a = "more";
+  add("この文を保存", () => edAct("save"), "go").dataset.a = "save"; add("この文の変更を捨てる", () => edAct("cancel")).dataset.a = "cancel";
 }
 let prU = null;
 function prTap(ev){
@@ -1149,7 +1158,6 @@ function joinRows(sec, i, kind){
   row.k = row.b.length > 1 ? (row.k === "ladder" && kind === "par" ? "par" : kind) : "one"; if (jl.some(Boolean)) row.jl = jl; else delete row.jl;
   if (nx.lo) row.lo = 1; rows.splice(i + 1, 1); return true;
 }
-function lnJoin(kind){ lnOp(x => { joinRows(x.sec, x.sec.rows.indexOf(x.row), kind); }, kind === "ladder" ? "下のブロックと並列にしました（左の線でつなぎます）。" : "下のブロックと横に並べました。"); }
 /* ---- ブロックの左側の線のメニュー：左の線＝はしご（row.k==="ladder"）。row.lo=1 なら、左の線の下から回りこんで次の行へ向かう矢印を出す（drawLoops）。
         ①下と繋ぐ（逆L）②上と繋ぐ（L）③上と繋いで矢印を伸ばす ④左の線をなくして直列に戻す。折衷型の「枠＋左の線＋次の規範への矢印」も、この部品（joinRows・row.lo）で作る ---- */
 const rowKind = r => r.k || "one";
@@ -1179,7 +1187,7 @@ function lsOp(act){
   else if (act === "none"){ if (!I.canNone) return; splitLadder(I.R.sec, I.i, I.bi); msg = "左の線をなくして、ふつうの矢印（直列）にしました。"; }
   else if (act === "loOff"){ if (!I.hasLo) return; delete I.row.lo; msg = "線の下から出る矢印を消しました（左の線は残っています）。"; }
   else return;
-  touch(); blkLevel = "lside"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500);
+  touch(); blkLevel = "lchg"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500);
 }
 /* はしごの行 rows[i] から、bi 番目のブロックを左の線から外す（前と後ろは、まだ2つ以上あれば、それぞれ左の線のまま残る） */
 function splitLadder(sec, i, bi){
@@ -1464,7 +1472,14 @@ function render(){
         if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
       const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
       if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
-      if (txMode){ const h = el("span", "dh", "⠿"); h.title = "ドラッグで、この行（ブロック）の位置を変えます"; h.setAttribute("aria-label", "この行を移動"); h.onpointerdown = e => drgStart(e, [row], h); r.append(h); }
+      if (txMode){ const m = el("span", "mh", "⋯"); m.title = "その他の操作（長押しで関係線）"; m.setAttribute("role", "button"); m.setAttribute("aria-label", "その他の操作（長押しで関係線）");
+        const mu = () => { const b0 = r.querySelector(".blk"); return b0 ? uOfBlk(b0) : null; }; let mt = 0, mf = false;
+        m._lp = () => lpGo(() => { const u = mu(); if (u != null){ mf = true; lsMenu(u); } });
+        m.onpointerdown = e => { if (e.button > 0) return; mf = false; clearTimeout(mt); mt = setTimeout(m._lp, 450); };
+        m.onpointerup = m.onpointercancel = () => clearTimeout(mt);
+        m.onclick = e => { e.stopPropagation(); clearTimeout(mt); if (mf || lpFired){ mf = false; return; } const u = mu(); if (u != null) moreMenu(u); };
+        r.append(m);
+        const h = el("span", "dh", "⠿"); h.title = "ドラッグで、この行（ブロック）の位置を変えます"; h.setAttribute("aria-label", "この行を移動"); h.onpointerdown = e => drgStart(e, [row], h); r.append(h); }
       curRow = row; curSec = sec; row.b.forEach(b => r.append(makeBlock(b)));
       { const bl = [...r.children].filter(x => x.classList.contains("blk")); if (row.k === "ladder" && bl[0]) bl[0].classList.add("lf");
         if (row.jl && bl.length > 1) row.jl.forEach((t, i) => { if (!t || i >= bl.length - 1) return; const j = el("span", "jl"); j.textContent = t; j.dataset.i = i;
@@ -1916,13 +1931,13 @@ function lpPlan(e){
   const lb = leftBlk(e); if (lb){ const u = uOfBlk(lb); return u == null ? null : () => lsMenu(u); }
   const t = lpTarget(e); return lpSkip(t) ? null : () => lpAct(t);
 }
-board.addEventListener("pointerdown", e => { if (e.button > 0 || (e.target.closest && e.target.closest(".dh,.frl,button,input,select,textarea"))) return; const fn = lpPlan(e); if (!fn) return;
+board.addEventListener("pointerdown", e => { if (e.button > 0 || (e.target.closest && e.target.closest(".dh,.mh,.frl,button,input,select,textarea"))) return; const fn = lpPlan(e); if (!fn) return;
   lpx = e.clientX; lpy = e.clientY; lpAt = Date.now(); lpDone = false; clearTimeout(lpT); lpT = setTimeout(() => lpGo(fn), 450); });
 board.addEventListener("pointerup", () => clearTimeout(lpT));
 /* ブラウザが先に「長押しの動作」（文字の選択・メニュー）を始めると pointercancel が来る。それが長押しの途中なら、タイマーは止めない（早い pointercancel はスクロールの始まりなので止める） */
 board.addEventListener("pointercancel", () => { if (Date.now() - lpAt < 300) clearTimeout(lpT); });
 board.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lpx, e.clientY - lpy) > 16) clearTimeout(lpT); });
-board.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("button,input,select,textarea")) return; const fn = lpPlan(e); if (!fn) return; e.preventDefault(); lpGo(fn); });
+board.addEventListener("contextmenu", e => { const mh = e.target.closest && e.target.closest(".mh"); if (mh){ e.preventDefault(); if (mh._lp) mh._lp(); return; } if (e.target.closest && e.target.closest("button,input,select,textarea")) return; const fn = lpPlan(e); if (!fn) return; e.preventDefault(); lpGo(fn); });
 
 /* ---------- 操作 ---------- */
 $("play").onclick = () => thinking ? endThink(true) : playing ? stop() : start();
@@ -2215,7 +2230,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611261738";
+const VER = "版 202611271129";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2497,7 +2512,7 @@ function dbRows(){
   return rows;
 }
 const _render = render; render = function(){ _render.apply(this, arguments); try { applyDbMarks(); blkPick(); renderTree(); drawFrames(); frMark(); } catch(e){} };
-function blkPick(){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); if (txMode && blkU != null && (blkLevel === "0" || blkLevel === "lside")){ const pt = board.querySelector('.pt[data-u="' + blkU + '"],.pt[data-vu="' + blkU + '"]'); if (pt) pt.classList.add("pick"); } }
+function blkPick(){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); board.querySelectorAll(".edtag.sel").forEach(x => x.remove()); if (txMode && blkU != null && (blkLevel === "0" || blkLevel === "lside" || blkLevel === "lchg")){ const pt = board.querySelector('.pt[data-u="' + blkU + '"],.pt[data-vu="' + blkU + '"]'); if (pt){ pt.classList.add("pick"); const bk = pt.closest(".blk"); if (bk && !bk.querySelector(".edtag")){ const tg = el("span", "edtag sel", "選ばれています（まだ打てません。打つときは文をタップ）"); tg.setAttribute("aria-hidden", "true"); bk.append(tg); } } } }
 const TREE_URL = "https://gitwallaby.github.io/decisions/decisions.html";
 const DB_PLACE_FILE = "decision_tree_placement.json";
 /* 送るidと同じ計算（バージョンは動かさない）。効果1つのまとまりごとに、末尾が -v2 などになる */
