@@ -434,8 +434,9 @@ body{padding-bottom:215px}
         <label><input type="checkbox" value="2">2 要素</label>
         <label><input type="checkbox" value="3">3 ざっくり</label>
       </div>
-      <h3>進捗（複数選べます。何も選ばなければ全部）</h3>
+      <h3>進捗（複数選べます。何も選ばなければ、自信あり◎以外の全部）</h3>
       <div class="chk" id="fPg"></div>
+      <div class="chk"><label><input type="checkbox" id="fNoG" checked>自信あり◎のカードは再生から外す（上で「自信あり」を選ぶと、見られます）</label></div>
       <h3>確認の状態（複数選べます。何も選ばなければ全部）</h3>
       <div class="chk" id="fCs"></div>
       <h3>ほか</h3>
@@ -653,7 +654,8 @@ const PGORD = ["n", "x", "d", "o", "g"], PGL = { n: "未習", x: "苦手×", d: 
 function legacyPg(c){ if ((S.imp[c.id] || c.imp) === 4) return "g"; const r = S.rev[c.id]; return r && PGL[r.g] && r.g !== "n" ? r.g : "n"; }
 function progOf(c){ const r = S.pg && S.pg[c.id]; return r && PGL[r.v] ? r.v : legacyPg(c); }
 function pgSet(c, v){ if (!S.pg) S.pg = {}; S.pg[c.id] = { v }; st("pg", c.id); save(); }
-function pgOk(c){ return !S.pgSel.length || S.pgSel.includes(progOf(c)); }
+const noG = () => S.noG !== false;   /* 既定=自信あり◎のカードを再生から外す（ブラウザの絞り込みで「自信あり」を選べば見られる） */
+function pgOk(c){ return S.pgSel.length ? S.pgSel.includes(progOf(c)) : !(noG() && progOf(c) === "g"); }
 function renderPg(){
   const bar = $("pgBar"), c = card(); if (!bar || !c) return; bar.innerHTML = ""; const cur = progOf(c);
   PGORD.forEach(k => { const b = el("button", "cs pg-" + k + (cur === k ? " on" : "")); b.type = "button"; b.textContent = PGL[k]; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", cur === k ? "true" : "false"); b.dataset.pg = k;
@@ -1076,6 +1078,7 @@ function blkGo(level){
   if (!edEl) openEd(blkU);
   if (!edEl) return; blkLevel = level; blkDraw();
 }
+function treeBack(){ if (blkU != null && refs[blkU]){ blkGo("0"); return; } dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = ""; blkDraw(); renderTree(); }
 function blkDraw(){
   blkDrawClean(); { const t0 = $("blkTitle"); if (t0) t0.classList.remove("typing"); } const body = $("blkBody"); body.innerHTML = ""; const add = (t, f, k, dis) => { const b = el("button", k || ""); b.textContent = t; if (dis) b.disabled = true; else b.onclick = e => { e.stopPropagation(); f(); }; body.append(b); return b; };
   const c = card(); if (!c || !txMode){ return; }
@@ -1088,10 +1091,10 @@ function blkDraw(){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
     const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
-    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("矢印・線の文字", () => blkGo("line"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
-    lab0("音声・ツリー"); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree"));
+    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
+    lab0("音声"); add("音声の有無の切替", () => blkGo("aud"), "", draft);
     lab0("複数のブロックをまとめて（枠・統合・関係線・対応づけ・音声・削除）"); add("☑ 複数のブロックを選ぶ（このブロックから）", () => msStart(blkU), "go", draft).dataset.a = "ms:start";
-    if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
+    if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は、上の「🌳 ツリー」ボタンから使えます）。";
     return; }
   if (blkLevel === "fsel"){
     const I = frInfo(frSelId); if (!I.idx.length){ blkGo("0"); return; }
@@ -1129,7 +1132,7 @@ function blkDraw(){
     else lab("①このブロックは区切りの最初なので、上に矢印はありません。");
     if (row.b.length > 1 && bi < row.b.length - 1){ lab("②このブロックと、つながる次のブロックの間の線の文字"); field("lnJl", (row.jl || [])[bi], "線の文字（空で消す）", ["又は", "かつ", "そして"], v => lnOp(x => { const a = (x.row.jl || []).slice(); while (a.length < x.row.b.length - 1) a.push(""); a[x.row.b.indexOf(x.b)] = v; x.row.jl = a.some(Boolean) ? a : undefined; if (!x.row.jl) delete x.row.jl; }, v ? "線の文字を入れました。" : "線の文字を消しました。")); }
     else lab("②線の文字は、左の線でつながったブロックの間に入れられます（先に「関係線」でつないでください）。");
-    add("← 戻る", () => blkGo("0")); return; }
+    add("← 戻る", () => blkGo("lside")); return; }
   if (blkLevel === "frame"){
     const R = frRange(), n = R ? R.hi - R.lo + 1 : 0;
     ttl.textContent = "枠でまとめる：オレンジの点線の行が、枠に入ります（いま " + n + " 行）。" + (frWho === "start" ? "始まりにしたい行の文を、タップしてください。" : "終わりにしたい行の文を、タップしてください。");
@@ -1145,12 +1148,12 @@ function blkDraw(){
     const ss = el("div", "selshow"); ss.id = "selShow"; body.before(ss);
     [["効果にする", "判断"], ["子の要件にする", "子"], ["子の考慮要素にする", "子考"], ["子の解釈基準にする", "子解"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
     add("選んだ文字を、選択中の行に入れる", () => tFill()).dataset.mk = "入";
-    add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => blkGo("0"));
+    add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => treeBack());
     selShowUpdate();
     return; }
   const BT = { aud: [["n","選んだ範囲の音声の有無：切替"]] };
   const selOnNow = blkLevel === "text" && selOn(); selWas = selOnNow;
-  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直したら「この文を保存」" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。分けたい位置にカーソルを置いて「ここでブロックを分割」。直したら「この文を保存」。ほかの操作は、ブロック左の「⋯」ボタンから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直した文は自動で保存されます" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。分けたい位置にカーソルを置いて「ここでブロックを分割」。直したら「この文を保存」。ほかの操作は、ブロック左の「⋯」ボタンから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
   ttl.classList.toggle("typing", blkLevel === "text" && !!edEl);
   if (blkLevel === "fig"){
     const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
@@ -1171,7 +1174,7 @@ function blkDraw(){
       }
     } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   }
-  add("この文を保存", () => edAct("save"), "go").dataset.a = "save"; add("この文の変更を捨てる", () => edAct("cancel")).dataset.a = "cancel";
+  add("この文の変更を捨てる", () => edAct("cancel")).dataset.a = "cancel";
 }
 let prU = null;
 /* ---------- 複数選択：S.cv は触らず、選んだブロックの代表の文の番号 msel（refs の u。昇順）を持つ。操作は ensureCv() のあと refs[u] から行う ---------- */
@@ -1574,7 +1577,7 @@ function render(){
         if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
       const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
       if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
-      if (txMode){ const m = el("span", "mh", "⋯"); m.title = "その他の操作（長押しで関係線）"; m.setAttribute("role", "button"); m.setAttribute("aria-label", "その他の操作（長押しで関係線）");
+      if (txMode){ const m = el("span", "mh", "⋯"); m.title = "その他の操作（長押し・PCは右クリックで関係線）"; m.setAttribute("role", "button"); m.setAttribute("aria-label", "その他の操作（長押しで関係線）");
         const mu = () => { const b0 = r.querySelector(".blk"); return b0 ? uOfBlk(b0) : null; }; let mt = 0, mf = false;
         m._lp = () => lpGo(() => { const u = mu(); if (u != null){ mf = true; lsMenu(u); } });
         m.onpointerdown = e => { if (e.button > 0) return; mf = false; clearTimeout(mt); mt = setTimeout(m._lp, 450); };
@@ -1728,7 +1731,7 @@ function filtText(){
   if (S.tagSel.length) f.push("タグ「" + S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、") + "」");
   const off = Object.keys(S.decks).filter(k => S.decks[k] === false); if (off.length) f.push("科目 " + off.length + " 個を外す");
   if (S.imps.slice().sort().join() !== "1,2,3") f.push("重要度 " + S.imps.join("・"));
-  if (S.pgSel.length) f.push("進捗 " + S.pgSel.map(k => PGL[k]).join("・")); if (S.weak) f.push("×か△のみ"); if (S.csSel.length) f.push("状態 " + S.csSel.map(k => CSL[k]).join("・"));
+  if (S.pgSel.length) f.push("進捗 " + S.pgSel.map(k => PGL[k]).join("・")); else if (noG()) f.push("自信あり◎を除く"); if (S.weak) f.push("×か△のみ"); if (S.csSel.length) f.push("状態 " + S.csSel.map(k => CSL[k]).join("・"));
   return f.length ? f.join(" ＋ ") : "絞り込みなし";
 }
 function plSum(){
@@ -2055,6 +2058,7 @@ $("showAll").onclick = () => { if (allShown){ allShown = false; opened = new Set
 function pairLit(gid){ board.querySelectorAll(".blk.pairlit").forEach(x => x.classList.remove("pairlit")); if (!gid) return 0; const m = [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === gid); if (m.length < 2) return 0; m.forEach(x => x.classList.add("pairlit")); return m.length; }
 board.addEventListener("click", e => { if (blkLevel === "pair") return; const b = e.target.closest && e.target.closest(".blk"); pairLit(b && b.dataset.pr ? b.dataset.pr : ""); }, true);
 board.addEventListener("click", e => { if (board.classList.contains("veil") && e.target.closest(".flow,.t-extra")){ allShown = true; update(); } });
+$("fNoG").onchange = e => { S.noG = e.target.checked; save(); relist(); };
 $("fWeak").onchange = e => { S.weak = e.target.checked; save(); relist(); };
 $("fAuto").onchange = e => { S.auto = e.target.checked; save(); };
 $("fGate").onchange = e => { S.gate = e.target.checked; save(); };
@@ -2336,7 +2340,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271202";
+const VER = "版 202611271230";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2577,7 +2581,13 @@ document.addEventListener("keydown", e => {
 $("treeTools").addEventListener("pointerdown", e => { if (e.target.closest("button")) e.preventDefault(); });
 $("treeBox").addEventListener("click", e => { const b = e.target.closest("button[data-op]"); if (b){ tOp(b.dataset.op); try { b.blur(); } catch(e2){} } });
 $("treeClr").onclick = () => { const c = card(); if (!S.tree[c.id]){ tmsg("このカードには、ツリーがありません。"); return; } if (!confirm("このカードのツリーを、全部消します。よろしいですか？")) return; const bf = tStr(c.id); delete S.tree[c.id]; tSnapIf(c.id, bf); st("tree", c.id); save(); treeSel = 0; applyDbMarks(); renderTree(); selShowUpdate(); tmsg("このカードのツリーを消しました。", "ok"); };
-$("treeTop").onclick = () => { treeOpen = !treeOpen; if (treeOpen && treeSz === 0) treeSz = 1; renderTree(); if (treeOpen){ const c = card(); toast("このカードのツリーを表示しました（画面の下）。", "", 2000); } };
+$("treeTop").onclick = () => {
+  /* 押すと、編集モードに入って「ツリー作成」（文の一部を選んで効果・要件にする）が始まる。もう一度押すと、ふつうの編集に戻る。ツリーの表示は画面の下に出る */
+  if (!card()) return; if (msMode || msel.length) return;
+  if (txMode && blkLevel === "tree"){ treeBack(); return; }
+  if (!txMode) setTx(true); if (treeSz === 0) treeSz = 1;
+  blkGo("tree"); toast("ツリー作成：文の一部を選んで「効果にする」などを押してください（ツリーは画面の下）。", "", 3500);
+};
 $("treeClose").onclick = () => { treeOpen = false; renderTree(); };
 $("treeDb").onclick = () => {
   const c = card(), r = c && treeIds(c.id).find(e => !e.pur);
@@ -2742,7 +2752,7 @@ async function init(){
     i.onchange = () => { S.decks[d] = i.checked; save(); relist(); }; l.append(i, document.createTextNode(d)); fd.append(l); });
   $("fImp").querySelectorAll("input").forEach(x => x.checked = S.imps.includes(+x.value));
   $("fShuf").checked = !!S.shuffle; $("fMode").value = S.mode || "imp";
-  renderCsFilter(); renderPgFilter(); $("scopeSel").value = scopeOf(); $("fWeak").checked = !!S.weak; $("qIn").value = S.q || ""; $("tagMode").value = S.tagMode || "any"; renderTagFilter(); $("fAuto").checked = S.auto !== false; $("fGate").checked = !!S.gate; $("selEdAu").value = S.edAu || "vv"; $("selHide").value = S.hide || ""; $("selThink").value = String(S.think || 0);
+  renderCsFilter(); renderPgFilter(); $("scopeSel").value = scopeOf(); $("fWeak").checked = !!S.weak; $("fNoG").checked = noG(); $("qIn").value = S.q || ""; $("tagMode").value = S.tagMode || "any"; renderTagFilter(); $("fAuto").checked = S.auto !== false; $("fGate").checked = !!S.gate; $("selEdAu").value = S.edAu || "vv"; $("selHide").value = S.hide || ""; $("selThink").value = String(S.think || 0);
   Object.keys(S.log).sort().slice(0, -120).forEach(k => delete S.log[k]);            /* 日ごとの記録は直近120日ぶんだけ残す */
   let have = 0; for (const n of (DATA.bundles || [])) { try { if (await get(n)) have++; } catch(e){} }
   $("info").textContent = "カード " + CARDS.length + "枚（" + (DATA.made || "") + " 作成）／音声ファイル " + have + " / " + (DATA.bundles || []).length + " 個" + (have < (DATA.bundles || []).length ? "　※足りない分は端末の読み上げで代用します" : "");
