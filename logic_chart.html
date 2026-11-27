@@ -306,6 +306,7 @@ body.sheeton{padding-bottom:46vh}body.sheeton[data-tsz="0"]{padding-bottom:100px
 #treeList .pu{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #2f855a;font-size:12px;color:#2f6f4f;background:rgba(47,133,90,.08);border-radius:0 8px 8px 0}
 #treeList .pu a{margin-left:6px;color:var(--te)}#treeList .src{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #d6aa1f;font-size:12px;color:var(--sub)}
 #treeList a.pl{color:var(--tb);text-decoration:underline;font-size:11.5px}#treeList .un{font-size:11px;color:var(--sub)}
+.blk[data-bc="c"]{border-color:rgba(85,255,255,.55)}.blk[data-bc="y"]{border-color:rgba(255,255,127,.55)}.blk[data-bc="w"]{border-color:rgba(236,235,230,.6)}
 .blk.blank{display:none}body.txon .blk.blank{display:block;min-height:36px}.pt.emptyp{min-height:28px}.pt.emptyp:empty::before{content:"（空のブロック：タップして文を入れます）";color:var(--gray);font-size:12px}.pt.emptyp.ed:empty::before{content:""}
 .pt.pick{outline:1px dashed rgba(232,198,74,.55);outline-offset:2px;border-radius:4px}
 .edtag{position:absolute;top:-11px;right:8px;z-index:4;font-size:11px;line-height:18px;padding:0 9px;border-radius:9px;pointer-events:none;white-space:nowrap}
@@ -549,7 +550,7 @@ body{padding-bottom:215px}
       <div class="bt" id="blkTitle"></div>
       <div class="tbar" id="blkBody"></div>
       <p class="small" id="editMsg"></p>
-      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkMs" aria-pressed="false" hidden style="display:none"></button><button id="blkUndo">未同期の直しを全部取消し</button><button class="go" id="blkEnd" title="編集モードを終わります。打ちかけの文があれば、自動で保存してから終わります">編集モードを終わる</button></div>
+      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkMs" aria-pressed="false" hidden style="display:none"></button><button class="go" id="blkEnd" title="編集モードを終わります。打ちかけの文があれば、自動で保存してから終わります">編集モードを終わる</button></div>
     </div>
     <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
       <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeDb" title="このカードのツリーを、DB（判断ロジックツリー）の画面で開きます">🌳 DBで開く ↗</button><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
@@ -756,7 +757,7 @@ function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.c
 const MKS = { "+": ["⊕", "mkp"], "p": ["⊕", "mkp"], "⊕": ["⊕", "mkp"], "-": ["⊖", "mkm"], "m": ["⊖", "mkm"], "⊖": ["⊖", "mkm"], "▲": ["▲", "mkt"], "t": ["▲", "mkt"] };
 function mkSet(u, k){ ensureCv(); const R = refs[u]; if (!R) return; if (k) R.b.mk = k; else delete R.b.mk; touch(); blkLevel = "0"; render(); blkDraw(); $("editMsg").textContent = k ? "✔ 左の印をつけました。" : "✔ 左の印を外しました。"; }
 function makeBlock(b){
-  const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : "")); d._b = b; if (b.pr) d.dataset.pr = b.pr;
+  const d = el("div", "blk t-" + (b.t || "yk") + (b.out ? " out" : "")); d._b = b; if (b.pr) d.dataset.pr = b.pr; if (b.bc) d.dataset.bc = b.bc;
   if (b.c){ const c = el("div", "cond"); c.textContent = b.c; d.append(c); }
   const parts = b.p || [{ h: b.h, s: b.s, e: b.e, x: b.x }];
   const u0 = utts.length;
@@ -922,9 +923,10 @@ function openEd(u){
   pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.setAttribute("inputmode", "text"); pt.setAttribute("enterkeyhint", "done"); pt.focus();
   board.querySelectorAll(".edtag").forEach(x => x.remove()); { const bk = pt.closest(".blk"); if (bk){ const tg = el("span", "edtag on", "✎ 文字入力中"); tg.setAttribute("aria-hidden", "true"); bk.append(tg); } }
   /* Enter＝いまの文を確定する（編集モードは続く）。変換中(isComposing)の Enter は、変換の決定だけ。Shift+Enter（または「文の中で改行する」ボタン）＝文の中の改行（g202611271647） */
-  pt.addEventListener("keydown", e => { if (e.key !== "Enter" || e.isComposing || e.keyCode === 229 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return; e.preventDefault(); if (edEl === pt) commit(); });
+  pt.addEventListener("keydown", e => { if (e.isComposing || e.keyCode === 229 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Enter" || e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); { const u0 = edU; if (edEl === pt && commit()) moreMenu(u0); } } });     /* Enter／Esc＝確定して「選択中」へ(g202611271659 ⑨) */
   pt.addEventListener("beforeinput", e => {
-    if (e.inputType === "insertParagraph" && !e.isComposing){ e.preventDefault(); if (edEl === pt) commit(); return; }       /* スマホのキーボードの Enter */
+    if (e.inputType === "insertParagraph" && !e.isComposing){ e.preventDefault(); { const u0 = edU; if (edEl === pt && commit()) moreMenu(u0); } return; }       /* スマホのキーボードの Enter */
     if (e.inputType !== "insertParagraph" && e.inputType !== "insertLineBreak") return;
     e.preventDefault(); edAct("nl"); });
   pt.addEventListener("input", () => { if (edEl && edEl.querySelector("br,div,p")){ const v = selNow(), runs = runsOf(edEl); redraw(runs, v ? v[0] : runs.length, v ? v[1] : runs.length); } });
@@ -954,7 +956,7 @@ function delBlock(u, noConfirm){
   const cv0 = ensureCv(), R = u != null ? refs[u] : null; if (!R){ $("editMsg").textContent = "消すブロックを、先に選んでください。"; return; }
   if (cv0.qa <= 2 && posOf(u) < cv0.qa){ $("editMsg").textContent = "表面の最後のブロックは消せません。"; return; }
   if (flatRows(cv0.sections).length <= 2 && !(R.b.p && R.b.p.length > 1)){ $("editMsg").textContent = "ブロックが少なすぎて、これ以上は消せません。"; return; }
-  if (!noConfirm && !window.confirm("このブロックを消します。よいですか？\n（Ctrl+Z か、「未同期の直しを全部取消し」で、元に戻せます）")) return;
+  if (!noConfirm && !window.confirm("このブロックを消します。よいですか？\n（Ctrl+Z で、元に戻せます）")) return;
   const wasS = R.p.s, pos = posOf(u);
   if (R.b.p && R.b.p.length > 1) R.b.p.splice(R.b.p.indexOf(R.p), 1);
   else { R.row.b.splice(R.row.b.indexOf(R.b), 1); if (!R.row.b.length){ R.sec.rows.splice(R.sec.rows.indexOf(R.row), 1); if (!R.sec.rows.length) cv0.sections.splice(cv0.sections.indexOf(R.sec), 1); } }
@@ -1037,7 +1039,8 @@ function edAct(a){
     $("editMsg").textContent = "";
     const clo = Math.min(v[0], v[1]), chi = Math.max(v[0], v[1]), cpart = cr.slice(clo, chi).filter(r => r.ch !== "\n");
     if (a === "b"){ const on = !cpart.every(r => r.b); cpart.forEach(r => r.b = on ? 1 : 0); }
-    else { const kv = a.split(":"), k = kv[0], val = kv[1] || ""; const same = val && cpart.every(r => (r[k] || "") === val); cpart.forEach(r => { r[k] = same ? "" : val; }); }
+    else { const kv = a.split(":"), k = kv[0], val = kv[1] || ""; const same = val && cpart.every(r => (r[k] || "") === val); cpart.forEach(r => { r[k] = same ? "" : val; });
+      if (k === "c"){ edEl._bc = same ? "" : val; const bk = edEl.closest(".blk"); if (bk){ if (edEl._bc) bk.dataset.bc = edEl._bc; else delete bk.dataset.bc; } } }   /* ⑦ ブロックの縁の色＝最後に変えた文字の色（もとの色に戻すと、種類のもとの縁の色に戻る） */
     redraw(cr, clo, chi); return;
   }
   if (a !== "n") return;
@@ -1051,7 +1054,11 @@ function edAct(a){
 function commit(){
   if (!edEl) return true;
   const runs = trimRuns(runsOf(edEl)), u = edU;       /* 文が空でも確定できる（空のブロックとして残る。編集中の画面には薄い案内が出て、タップでまた文を入れられる。再生・音声には出ない） */
-  if (htmlOf(runs, false) !== normH(refs[u].p.h)){ const cv = ensureCv(), was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); touch(); }
+  const bcV = edEl._bc, bcSet = bcV !== undefined && (bcV || "") !== (refs[u].b.bc || "");
+  if (htmlOf(runs, false) !== normH(refs[u].p.h) || bcSet){ const cv = ensureCv(), was = refs[u].p.s;
+    if (htmlOf(runs, false) !== normH(refs[u].p.h)){ setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); }
+    if (bcSet){ if (bcV) refs[u].b.bc = bcV; else delete refs[u].b.bc; }
+    touch(); }
   $("editMsg").textContent = ""; closeEd(); return true;
 }
 function closeEd(){ board.querySelectorAll(".edtag").forEach(x => x.remove()); edEl = null; edU = -1; if (txMode){ blkLevel = blkU != null ? "0" : ""; blkDraw(); } load(false, true); }
@@ -1064,7 +1071,9 @@ function txTap(ev){
   if (edEl && pt === edEl) return;
   if (Date.now() - swAt < 300) return;                                    /* 離した瞬間に、すでに移った（swAt）ときの、あとから来るクリックは無視 */
   if (!pt || +pt.dataset.u === 0){ if (!edEl && !ev.target.closest(".sec-hd")) $("editMsg").textContent = "このブロックは直せません。"; return; }
-  blkMenu(+(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu));
+  const uu = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu);
+  if (blkU === uu && blkLevel === "0" && !edEl) blkMenu(uu);      /* ⑨ 選択中のブロックをもう一度押すと、文字入力へ */
+  else moreMenu(uu);                                                /* ⑨ 1回目は「選択中」にするだけ */
 }
 /* 見出し（帰結）と横線：S.cv[id].sections[番号] = { label:見出し, nn:1なら「帰結 N」の番号を出さない（横線だけ）, rows:[...] }。
    音声の文は変わらないので、光る位置と音声はずれない。 */
@@ -1089,8 +1098,8 @@ function setTx(v){
   $("blkBar").hidden = !v; document.body.classList.toggle("txon", v); blkDraw(); render(); renderTree();
 }
 $("blkEnd").onclick = () => { sg = null; if (msMode || msel.length){ msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); } setTx(false); };
-$("blkUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
-  const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの未同期の直しを取り消しました。"; load(false, true); };
+function cardReset(){ const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
+  const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの未同期の直しを取り消しました。"; load(false, true); }
 /* 長押し（PCは右クリック）：編集を始めて、そのブロックのメニューを出す */
 function blkMenu(u){
   if (msMode || msel.length) return;
@@ -1137,12 +1146,13 @@ function blkDraw(){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
     const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
-    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
+    lab0("関係線・矢印・左の印・まとめ"); add("関係線", () => blkGo("lside"), "", draft);
     { const cmk = refs[blkU] && refs[blkU].b.mk; lab0("左の印（理由づけのプラス面・マイナス面、反対説への批判）"); [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => { const mb = add((MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, () => mkSet(blkU, k), "", draft); mb.dataset.a = "mk:" + k; });
       if (cmk) add("左の印を外す", () => mkSet(blkU, ""), "", draft).dataset.a = "mk:"; }
     lab0("理由づけのまとめ（折衷型）"); add("⊕⊖でまとめる（プラス面・マイナス面・次の規範を選んで、1回で）", () => sgStart(), "", draft).dataset.a = "sg:start";
     if (refs[blkU] && refs[blkU].row && refs[blkU].row.sg) add("このまとまりの左の線と矢印を消す（枠と印は残ります）", () => sgRemove(blkU), "dng").dataset.a = "sg:rm";
     lab0("音声"); add("音声の有無の切替", () => blkGo("aud"), "", draft);
+    lab0("カード全体"); add("このカードの直しを全部もとに戻す（Ctrl+Z で戻せます）", () => { if (window.confirm("このカードの、同期していない直しを全部取り消します。\nよろしいですか？（そのあと Ctrl+Z で元に戻せます）")) cardReset(); }, "dng", draft);
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は、上の「🌳 ツリー」ボタンから使えます）。";
     return; }
   if (blkLevel === "fsel"){
@@ -1218,8 +1228,8 @@ function blkDraw(){
       if (!selOnNow){
         /* 文字を選ぶ前：ブロックそのものの操作 */
         const rf0 = refs[blkU != null ? blkU : edU], first0 = !rf0 || rf0.sec.rows.indexOf(rf0.row) < 1, yk0 = c.kind === "yk";
-        add("⌨ 入力を始める（キーボードが出ないとき）", () => { if (edEl){ edEl.focus(); } }, "go").dataset.a = "kbd";
-        lab("ブロックの操作"); [["split","ここでブロックを分割"],["nl","文の中で改行する"],["add","下にブロックを追加"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
+        lab("入力"); add("⌨ 入力を始める（キーボードが出ないとき）", () => { if (edEl){ edEl.focus(); } }, "go").dataset.a = "kbd";
+        lab("ブロック・行（分割・つなげる・追加・削除・横線）"); [["split","ここでブロックを分割"],["merge","前のブロックとつなげる"],["nl","文の中で改行する"],["add","下にブロックを追加"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
         if (!first0) (yk0 ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
       } else {
         /* 文字を選んだ後：選んだ文字についての操作 */
@@ -1229,10 +1239,11 @@ function blkDraw(){
         add("太字", () => edAct("b")).dataset.a = "b";
         lab("音声・ツリー"); add("選んだ範囲の音声の有無：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
         lab("要件の枠（選んだ語句を小さな四角で囲む。同じ色をもう一度押すと外れます）"); Object.keys(FC).forEach(k => { const fb = add("▢ " + FC[k][0], () => edAct("f:" + k)); fb.dataset.a = "f:" + k; fb.style.borderLeft = "6px solid " + FC[k][1]; });
-        add("選択をやめる", () => selOff()).dataset.a = "seloff";
+        lab("選択"); add("選択をやめる", () => selOff()).dataset.a = "seloff";
       }
     } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
   }
+  if (blkLevel === "text"){ const l = el("span", "lab"); l.textContent = "保存・取り消し（Enter で確定。Ctrl+Z／Ctrl+Y で取り消し・やり直し）"; body.append(l); }
   add("この文の変更を捨てる", () => edAct("cancel")).dataset.a = "cancel";
 }
 let prU = null;
@@ -1301,7 +1312,7 @@ function msGo(a){
     const allOff = info.every(([u, runs]) => runs.filter(r => r.ch !== "\n").every(r => r.n)), nv = allOff ? 0 : 1;
     info.forEach(([u, runs]) => { runs.forEach(r => { if (r.ch !== "\n") r.n = nv; }); const was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); });
     touch(); msDone("選んだ " + reps.length + " 個のブロックを、" + (nv ? "音声なし" : "音声あり") + "にしました。"); return; }
-  if (a === "del"){ if (!window.confirm(reps.length + " 個のブロックを消します。よいですか？\n（Ctrl+Z か、「未同期の直しを全部取消し」で、元に戻せます）")) return;
+  if (a === "del"){ if (!window.confirm(reps.length + " 個のブロックを消します。よいですか？\n（Ctrl+Z で、元に戻せます）")) return;
     ensureCv(); for (let k = allUs.length - 1; k >= 0; k--){ if (refs[allUs[k]]) delBlock(allUs[k], true); }
     msel = []; msAnchor = null; blkU = null; blkLevel = msMode ? "multi" : ""; msPaint(); blkDraw(); return; }
 }
@@ -2228,7 +2239,7 @@ board.addEventListener("pointerdown", e => { swPend = null; if (!swOk(e)) return
   swPend = { u: +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu), x: e.clientX, y: e.clientY, at: Date.now() }; }, true);
 board.addEventListener("pointerup", e => { const p = swPend; swPend = null; if (!p || lpFired) return;
   if (Date.now() - p.at > 400 || Math.hypot((e.clientX || 0) - p.x, (e.clientY || 0) - p.y) > 16) return;
-  if (!swOk(e) || !refs[p.u]) return; swAt = Date.now(); blkMenu(p.u); }, true);
+  if (!swOk(e) || !refs[p.u]) return; swAt = Date.now(); moreMenu(p.u); }, true);
 board.addEventListener("pointercancel", () => { swPend = null; }, true);
 /* 長押しが成立したら1回だけ実行する（タイマーと、ブラウザの contextmenu の両方から呼ばれても二重にならない） */
 function lpGo(fn){ const now = Date.now(); if (lpDone && now - lpDoneAt < 700) return; lpDone = true; lpDoneAt = now; clearTimeout(lpT); lpFired = true; setTimeout(() => { lpFired = false; }, 900); fn(); }
@@ -2542,7 +2553,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271645";
+const VER = "版 202611271707";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2975,6 +2986,21 @@ document.addEventListener("keydown", e => {
   const k = e.key.toLowerCase(), dirty = !!(edEl && edEl._dirty);
   if (k === "z" && !e.shiftKey){ if (dirty) return; e.preventDefault(); undoCard(false); }
   else if (k === "y" || (k === "z" && e.shiftKey)){ if (dirty) return; e.preventDefault(); undoCard(true); }
+});
+/* ---- ⑨ ブロックを「選択中」にして、矢印キーで選ぶ（g202611271659）。選択中=文字入力に入る前の状態(blkLevel '0'。点線の枠と『選ばれています』の札)。
+   ↑↓＝前後のブロックへ選択を移す／Enter＝そのブロックの文字入力を始める／Esc＝選択をやめる。文字を打っている間は、←→↑↓ は文字のカーソル移動のまま。 */
+function kbBlocks(){ return [...board.querySelectorAll(".pt[data-u],.pt[data-vu]")].filter(p => p.dataset.u !== "0" && p.dataset.u !== "1" ? true : p.dataset.u !== "0" && !!p.closest(".blk")); }
+document.addEventListener("keydown", e => {
+  if (!txMode || edEl || dbMode || msMode || msel.length || sg || blkLevel !== "0" || blkU == null || e.isComposing || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || inField()) return;
+  if (treeOpen && !$("treeBox").hidden) return;
+  const k = e.key; if (k !== "ArrowUp" && k !== "ArrowDown" && k !== "Enter" && k !== "Escape") return;
+  e.preventDefault();
+  if (k === "Escape"){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); board.querySelectorAll(".edtag.sel").forEach(x => x.remove()); blkU = null; blkLevel = ""; blkDraw(); renderTree(); return; }
+  if (k === "Enter"){ if (!card().draft) blkMenu(blkU); return; }
+  const pts = kbBlocks(), idx = pts.findIndex(p => +(p.dataset.u != null ? p.dataset.u : p.dataset.vu) === blkU), nx = pts[idx + (k === "ArrowDown" ? 1 : -1)];
+  if (idx < 0 || !nx) return;                                      /* 一番上・一番下で止まる */
+  moreMenu(+(nx.dataset.u != null ? nx.dataset.u : nx.dataset.vu));
+  const now = board.querySelector(".pt.pick"); if (now && now.scrollIntoView) now.scrollIntoView({ block: "nearest" });
 });
 document.addEventListener("copy", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; if (!blkCopy(edU >= 0 ? edU : blkU)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); toast("ブロックをコピーしました（Ctrl+V か「下に貼り付け」で、選んでいるブロックの下に入ります）", "ok", 3500); });
 document.addEventListener("cut", e => { if (!blkKeysOn() || inField() || !selCollapsed()) return; const u = edU >= 0 ? edU : blkU; if (!blkCopy(u)) return; e.preventDefault(); e.clipboardData.setData("text/plain", blkClip.plain); delBlock(u, true); });
