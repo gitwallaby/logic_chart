@@ -257,6 +257,7 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .dbbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
 .dbbar input{box-sizing:border-box;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;width:100%;margin-top:4px}
 .dbbar .act{margin-top:6px}.dbbar .tg{font-weight:600}
+#ncPend{border:2px solid #e0a800;background:rgba(224,168,0,.10);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}#ncPend .nph{font-weight:bold;margin-bottom:4px}#ncPend .npr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}#ncPend input[type=text]{min-width:12em;flex:1}
 .blkbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
 .blkbar .bt{font-weight:600;margin-bottom:5px}.blkbar .tbar{margin:4px 0 4px}.blkbar input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0 4px}
 .blkbar button:disabled{opacity:.4}
@@ -546,6 +547,13 @@ body{padding-bottom:215px}
         </div>
       </div>
     </div>
+    <div id="ncPend" hidden role="region" aria-label="新しいカード（まだ保存していません）">
+      <div class="nph">🆕 新しいカード（まだ保存していません）</div>
+      <div class="small">保存しないで終わると（ページを閉じる・読み込み直す・「保存しないでやめる」・もう1枚新しく作る）、このカードは消えます。文は下の図のブロックをタップして入れます（1つ目のブロック＝表面の問い、2つ目から＝裏面）。</div>
+      <div class="npr"><label>題名 <input type="text" id="npTitle" maxlength="80" placeholder="題名（必須）"></label></div>
+      <div class="npr"><label>科目 <select id="npDeck"></select></label><label>重要度 <select id="npImp"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label><label>タグ <input type="text" id="npTags" placeholder="空白で区切る（任意）"></label></div>
+      <div class="npr"><button class="go" id="npSave">このカードを保存</button><button class="dng" id="npCancel">保存しないでやめる</button><span class="small" id="npMsg"></span></div>
+    </div>
     <div class="blkbar" id="blkBar" hidden>
       <div class="bt" id="blkTitle"></div>
       <div class="tbar" id="blkBody"></div>
@@ -763,8 +771,8 @@ function makeBlock(b){
   const u0 = utts.length;
   parts.forEach(p => {
     const x = el("div", "pt" + (p.c ? " " + p.c : "")); x.innerHTML = p.h; if (p.e) x.dataset.e = 1;
-    if (!p.s && !p.h && txMode && !card().draft) x.classList.add("emptyp");
-    if (!p.s && (p.h || (txMode && !card().draft))){ x.dataset.af = utts.length; if (txMode && !card().draft){ const vu = 1000000 + (vk++); x.dataset.vu = vu; refs[vu] = { p: b.p ? p : b, b, row: curRow, sec: curSec, after: utts.length }; x.classList.add("mm"); } }
+    if (!p.s && !p.h && txMode) x.classList.add("emptyp");
+    if (!p.s && (p.h || txMode)){ x.dataset.af = utts.length; if (txMode){ const vu = 1000000 + (vk++); x.dataset.vu = vu; refs[vu] = { p: b.p ? p : b, b, row: curRow, sec: curSec, after: utts.length }; x.classList.add("mm"); } }
     if (p.s){ const u = utts.length; x.dataset.u = u; refs[u] = { p: b.p ? p : b, b, row: curRow, sec: curSec };
       if (p.x){ x.classList.add("chg"); delete x.dataset.e; }
       utts.push({ text: p.s, el: x }); }
@@ -839,7 +847,7 @@ function sigOf(sections){ const out = []; sections.forEach(sec => sec.rows.forEa
 function ensureCv(){ const c = card();
   if (!S.cv[c.id]){ S.cv[c.id] = { sig: sigOf(c.sections), qa: qaOf(c), sections: JSON.parse(JSON.stringify(c.sections)) }; render(); }
   return S.cv[c.id]; }
-function touch(){ const id = card().id; S.cv[id].stamp = String(Date.now()); st("cv", id); if (S.rd) delete S.rd[id]; save();
+function touch(){ const id = card().id; S.cv[id].stamp = String(Date.now()); st("cv", id); if (S.rd) delete S.rd[id]; draftSync(id); save();
   const h = hist(id); h.u.push(h.cur); if (h.u.length > HMAX) h.u.shift(); h.r.length = 0; h.cur = cvSnap(id); }
 /* 取り消し・やり直し：このカードの「直し(S.cv)」の、保存のたびの状態を、最大 HMAX 回分ためておく（画面を閉じると消える） */
 const HIST = {}, HMAX = 50;
@@ -850,7 +858,7 @@ function undoCard(redo){
   if (!from.length){ toast(redo ? "やり直せる操作がありません" : "戻せる操作がありません（保存した直しだけ戻せます）", ""); return false; }
   to.push(h.cur); const snap = from.pop(), v = JSON.parse(snap);
   if (v){ v.stamp = String(Date.now()); S.cv[c.id] = v; h.cur = JSON.stringify(v); } else { delete S.cv[c.id]; h.cur = "null"; }
-  st("cv", c.id); save(); edEl = null; edU = -1; if (txMode){ blkLevel = ""; blkU = null; blkDraw(); }
+  st("cv", c.id); draftSync(c.id); save(); edEl = null; edU = -1; if (txMode){ blkLevel = ""; blkU = null; blkDraw(); }
   $("editMsg").textContent = redo ? "やり直しました。" : "ひとつ前の状態に戻しました。"; load(false, true); return true;
 }
 function sayOf(runs){ return runs.filter(r => !r.n).map(r => r.ch).join("").replace(/\n/g, "、").replace(/[→↓]+/g, "、").replace(/、{2,}/g, "、").replace(/([。（「])、/g, "$1").replace(/^[、\s]+|[、\s]+$/g, ""); }
@@ -1014,7 +1022,7 @@ function edAct(a){
   if (a === "add"){
     const u = edU; if (!pendingSave(u)) return;
     const np = {}; setPart(np, []);          /* 仮の文は入れない。空のブロックにする */
-    if (refs[u].b.t) np.t = refs[u].b.t; insertBelow(u, np);
+    if (refs[u].b.t && !(card().draft && refs[u].b.t === "fact")) np.t = refs[u].b.t; insertBelow(u, np);
     touch(); $("editMsg").textContent = "下に空の新しいブロックを足しました（直列）。足したブロックをタップして、文を入れてください。"; toast("下にブロックを足しました", "ok"); closeEd(); return;
   }
   if (a === "del"){ delBlock(edU >= 0 ? edU : blkU, false); return; }
@@ -1093,7 +1101,7 @@ function secEditor(si){
 }
 function setTx(v){
   if (!v && edEl && !commit()) return;
-  if (!v){ secEd = -1; blkLevel = ""; blkU = null; dbMode = false; }
+  if (!v){ secEd = -1; blkLevel = ""; blkU = null; dbMode = false; if (txMode && S.hide) allShown = true; }   /* CL16=A: 編集を終えた直後も、見えていた文を隠さない（「隠し直す」で戻せる。別のカードへ移ると、いつもどおり隠れる） */
   txMode = v; if (v){ dbMode = false; blkLevel = ""; blkU = null; if (playing) stop(); }
   $("blkBar").hidden = !v; document.body.classList.toggle("txon", v); blkDraw(); render(); renderTree();
 }
@@ -1108,7 +1116,7 @@ function blkMenu(u){
   blkU = u; blkLevel = "0"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
   board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick"));
   const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (pt) pt.classList.add("pick");
-  if (pt && !card().draft){ blkLevel = "text"; openEd(u); }          /* ブロックを選んだら、そのまま文を直せる */
+  if (pt){ blkLevel = "text"; openEd(u); }          /* ブロックを選んだら、そのまま文を直せる */
   blkDraw(); renderTree();
 }
 /* ブロック左の「⋯」：その行の先頭のブロックの「その他の操作」を開く（文を打つ画面ではなく、図・枠・矢印・関係線・音声・ツリーの一覧） */
@@ -1137,7 +1145,7 @@ function treeBack(){ if (blkU != null && refs[blkU]){ blkGo("0"); return; } dbMo
 function blkDraw(){
   blkDrawClean(); { const t0 = $("blkTitle"); if (t0) t0.classList.remove("typing"); } const body = $("blkBody"); body.innerHTML = ""; const add = (t, f, k, dis) => { const b = el("button", k || ""); b.textContent = t; if (dis) b.disabled = true; else b.onclick = e => { e.stopPropagation(); f(); }; body.append(b); return b; };
   const c = card(); if (!c || !txMode){ return; }
-  const draft = !!c.draft, ttl = $("blkTitle");
+  const draft = false, ttl = $("blkTitle");      /* 新しいカード(c.draft)も、ふつうのカードと同じに直せる（g202611271751） */
   body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
   if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。複数のブロックをまとめて操作するときは、PCは Shift（範囲）／Ctrl（追加）＋クリック、スマホからの複数選びは、いまは用意していません。ブロック左の「⋯」を押すと「その他の操作」、長押しすると「関係線」のメニューが出ます（ブロックの左端の長押し・PCは右クリックでも、関係線が出ます）。"; return; }
   const q = blkU != null && refs[blkU] ? "" : "";
@@ -1153,7 +1161,6 @@ function blkDraw(){
     if (refs[blkU] && refs[blkU].row && refs[blkU].row.sg) add("このまとまりの左の線と矢印を消す（枠と印は残ります）", () => sgRemove(blkU), "dng").dataset.a = "sg:rm";
     lab0("音声"); add("音声の有無の切替", () => blkGo("aud"), "", draft);
     lab0("カード全体"); add("このカードの直しを全部もとに戻す（Ctrl+Z で戻せます）", () => { if (window.confirm("このカードの、同期していない直しを全部取り消します。\nよろしいですか？（そのあと Ctrl+Z で元に戻せます）")) cardReset(); }, "dng", draft);
-    if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は、上の「🌳 ツリー」ボタンから使えます）。";
     return; }
   if (blkLevel === "fsel"){
     const I = frInfo(frSelId); if (!I.idx.length){ blkGo("0"); return; }
@@ -1693,7 +1700,7 @@ $("editOut").onclick = async () => {
   if (!S.edits.length && !Object.keys(S.imp).length && !Object.keys(S.deckOv).length && !Object.keys(S.rev).length && !Object.keys(S.cv).length && !Object.keys(S.tags).length && !Object.keys(S.memo).length && !Object.keys(S.kov).length && !Object.keys(S.kx).length && !Object.keys(S.pl).length && !Object.keys(S.cs).length && !Object.keys(S.pg).length && !Object.keys(S.cdel).length && !Object.keys(S.kian).length && !Object.keys(S.newCards).length && !Object.keys(S.dbq).length && !Object.keys(S.tree).length){ $("outMsg").textContent = $("recMsg").textContent = "書き出す直しも記録もありません。"; return; }
   const d = new Date(), z = n => String(n).padStart(2, "0");
   const name = "編集_" + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + "_" + z(d.getHours()) + z(d.getMinutes()) + ".json";
-  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, cs: S.cs, pg: S.pg, pgbak: S.pgBak, cdel: S.cdel, delbak: S.delBak, kian: S.kian, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
+  const text = JSON.stringify({ made: d.toISOString(), edits: S.edits.map(({ sent, ...e }) => e), levels: S.imp, decks: S.deckOv, figs: snapNoPend(S.cv), tags: S.tags, newcards: snapNoPend(S.newCards), dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, cs: S.cs, pg: S.pg, pgbak: S.pgBak, cdel: S.cdel, delbak: S.delBak, kian: S.kian, ts: S.ts, study: { rev: S.rev, log: S.log } }, null, 1);
   /* claude.ai の中では保存の確認が出る。PCで再生ページ.htmlを直接開いたときは、そのままダウンロードする */
   let dl = null;
   try { if (window.claude && window.claude.use) dl = await window.claude.use("downloads"); } catch(e){}
@@ -1719,7 +1726,7 @@ function countLine(){
 }
 
 function render(){
-  const c = ecard(); plSum();
+  const c = ecard(); plSum(); try { ncPendDraw(); } catch(e){}
   { const h = $("title"); h.textContent = ""; const np = document.createElement("span"); np.className = "np"; np.textContent = "再生中："; h.append(np, document.createTextNode(c.title)); }
   $("selDeck").value = deckOf(c); $("selDeck").classList.toggle("chg", !!S.deckOv[c.id]);
   $("selImp").value = String(impOf(c)); $("selImp").classList.toggle("chg", !!S.imp[c.id]);
@@ -2063,7 +2070,7 @@ async function load(autoplay, keep, pre){
   const my = ++tok; const c = card(), y0 = window.scrollY; if (!keep) secEd = -1;
   S.last = c.id; save(); $("selRd").value = reader(c); hist(c.id);
   if (window.speechSynthesis) speechSynthesis.cancel();
-  endThink(false); shownTo = -1; opened = new Set(); allShown = false;
+  endThink(false); shownTo = -1; opened = new Set(); if (!keep) allShown = false;      /* 同じカードの読み直し(keep)では「全部見る」を保つ */
   if (!pre) au.pause(); thinkDone = false; if (!keep){ treeSel = 0; gradedNow = false; pendNext = null; $("gr").classList.remove("need"); } cur = -1; render(); window.scrollTo(0, keep ? y0 : 0);
   $("seek").value = 0; $("tm").textContent = "0:00 / " + fmt(c.dur);
   $("now").textContent = c.title;
@@ -2318,10 +2325,11 @@ function draftCard(nc){
     else if (/^【補足】/.test(t)){ flush(); cur.rows.push({ b: [{ t: "extra", h: esc(t.replace(/^【補足】\s*/, "")) }] }); }
     else buf.push(line); });
   flush();
-  return { id: nc.id, title: nc.title, deck: nc.deck, imp: nc.imp, imp0: nc.imp, draft: true, dur: 0, tags: nc.tags || [], sections: secs.filter((x, i) => i === 0 || x.rows.length) };
+  if (!String(nc.back || "").trim() && secs.length === 1 && secs[0].rows.length === 1) secs[0].rows.push({ b: [{ t: "plain", h: "", s: "" }] });   /* 裏面が空の新しいカードには、空のブロックを1つ置く */
+  return { id: nc.id, title: nc.title || "（題名なし）", deck: nc.deck, imp: nc.imp, imp0: nc.imp, draft: true, dur: 0, tags: nc.tags || [], sections: secs.filter((x, i) => i === 0 || x.rows.length) };
 }
 function liveCards(){ return DATA.cards.concat(draftList()).filter(c => !(S.cdel[c.id] && S.cdel[c.id].on)); }
-function draftList(){ const have = new Set((DATA ? DATA.cards : []).map(c => c.id)); return Object.values(S.newCards).filter(n => n && n.title && !have.has(n.id)).map(draftCard); }
+function draftList(){ const have = new Set((DATA ? DATA.cards : []).map(c => c.id)); return Object.values(S.newCards).filter(n => n && (n.title || n.pend) && !have.has(n.id)).map(draftCard); }
 function subjectList(){ return [...new Set(DECK_ORDER.concat(CARDS.map(c => c.deck)))]; }
 function reloadCards(keepId){
   CARDS = liveCards(); stop();
@@ -2350,7 +2358,55 @@ function putNew(o){ // o = { id?, title, deck, imp, front, back, tags } を保�
   if (S.imp[id] !== undefined){ delete S.imp[id]; st("imp", id); } if (S.deckOv[id] !== undefined){ delete S.deckOv[id]; st("deck", id); }
   return id;
 }
-$("ncBtn").onclick = () => ncOpen(null);
+$("ncBtn").onclick = () => ncQuick();
+/* ---------- 新しいカード（g202611271751）：「＋新しいカード」で、空の新しいカードがすぐプレイヤーに開き、そのまま編集できる。
+   保存するまでは S.newCards[id].pend=1（同期・書き出しに入れない。ページを開き直すと消える）。保存すると pend を消して、ふつうの新しいカードになる。 ---------- */
+let ncPrev = null;
+function ncPendId(){ return Object.keys(S.newCards || {}).find(k => S.newCards[k] && S.newCards[k].pend) || null; }
+function ncDrop(id){ if (!id || !S.newCards[id]) return; delete S.newCards[id]; if (S.cv[id]) delete S.cv[id]; delete S.ts["cv:" + id]; delete S.ts["new:" + id]; delete HIST[id]; }
+function ncPurge(){ Object.keys(S.newCards || {}).forEach(k => { if (S.newCards[k] && S.newCards[k].pend) ncDrop(k); }); }
+function ncQuick(){
+  try { if (edEl && !commit()) return; } catch(e){}
+  const old = ncPendId(); if (old){ if (!confirm("保存していない新しいカードがあります。それを消して、もう1枚新しく作りますか？")) { const i = CARDS.findIndex(c => c.id === old); if (i >= 0) ncShow(old); return; } ncDrop(old); }
+  ncPrev = list.length && card() ? card().id : null;
+  const id = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), c0 = list.length ? card() : null;
+  S.newCards[id] = { id, title: "", deck: c0 ? deckOf(c0) : (subjectList()[0] || ""), imp: 2, front: "", back: "", tags: [], ts: Date.now(), pend: 1 };
+  save(); ncShow(id); $("npTitle").value = ""; $("npTags").value = ""; ncPendDraw();
+  toast("新しいカードを開きました。題名を入れて、図のブロックをタップして文を書いてください。", "ok", 5000);
+  try { $("npTitle").focus(); } catch(e){}
+}
+function ncShow(id){
+  try { if (txMode) setTx(false); } catch(e){}
+  CARDS = liveCards(); stop(); buildList(id); let i = list.findIndex(n => CARDS[n] && CARDS[n].id === id);
+  if (i < 0){ const n = CARDS.findIndex(c => c.id === id); if (n < 0) return; list.splice(list.length ? pi + 1 : 0, 0, n); i = list.indexOf(n); }
+  pi = i; try { fillPick(); } catch(e){} try { setTab("play"); } catch(e){} load(false); setTx(true);
+}
+function ncPendDraw(){
+  const box = $("ncPend"); if (!box) return; const c = list.length ? card() : null, nc = c && S.newCards[c.id];
+  if (!nc || !nc.pend){ box.hidden = true; return; } box.hidden = false;
+  const sd = $("npDeck"); if (sd.dataset.for !== c.id){ sd.innerHTML = ""; subjectList().forEach(d => { const o = el("option"); o.value = d; o.textContent = d; sd.append(o); }); sd.dataset.for = c.id;
+    $("npTitle").value = nc.title || ""; $("npTags").value = (nc.tags || []).join(" "); }
+  sd.value = nc.deck || ""; $("npImp").value = String(nc.imp || 2);
+}
+function ncPendSet(f){ const c = card(), nc = c && S.newCards[c.id]; if (!nc || !nc.pend) return; f(nc); c.title = nc.title || "（題名なし）"; c.deck = nc.deck; c.imp = c.imp0 = nc.imp; c.tags = nc.tags || []; save(); render(); }
+$("npTitle").addEventListener("input", () => ncPendSet(nc => { nc.title = $("npTitle").value.trim(); }));
+$("npDeck").onchange = () => ncPendSet(nc => { nc.deck = $("npDeck").value; });
+$("npImp").onchange = () => ncPendSet(nc => { nc.imp = +$("npImp").value; });
+$("npTags").addEventListener("change", () => ncPendSet(nc => { nc.tags = parseTags($("npTags").value); }));
+$("npSave").onclick = () => {
+  const c = card(), id = c && c.id, nc = id && S.newCards[id]; if (!nc || !nc.pend) return;
+  try { if (edEl && !commit()) return; } catch(e){}
+  nc.title = $("npTitle").value.trim(); nc.deck = $("npDeck").value; nc.imp = +$("npImp").value; nc.tags = parseTags($("npTags").value);
+  draftSync(id);
+  const miss = []; if (!nc.title) miss.push("題名"); if (!nc.deck) miss.push("科目"); if (!String(nc.front || "").trim() && !String(nc.back || "").trim()) miss.push("文（図のブロックに1つ以上）");
+  if (miss.length){ $("npMsg").textContent = "まだ入っていないもの：" + miss.join("・"); return; }
+  delete nc.pend; nc.ts = Date.now(); st("new", id); if (S.cv[id]) st("cv", id); save();
+  try { if (txMode) setTx(false); } catch(e){}
+  const shown = reloadCards(id); $("npMsg").textContent = ""; ncPendDraw();
+  gMsg(shown ? "新しいカードを保存しました（PCで「作る.bat」を実行すると、図解とVOICEVOX音声になります）。" : "新しいカードを保存しました。いまの絞り込み条件に合わないので、一覧には出ていません。");
+};
+$("npCancel").onclick = () => { const id = ncPendId(); if (!id) return; if (!confirm("この新しいカードを保存しないで消します。よろしいですか？")) return;
+  try { if (txMode){ edEl = null; setTx(false); } } catch(e){} ncDrop(id); save(); reloadCards(ncPrev); ncPendDraw(); toast("新しいカードを消しました", "ok"); };
 $("ncEdit").onclick = () => { const c = card(); if (!c.draft && !confirm("PCで作ったあとのカードを書き直すと、このカードの「文字と図の直し」は作り直しで消えます。続けますか？")) return; ncOpen(c.id); };
 ["ncTitle", "ncDeck", "ncImp", "ncFront", "ncBack"].forEach(i => { $(i).addEventListener("input", ncCheck); $(i).addEventListener("change", ncCheck); });
 $("ncCancel").onclick = () => $("ncDlg").close();
@@ -2358,6 +2414,7 @@ $("ncSample").onclick = () => { $("ncTitle").value = NC_SAMPLE.title; $("ncDeck"
 $("ncSave").onclick = () => {
   if (ncMissing().length){ ncCheck(); return; }
   const id = putNew({ id: ncId, title: $("ncTitle").value.trim(), deck: $("ncDeck").value, imp: $("ncImp").value, front: $("ncFront").value.trim(), back: $("ncBack").value.replace(/\s+$/, ""), tags: parseTags($("ncTags").value) });
+  if (ncId && S.cv[id]){ delete S.cv[id]; st("cv", id); }          /* 文章を書き直した新しいカードは、図の直しを捨てて文章から作り直す */
   save(); $("ncDlg").close(); const shown = reloadCards(id);
   gMsg(shown ? "カードを保存しました（PCで「作る.bat」を実行すると、図解とVOICEVOX音声になります）。" : "カードを保存しました。いまの絞り込み条件に合わないので、一覧には出ていません。");
 };
@@ -2427,14 +2484,23 @@ function htmlToMu(h){
     if (r.b) t = "**" + t + "**"; if (r.n) t = "{n|" + t + "}"; if (r.m) t = "{" + r.m + "|" + t + "}"; if (r.c === "c" || r.c === "y") t = "{" + r.c + "|" + t + "}"; out += t; i = j; }
   return out.replace(/^\n+|\n+$/g, "");
 }
-function cardText(c){
+function cardText(c){ const fb = cardFB(c);
+  return "■" + c.title + "\n科目：" + deckOf(c) + "　重要度：" + impOf(c) + "　タグ：" + tagsOf(c).join(" ") + "\n【表面】\n" + fb.front + "\n【裏面】\n" + fb.back + "\n\n";
+}
+/* 新しいカード（S.newCards）を図の編集で直したら、その文を表面・裏面の文章にも書き戻す（PCの「作る.bat」は、この文章から新しいカードを作るため）。
+   図の直し(S.cv)の sig も、書き戻した文章から作り直した図に合わせる（PC側で図の直しがそのまま当てはまるように）。 */
+function draftSync(id){ const nc = S.newCards[id]; if (!nc) return; const c = CARDS.find(x => x.id === id); if (!c || !c.draft) return;
+  const fb = cardFB(c); if (fb.front === nc.front && fb.back === nc.back) return;
+  nc.front = fb.front; nc.back = fb.back; nc.ts = Date.now(); if (!nc.pend) st("new", id);
+  try { if (S.cv[id]) S.cv[id].sig = sigOf(draftCard(nc).sections); } catch(e){} }
+function cardFB(c){
   const secs = (S.cv[c.id] && S.cv[c.id].sections) || c.sections, blockTxt = b => (b.p || [b]).map(p => htmlToMu(p.h || "")).filter(Boolean).join("\n");
   const rowTxt = r => r.b.map(blockTxt).filter(Boolean).join("\n"), front = [], back = []; let inFront = true;
   secs.forEach((sec, si) => { if (sec.label && !(si === 0 && c.kind && sec.label === "問い") && !inFront) back.push("★" + sec.label);
     sec.rows.forEach(r => { const isFact = r.b.every(b => b.t === "fact"), t = rowTxt(r);
       if (inFront && (isFact || (c.kind && si === 0 && sec.label === "問い"))) front.push(t); else { inFront = false; if (back.length && !/^★/.test(back[back.length - 1])) back.push("↓"); back.push(t); } });
     if (c.kind && si === 0) inFront = false; });
-  return "■" + c.title + "\n科目：" + deckOf(c) + "　重要度：" + impOf(c) + "　タグ：" + tagsOf(c).join(" ") + "\n【表面】\n" + front.join("\n") + "\n【裏面】\n" + back.join("\n") + "\n\n";
+  return { front: front.join("\n"), back: back.join("\n") };
 }
 async function exportCards(onlyChanged){
   const L = CARDS.filter(c => !onlyChanged || S.cv[c.id] || S.imp[c.id] || S.deckOv[c.id] || S.tags[c.id] || c.draft || S.newCards[c.id]);
@@ -2453,7 +2519,8 @@ const G_FOLDER = "logic_chart_sync", G_FOLDER_OLD = "論証フローチャート
 const OLD_NAME = { "decision_tree_inbox.json": "DB送信.json", "decision_tree_placement.json": "DB配置.json" };
 const G_KINDS = [["cv", o => o.figs, () => S.cv], ["tag", o => o.tags, () => S.tags], ["imp", o => o.levels, () => S.imp], ["deck", o => o.decks, () => S.deckOv], ["rev", o => (o.study || {}).rev, () => S.rev], ["new", o => o.newcards, () => S.newCards], ["dbq", o => o.dbq, () => S.dbq], ["tree", o => o.tree, () => S.tree], ["memo", o => o.memo, () => S.memo], ["kov", o => o.kov, () => S.kov], ["kx", o => o.kx, () => S.kx], ["pl", o => o.pl, () => S.pl], ["cs", o => o.cs, () => S.cs], ["pg", o => o.pg, () => S.pg], ["cdel", o => o.cdel, () => S.cdel], ["kian", o => o.kian, () => S.kian]];
 let gTok = "", gExp = 0, gBusy = false;
-function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: S.cv, tags: S.tags, newcards: S.newCards, dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, cs: S.cs, pg: S.pg, cdel: S.cdel, kian: S.kian, study: { rev: S.rev, log: S.log } }; }
+function snapNoPend(o){ const pend = Object.keys(S.newCards || {}).filter(k => S.newCards[k] && S.newCards[k].pend); if (!pend.length) return o; const r = Object.assign({}, o); pend.forEach(k => delete r[k]); return r; }   /* 保存していない新しいカードは同期しない */
+function snapshot(){ return { app: "ronsho-sync", v: 1, made: new Date().toISOString(), ts: S.ts, levels: S.imp, decks: S.deckOv, figs: snapNoPend(S.cv), tags: S.tags, newcards: snapNoPend(S.newCards), dbq: S.dbq, tree: S.tree, memo: S.memo, kov: S.kov, kx: S.kx, pl: S.pl, cs: S.cs, pg: S.pg, cdel: S.cdel, kian: S.kian, study: { rev: S.rev, log: S.log } }; }
 function tsOf(kind, id, store, ts){ const k = kind + ":" + id; return ts && ts[k] ? ts[k] : ((kind === "cv" && store && store[id] && +store[id].stamp) || (kind === "new" && store && store[id] && +store[id].ts) || (kind === "kian" && store && store[id] && +store[id].at) || (kind === "dbq" && store && store[id] && +store[id].ts) || (kind === "tree" && store && store[id] && +store[id].ts) || 0); }
 /* 混ぜる：カード1枚ごとに、直した時刻が新しい方を採る（新しい方が「直しを消した」なら、消した方が勝つ）。戻り値＝この端末が書き換わった数 */
 function mergeSnap(o){
@@ -2553,7 +2620,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271707";
+const VER = "版 202611271759";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2945,7 +3012,7 @@ async function init(){
   let blob = null;
   try { blob = await get("data.json"); } catch(e){}
   if (!blob){ $("empty").hidden = false; $("app").hidden = true; $("ctl").hidden = true; return false; }
-  DATA = JSON.parse(await blob.text()); CARDS = liveCards();
+  DATA = JSON.parse(await blob.text()); ncPurge(); CARDS = liveCards();          /* 保存しないで終わった新しいカードは、ここで消える */
   $("empty").hidden = true; $("app").hidden = false; $("ctl").hidden = false;
   /* 前の版の「卒業」の記録を引き継ぎ、PCのデータに入った直しは片付ける */
   const byId = {}; CARDS.forEach(c => byId[c.id] = c);
@@ -2996,7 +3063,7 @@ document.addEventListener("keydown", e => {
   const k = e.key; if (k !== "ArrowUp" && k !== "ArrowDown" && k !== "Enter" && k !== "Escape") return;
   e.preventDefault();
   if (k === "Escape"){ board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); board.querySelectorAll(".edtag.sel").forEach(x => x.remove()); blkU = null; blkLevel = ""; blkDraw(); renderTree(); return; }
-  if (k === "Enter"){ if (!card().draft) blkMenu(blkU); return; }
+  if (k === "Enter"){ blkMenu(blkU); return; }
   const pts = kbBlocks(), idx = pts.findIndex(p => +(p.dataset.u != null ? p.dataset.u : p.dataset.vu) === blkU), nx = pts[idx + (k === "ArrowDown" ? 1 : -1)];
   if (idx < 0 || !nx) return;                                      /* 一番上・一番下で止まる */
   moreMenu(+(nx.dataset.u != null ? nx.dataset.u : nx.dataset.vu));
