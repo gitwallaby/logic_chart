@@ -260,6 +260,7 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .tgchip.tgnot{border-color:#d9534f;color:#d9534f}.tgnotb{font-size:11px;padding:0 6px;margin-left:4px}
 #ncPend{border:2px solid #e0a800;background:rgba(224,168,0,.10);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}#ncPend .nph{font-weight:bold;margin-bottom:4px}#ncPend .npr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}#ncPend input[type=text]{min-width:12em;flex:1}
 .blkbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
+.blkbar .tbar .lab{flex-basis:100%;font-size:11.5px;color:var(--sub);margin:5px 0 0;font-weight:600}.blkbar .tbar .lab:first-child{margin-top:0}   /* ④ 見出しは、PCでもスマホでも行の頭から（ボタンの並びの途中に入らない） */
 .blkbar .bt{font-weight:600;margin-bottom:5px}.blkbar .tbar{margin:4px 0 4px}.blkbar input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0 4px}
 .blkbar button:disabled{opacity:.4}
 .txon .ctl{display:none}
@@ -1147,6 +1148,7 @@ function blkGo(level){
 function treeBack(){ if (blkU != null && refs[blkU]){ blkGo("0"); return; } dbMode = false; board.classList.remove("dbm"); try { getSelection().removeAllRanges(); } catch(e){} blkLevel = ""; blkDraw(); renderTree(); }
 function blkDraw(){
   blkDrawClean(); { const t0 = $("blkTitle"); if (t0) t0.classList.remove("typing"); } const body = $("blkBody"); body.innerHTML = ""; const add = (t, f, k, dis) => { const b = el("button", k || ""); b.textContent = t; if (dis) b.disabled = true; else b.onclick = e => { e.stopPropagation(); f(); }; body.append(b); return b; };
+  const H = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); return l; };   /* ④ 画面ごとの見出し */
   const c = card(); if (!c || !txMode){ return; }
   const draft = false, ttl = $("blkTitle");      /* 新しいカード(c.draft)も、ふつうのカードと同じに直せる（g202611271751） */
   body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
@@ -1169,22 +1171,22 @@ function blkDraw(){
     const I = frInfo(frSelId); if (!I.idx.length){ blkGo("0"); return; }
     ttl.textContent = "枠を選んでいます：「" + (I.label || "名前なし") + "」（" + I.idx.length + " 行）。枠の中は1つのまとまりです。";
     const nm = el("input"); nm.type = "text"; nm.id = "frName"; nm.maxLength = 30; nm.placeholder = "枠の名前（空でもよい）"; nm.setAttribute("aria-label", "枠の名前"); nm.value = I.label; body.before(nm);
-    { const fpv = ((S.cv[card().id] || {}).fp || {})[frSelId] || {};
+    { const fpv = ((S.cv[card().id] || {}).fp || {})[frSelId] || {}; H("枠の色・枠の中の矢印");
       Object.keys(FC).forEach(k => { const fb = add((fpv.c === k ? "✔ " : "") + "枠の色：" + FC[k][0], () => frProp(frSelId, o => { o.c = k; })); fb.dataset.a = "fc:" + k; fb.style.borderLeft = "6px solid " + FC[k][1]; });
       if (fpv.c) add("枠の色を、ふつうの色にもどす", () => frProp(frSelId, o => { delete o.c; })).dataset.a = "fc:";
       add(fpv.h ? "枠の中の矢印を戻す" : "枠の中の矢印を消す", () => frProp(frSelId, o => { if (o.h) delete o.h; else o.h = 1; })).dataset.a = "fh"; }
-    add("名前を保存", () => frRename(frSelId, nm.value.trim())); add("枠で囲う範囲を変更", () => frChange(frSelId), "go"); add("この枠を削除（中のブロックは残ります）", () => { if (confirm("この枠を削除します（中のブロックはそのまま残ります）。よろしいですか？")) frDelete(frSelId); }, "dng"); add("← 戻る", () => { frSelId = null; blkGo("0"); drawFrames(); }); return; }
+    H("名前・範囲"); add("名前を保存", () => frRename(frSelId, nm.value.trim())); add("枠で囲う範囲を変更", () => frChange(frSelId), "go"); H("削除・戻る"); add("この枠を削除（中のブロックは残ります）", () => { if (confirm("この枠を削除します（中のブロックはそのまま残ります）。よろしいですか？")) frDelete(frSelId); }, "dng"); add("← 戻る", () => { frSelId = null; blkGo("0"); drawFrames(); }); return; }
   if (blkLevel === "lside"){
     const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
     ttl.textContent = "関係線：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線まわりを直します";
-    add("線を変える（左の線のつなぎ方）", () => blkGo("lchg"), "go").dataset.a = "ls:chg"; add("線の横に接続詞等を付ける", () => blkGo("line")).dataset.a = "ls:word";
+    H("関係線の操作"); add("線を変える（左の線のつなぎ方）", () => blkGo("lchg"), "go").dataset.a = "ls:chg"; add("線の横に接続詞等を付ける", () => blkGo("line")).dataset.a = "ls:word";
     add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "lchg"){
     const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
     ttl.textContent = "関係線 ＞ 線を変える：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線のつなぎ方を選びます";
-    const why = lsWhy(I);
+    const why = lsWhy(I); H("左の線のつなぎ方");
     [["down", "① 下のブロックと繋ぐ（逆L字）", !I.canDown], ["up", "② 上のブロックと繋ぐ（L字）", !I.canUp], ["upArrow", "③ 上のブロックと繋いで、矢印を伸ばす", !I.canUpArrow], ["none", "④ 矢印に変える（左の線をなくして、ふつうの直列に戻す）", !I.canNone]].forEach(([a, t, dis]) => add(t, () => lsOp(a), "", dis).dataset.a = "ls:" + a);
-    if (I.hasLo) add("線の下から出る矢印だけ消す（左の線は残す）", () => lsOp("loOff")).dataset.a = "ls:loOff";
+    if (I.hasLo){ H("矢印"); } if (I.hasLo) add("線の下から出る矢印だけ消す（左の線は残す）", () => lsOp("loOff")).dataset.a = "ls:loOff";
     const why2 = why.filter(Boolean); if (why2.length){ const n = el("div", "small"); n.textContent = "灰色のボタンの理由： " + why2.join(" ／ "); body.append(n); }
     add("← 戻る", () => blkGo("lside")); return; }
   if (blkLevel === "multi"){ msDraw(body, ttl, add); return; }
@@ -1193,7 +1195,7 @@ function blkDraw(){
     const r = refs[prU]; if (!r){ blkGo("0"); return; }
     const mem = r.b.pr ? [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === r.b.pr).length : 0;
     ttl.textContent = "対応づけ：いまのブロックと完全に対応するブロックを、図の中でタップして選びます（もう一度タップで外す）。対応づけた組は、どれか1つを選ぶと一緒に光ります。いま " + (mem || 1) + " つの組";
-    add("このブロックの対応づけを、全部外す", () => prClear(), "dng", !r.b.pr); add("← 戻る", () => blkGo("0")); return; }
+    H("対応づけ"); add("このブロックの対応づけを、全部外す", () => prClear(), "dng", !r.b.pr); add("← 戻る", () => blkGo("0")); return; }
   if (blkLevel === "line"){
     const r = refs[blkU]; if (!r){ blkGo("0"); return; }
     const row = r.row, ri = r.sec.rows.indexOf(row), bi = row.b.indexOf(r.b);
@@ -1211,17 +1213,17 @@ function blkDraw(){
     const R = frRange(), n = R ? R.hi - R.lo + 1 : 0;
     ttl.textContent = "枠でまとめる：オレンジの点線の行が、枠に入ります（いま " + n + " 行）。" + (frWho === "start" ? "始まりにしたい行の文を、タップしてください。" : "終わりにしたい行の文を、タップしてください。");
     const nm = el("input"); nm.type = "text"; nm.id = "frName"; nm.maxLength = 30; nm.placeholder = "枠の名前（空でもよい。例：結論Aの理由づけ）"; nm.setAttribute("aria-label", "枠の名前"); nm.value = frNameV; nm.oninput = () => { frNameV = nm.value; }; body.before(nm);
-    add("● 終わりの行を、タップで選ぶ", () => { frWho = "end"; blkDraw(); }, frWho === "end" ? "go" : ""); add("● 始まりの行を、タップで選ぶ", () => { frWho = "start"; blkDraw(); }, frWho === "start" ? "go" : "");
-    add(frChg ? "この範囲に変える" : "この範囲を枠にする", () => frApply(), "go");
+    H("範囲の選び方"); add("● 終わりの行を、タップで選ぶ", () => { frWho = "end"; blkDraw(); }, frWho === "end" ? "go" : ""); add("● 始まりの行を、タップで選ぶ", () => { frWho = "start"; blkDraw(); }, frWho === "start" ? "go" : "");
+    H("決める"); add(frChg ? "この範囲に変える" : "この範囲を枠にする", () => frApply(), "go");
     { const a = refs[frU1], all = a ? flatRows(ecard().sections) : [], sets = frSets(all); const mine = a && a.row.fr ? a.row.fr.slice().reverse() : [];
-      mine.forEach(id => { const f = sets[id]; if (f) add("枠を外す：" + (f.label || "名前なし") + "（" + f.idx.size + "行）", () => frRemove(id)); }); }
+      if (mine.length) H("この行の枠を外す"); mine.forEach(id => { const f = sets[id]; if (f) add("枠を外す：" + (f.label || "名前なし") + "（" + f.idx.size + "行）", () => frRemove(id)); }); }
     add("← 戻る", () => { if (frChg){ const id = frChg; frChg = null; frSelect(id); } else blkGo("0"); });
     return; }
   if (blkLevel === "tree"){
     ttl.textContent = "ツリー作成：文の一部を選んで、押してください（分野は決めません。骨格だけ作って、DBに送ります）";
     const ss = el("div", "selshow"); ss.id = "selShow"; body.before(ss);
-    [["効果にする", "判断"], ["子の要件にする", "子"], ["子の考慮要素にする", "子考"], ["子の解釈基準にする", "子解"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
-    add("選んだ文字を、選択中の行に入れる", () => tFill()).dataset.mk = "入";
+    H("選んだ文字をツリーに入れる"); [["効果にする", "判断"], ["子の要件にする", "子"], ["子の考慮要素にする", "子考"], ["子の解釈基準にする", "子解"], ["並列の要件にする", "並"], ["趣旨にする", "趣旨"]].forEach(([tx, k]) => { add(tx, () => tMark(k)).dataset.mk = k; });
+    H("選択中の行・選び直す"); add("選んだ文字を、選択中の行に入れる", () => tFill()).dataset.mk = "入";
     add("選び直す", () => { try { getSelection().removeAllRanges(); } catch(e){} dbLastSel = null; selShowUpdate(); }); add("← 戻る", () => treeBack());
     selShowUpdate();
     return; }
@@ -1297,11 +1299,11 @@ function msPlan(){
 }
 function msDraw(body, ttl, add){
   const n = msel.length, P = msPlan(); ttl.textContent = n ? "☑ " + n + " 個のブロックを選んでいます（橙の枠）。できる操作だけ押せます。" : "☑ ブロックを選ぶ：PCは Shift＋クリックで範囲、Ctrl＋クリックで追加。もう一度クリックで外れます。";
-  const dis = k => !!P[k], go = (k, t, f, cls) => add(t, f, cls || "", dis(k)).dataset.a = "ms:" + k;
-  go("frame", "枠で囲う（選んだ行をまとめて1つの枠に）", () => msGo("frame"), "go"); go("merge", "1つのブロックに統合", () => msGo("merge")); go("link", "関係線でつなぐ（左の線で繋ぐ）", () => msGo("link"));
-  go("pair", "対応づけ（組にして一緒に光らせる／もう一度で外す）", () => msGo("pair")); go("aud", "音声の有無の切替（選んだブロック全部）", () => msGo("aud")); go("del", "選んだブロックを削除", () => msGo("del"), "dng");
+  const dis = k => !!P[k], go = (k, t, f, cls) => add(t, f, cls || "", dis(k)).dataset.a = "ms:" + k, H = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
+  H("まとめる（枠・統合・関係線・対応づけ）"); go("frame", "枠で囲う（選んだ行をまとめて1つの枠に）", () => msGo("frame"), "go"); go("merge", "1つのブロックに統合", () => msGo("merge")); go("link", "関係線でつなぐ（左の線で繋ぐ）", () => msGo("link"));
+  go("pair", "対応づけ（組にして一緒に光らせる／もう一度で外す）", () => msGo("pair")); H("音声・削除"); go("aud", "音声の有無の切替（選んだブロック全部）", () => msGo("aud")); go("del", "選んだブロックを削除", () => msGo("del"), "dng");
   const why = ["merge", "link", "pair"].filter(k => P[k] && n).map(k => ({ merge: "統合", link: "関係線", pair: "対応づけ" })[k] + "：" + P[k]); if (why.length){ const d = el("div", "small"); d.textContent = "灰色の理由： " + why.join(" ／ "); body.append(d); }
-  if (n === 1) add("このブロックだけ、文を直す・分割・追加する", () => { const u = msel[0]; msel = []; msAnchor = null; const was = msMode; msMode = false; $("blkMs").setAttribute("aria-pressed", "false"); board.classList.remove("msm"); msPaint(); blkMenu(u); }, "").dataset.a = "ms:one";
+  H("選択"); if (n === 1) add("このブロックだけ、文を直す・分割・追加する", () => { const u = msel[0]; msel = []; msAnchor = null; const was = msMode; msMode = false; $("blkMs").setAttribute("aria-pressed", "false"); board.classList.remove("msm"); msPaint(); blkMenu(u); }, "").dataset.a = "ms:one";
   if (n) add("選びなおす（選択だけやめる）", () => { msel = []; msAnchor = null; msAfter(); }).dataset.a = "ms:clear";
   add("選択をやめる", () => msStop()).dataset.a = "ms:off";
 }
@@ -1349,9 +1351,11 @@ function sgDraw(body, ttl, add){
   ttl.textContent = st === 1 ? "⊕⊖でまとめる ①/③ プラス面（理由づけ①②など）のブロックを、タップして選びます（もう一度タップで外れます）。続いた行で、1行に1つのブロックだけ。いま " + n + " 個"
     : st === 2 ? "⊕⊖でまとめる ②/③ マイナス面のブロックを、タップして選びます。プラス面のすぐ上か下の、続いた行です。いま " + n + " 個（プラス面 " + sg.plus.length + " 個は緑の枠）"
     : "⊕⊖でまとめる ③/③ 次の規範のブロックを1つ、タップして選びます（マイナス面・プラス面のすぐ下の行）。なければ『次の規範なし』で。いま " + n + " 個";
+  { const l = el("span", "lab"); l.textContent = "進める・戻る"; body.append(l); }
   if (st === 1) add("次へ（マイナス面を選ぶ）", () => sgNext(), "go", !n).dataset.a = "sg:next";
   if (st === 2){ add("次へ（次の規範を選ぶ）", () => sgNext(), "go", !n).dataset.a = "sg:next"; add("← 戻る（プラス面を選び直す）", () => sgBack()).dataset.a = "sg:back"; }
   if (st === 3){ add("まとめる（次の規範へ矢印を伸ばす）", () => sgGo(true), "go", n !== 1).dataset.a = "sg:go"; add("まとめる（次の規範なし。線だけ）", () => sgGo(false), "", false).dataset.a = "sg:go0"; add("← 戻る（マイナス面を選び直す）", () => sgBack()).dataset.a = "sg:back"; }
+  { const l = el("span", "lab"); l.textContent = "選択"; body.append(l); }
   if (n) add("選びなおす（この段階の選択だけやめる）", () => { msel = []; msAnchor = null; msAfter(); }).dataset.a = "sg:clear";
   add("やめる", () => msStop()).dataset.a = "sg:off";
 }
@@ -2634,7 +2638,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271802";
+const VER = "版 202611271804";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
