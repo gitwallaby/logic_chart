@@ -257,6 +257,7 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .dbbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
 .dbbar input{box-sizing:border-box;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;width:100%;margin-top:4px}
 .dbbar .act{margin-top:6px}.dbbar .tg{font-weight:600}
+.tgchip.tgnot{border-color:#d9534f;color:#d9534f}.tgnotb{font-size:11px;padding:0 6px;margin-left:4px}
 #ncPend{border:2px solid #e0a800;background:rgba(224,168,0,.10);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}#ncPend .nph{font-weight:bold;margin-bottom:4px}#ncPend .npr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}#ncPend input[type=text]{min-width:12em;flex:1}
 .blkbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
 .blkbar .bt{font-weight:600;margin-bottom:5px}.blkbar .tbar{margin:4px 0 4px}.blkbar input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0 4px}
@@ -405,7 +406,7 @@ body{padding-bottom:215px}
     <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">プレイヤー</button><button id="tabCards" role="tab" aria-selected="false">ブラウザ</button></div>
     <section class="panel cbtab" id="cbTab">
     <div class="srch">
-      <div class="cbctl cbtop"><button class="grad" id="ordOpen" type="button" title="カードを並べる順番（並べ方・シャッフルなど）の窓を開く">↕ 表示順</button><button class="grad" id="trashOpen" type="button" hidden title="削除したカードを見て、戻したり完全に消したりする">🗑 ゴミ箱</button><button class="grad" id="fltOpen" type="button" title="科目・進捗・状態・重要度などで、カードを選ぶ窓を開く">🎚 絞り込み</button></div>
+      <div class="cbctl cbtop"><button class="grad" id="ordOpen" type="button" title="カードを並べる順番（並べ方・シャッフルなど）の窓を開く">↕ 表示順</button><button class="grad" id="trashOpen" type="button" hidden title="削除したカードを見て、戻したり完全に消したりする">🗑 ゴミ箱</button><button class="grad" id="fltOpen" type="button" hidden style="display:none" aria-hidden="true"></button></div>
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo" type="button" aria-label="検索" title="検索">🔍</button><button id="tqMode" type="button" aria-pressed="false" title="タグで探す（押すと、ワード検索とタグ検索が切り替わります）">タグ検索</button><button id="impOpen" title="取り込みの小窓を開く">📥 インポート</button><button id="qX" hidden>解除</button></div>
       <div class="qrow tgrow" id="tagRow" hidden><button id="tagPick" type="button">タグを選択</button><span class="small" id="tagSumm"></span></div>
       <div class="tsug" id="tagSug" hidden></div>
@@ -664,7 +665,9 @@ let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts 
 let S = { decks:{}, imps:[1,2,3], shuffle:true, rate:1, grad:{}, last:null, ord:{}, heard:{}, mode:"imp", edits:[], imp:{}, deckOv:{}, hide:"all", hideDef:0, think:0, tx:{}, cv:{}, edAu:"vv", rd:{}, kian:{}, memo:{}, kov:{}, kx:{}, pl:{}, cs:{}, scope:"filter", csSel:[], tags:{}, tagSel:[], tagMode:"any", q:"", rev:{}, pg:{}, pgSel:[], pgBak:null, tagQ:"", cdel:{}, delBak:{}, log:{}, auto:true, weak:false, ts:{}, gcid:"", gLast:0, newCards:{}, gate:false, dbq:{}, tree:{}, dbPlace:null };
 try { const _raw = JSON.parse(localStorage.getItem("rp_set") || "{}"); Object.assign(S, _raw); if (_raw.plOn && !_raw.scope) S.scope = "pl"; } catch(e){}
 delete S.plOn; delete S.auOnly;      /* 前の版の「この再生順で再生する」と「音声ありだけ」は使わない（再生する範囲の選択に置き換え） */
-if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
+if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }
+if (!S.tagNotDef){ S.tagNot = S.noG !== false ? ["進捗：自信あり"] : []; S.tagNotDef = 1; }   /* CL17=B: 窓の「自信あり◎を外す」を、除くタグの既定に移す（1回だけ） */
+if (!Array.isArray(S.tagNot)) S.tagNot = [];          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 function save(){ try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){} }
 /* 「いつ直したか」の記録：S.ts["種類:カード番号"] = 直した時刻。Googleドライブの同期で、時刻が新しい方を残すのに使う */
 function st(kind, id){ S.ts[kind + ":" + id] = Date.now(); }
@@ -1851,7 +1854,7 @@ function baseList(reshuffle, nofilter){
       } else order = shuffled(fresh).concat(prev);
       S.ord[k] = order; g = order.map(id => at[id]);
     }
-    res.push(...g.filter(i => { const c = CARDS[i]; return nofilter || (S.imps.includes(impOf(c)) && S.decks[deckOf(c)] !== false && (!S.weak || weak(c)) && pgOk(c) && csOk(c) && tagOk(c) && qOk(c)); }));
+    res.push(...g.filter(i => { const c = CARDS[i]; return nofilter || (tagNotOk(c) && tagOk(c) && qOk(c)); }));          /* CL17=B: 絞り込みの窓はやめ、科目・重要度・進捗・状態もタグの条件だけで絞る（窓の古い設定 S.imps・S.decks・S.pgSel・S.csSel・S.weak は消さずに残すが、使わない） */
   });
   return res;
 }
@@ -1906,16 +1909,23 @@ function tagOk(c){ return tagQok(c) && tagOk0(c); }
 function tagOk0(c){
   if (!S.tagSel.length) return true; const t = tagsForFilter(c), nt = allTagsOf(c);
   const has = k => k === NOTAG ? !nt.length : t.includes(k);
-  return S.tagMode === "all" ? S.tagSel.every(has) : S.tagSel.some(has);
+  /* 選択式のタグ（科目・重要度・進捗・状態）は、同じ種類の中では「どれか」、種類どうしは「全部」。自分のタグ・自動タグは、これまでどおり「どれか／全部」の切り替えに従う */
+  const sys = S.tagSel.filter(k => k !== NOTAG && isSysTag(k)), own = S.tagSel.filter(k => !(k !== NOTAG && isSysTag(k)));
+  const groups = {}; sys.forEach(k => { const g = SYSP.find(x => k.startsWith(x)); (groups[g] = groups[g] || []).push(k); });
+  if (!Object.keys(groups).every(g => groups[g].some(has))) return false;
+  if (!own.length) return true;
+  return S.tagMode === "all" ? own.every(has) : own.some(has);
 }
+/* 除くタグ（S.tagNot）：このタグが付いたカードを外す。既定は「進捗：自信あり」（自信あり◎のカードを再生から外す）。チップの×で外せ、タグの一覧の「除く」で戻せる */
+function pgTagG(){ return "進捗：" + PGL.g.replace(/[×△○◎]/g, ""); }
+function tagNotOk(c){ if (!S.tagNot || !S.tagNot.length) return true; const t = tagsForFilter(c); return !S.tagNot.some(k => t.includes(k)); }
+function tagNotSet(t, on){ S.tagNot = (S.tagNot || []).filter(x => x !== t); if (on) S.tagNot.push(t); S.tagSel = S.tagSel.filter(x => !(on && x === t)); save(); renderTagFilter(); refilter(); }
 let lastNone = false;
 function filtText(){
   const f = []; if (S.q) f.push("検索「" + S.q + "」");
   if (S.tagQ) f.push("タグ検索「" + S.tagQ + "」");
   if (S.tagSel.length) f.push("タグ「" + S.tagSel.map(t => t === NOTAG ? "タグなし" : t).join("、") + "」");
-  const off = Object.keys(S.decks).filter(k => S.decks[k] === false); if (off.length) f.push("科目 " + off.length + " 個を外す");
-  if (S.imps.slice().sort().join() !== "1,2,3") f.push("重要度 " + S.imps.join("・"));
-  if (S.pgSel.length) f.push("進捗 " + S.pgSel.map(k => PGL[k]).join("・")); else if (noG()) f.push("自信あり◎を除く"); if (S.weak) f.push("×か△のみ"); if (S.csSel.length) f.push("状態 " + S.csSel.map(k => CSL[k]).join("・"));
+  if (S.tagNot && S.tagNot.length) f.push("除く「" + S.tagNot.join("、") + "」");
   return f.length ? f.join(" ＋ ") : "絞り込みなし";
 }
 function plSum(){
@@ -1952,6 +1962,8 @@ function renderTagFilter(){
   if (S.tagQ){ const b = el("button", "tgchip"); b.type = "button"; b.textContent = "タグ検索「" + S.tagQ + "」を含む ×"; b.setAttribute("aria-label", "タグ検索の言葉を外す"); b.onclick = () => { S.tagQ = ""; if (tqOn) $("qIn").value = ""; save(); renderTagFilter(); refilter(); renderTagSug(); }; ch.append(b); }
   S.tagSel.forEach(t => { const nm = t === NOTAG ? "タグなし" : t, b = el("button", "tgchip"); b.type = "button"; b.textContent = nm + " ×"; b.setAttribute("aria-label", nm + " の選択を外す");
     b.onclick = () => { S.tagSel = S.tagSel.filter(v => v !== t); save(); renderTagFilter(); refilter(); }; ch.append(b); });
+  (S.tagNot || []).forEach(t => { const b = el("button", "tgchip tgnot"); b.type = "button"; b.textContent = "除く：" + t + " ×"; b.setAttribute("aria-label", t + " を除く条件を外す"); b.onclick = () => tagNotSet(t, false); ch.append(b); });
+  if (!(S.tagNot || []).includes(pgTagG())){ const b = el("button", "tgchip"); b.type = "button"; b.id = "tagNotDef"; b.textContent = "＋自信あり◎を除く（既定にもどす）"; b.onclick = () => tagNotSet(pgTagG(), true); ch.append(b); }
   $("tagModeNote").textContent = S.tagMode === "all" ? "（いまは: 選んだタグが全部ついているカードに絞ります）" : "（いまは: 選んだタグのどれか1つでもついているカードに絞ります）";
   if (!tagOpen) return;
   const q = normQ($("tqIn").value).replace(/[\s\u3000]+/g, ""), match = t => !q || normQ(t).replace(/[\s\u3000]+/g, "").includes(q);
@@ -1959,7 +1971,9 @@ function renderTagFilter(){
   const none = CARDS.filter(c => !allTagsOf(c).length).length, box = $("tagList"); box.innerHTML = "";
   const item = (t, label, cnt) => { const l = el("label", "tgi"), i = el("input"); i.type = "checkbox"; i.checked = S.tagSel.includes(t);
     i.onchange = () => { S.tagSel = i.checked ? S.tagSel.concat([t]) : S.tagSel.filter(v => v !== t); save(); renderTagFilter(); refilter(); };
-    const sp = el("span", "small"); sp.textContent = " " + cnt + "枚"; l.append(i, document.createTextNode(" " + label), sp); return l; };
+    const sp = el("span", "small"); sp.textContent = " " + cnt + "枚"; l.append(i, document.createTextNode(" " + label), sp);
+    if (t !== NOTAG){ const nb = el("button", "tgnotb"); nb.type = "button"; const isN = (S.tagNot || []).includes(t); nb.textContent = isN ? "除く中（戻す）" : "除く"; nb.setAttribute("aria-pressed", isN ? "true" : "false"); nb.title = "このタグが付いたカードを外す"; nb.onclick = e => { e.preventDefault(); e.stopPropagation(); tagNotSet(t, !isN); }; l.append(document.createTextNode(" "), nb); }
+    return l; };
   if (match("タグなし")) box.append(item(NOTAG, "タグなし", none));
   [["自分のタグ", names.filter(t => own.has(t) && !isSysTag(t) && match(t))], ["選択式のタグ（進捗・状態・重要度・科目。1枚に1つずつ）", names.filter(t => isSysTag(t) && match(t))], ["自動タグ（出題・関連判例）", names.filter(t => !own.has(t) && !isSysTag(t) && match(t))]].forEach(([h, arr]) => {
     if (!arr.length) return; const hh = el("div", "tgh"); hh.textContent = h + "（" + arr.length + "）"; box.append(hh);
@@ -2620,7 +2634,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271759";
+const VER = "版 202611271802";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -3095,15 +3109,30 @@ function kYear(name){
 }
 /* 論証名とカード題名のゆるい一致: ①完全一致 ②【 】・( )・（ ）の付いた部分と「」・句読点を無視して一致 ③どちらかがもう一方で始まる(短い方が5文字以上で、候補が1枚だけのとき) */
 function kLoose(t){ return kn(t).replace(/【[^】]*】|\([^)]*\)|（[^）]*）/g, "").replace(/[「」『』“”"'・、。,.\-ー〜~]/g, ""); }
-function kFind(nm){
-  const k = kn(nm); if (!k) return null; const B = KMAP.byTitle; if (B[k]) return B[k][0];
-  const l = kLoose(nm); if (l && KMAP.loose[l]) return KMAP.loose[l][0];
-  if (l.length >= 5){ const hit = []; Object.keys(KMAP.loose).forEach(x => { if (x.length >= 5 && (x.startsWith(l) || l.startsWith(x))) hit.push(x); }); if (hit.length === 1) return KMAP.loose[hit[0]][0]; }
+/* ⑪の強化（g202611271751）: ④ 「の成否」「について」「の可否」などの言い回しと「論点」「問題」の語を除いて比べる ⑤ それでも無ければ、起案スプシのファイル名の科目コード(cri など)で科目を絞り、文字の並び(2文字ずつ)の似ている度合いで一番近いカードを選ぶ(0.72以上で、2番目と0.08以上の差があるときだけ) */
+const KSUBJ = { con: ["憲法"], adm: ["行政法"], civ: ["民法"], com: ["商法"], cvp: ["民訴法", "民事訴訟法"], cri: ["刑法"], crp: ["刑訴法", "刑事訴訟法"], prc: ["民事実務", "要件事実"], prk: ["刑事実務"], lab: ["労働法"] };
+function kSubj(src){ const m = String(src || "").match(/_(con|adm|civ|com|cvp|cri|crp|prc|prk|lab)(?![a-z])/i); return m ? KSUBJ[m[1].toLowerCase()] : null; }
+function kCore(t){ return kLoose(t).replace(/(の)?(成否|可否|成立要件|意義|判断基準|について|とは|の問題|問題|論点)$/g, "").replace(/^(論点|問題)/, "").replace(/における|に関する|についての|に対する|における|による|の|は|が|を|と|に/g, ""); }   /* 助詞を除く（比べるためだけ） */
+function kBig(t){ const a = []; for (let i = 0; i < t.length - 1; i++) a.push(t.slice(i, i + 2)); return a.length ? a : [t]; }
+function kDice(a, b){ const A = kBig(a), B = kBig(b), m = {}; A.forEach(x => m[x] = (m[x] || 0) + 1); let n = 0; B.forEach(x => { if (m[x]){ m[x]--; n++; } }); return 2 * n / (A.length + B.length); }
+function kFind(nm, src){ const r = kFindHow(nm, src); return r ? r.c : null; }
+function kFindHow(nm, src){
+  const k = kn(nm); if (!k || !KMAP) return null; const B = KMAP.byTitle; if (B[k]) return { c: B[k][0], how: "same" };
+  const l = kLoose(nm); if (l && KMAP.loose[l]) return { c: KMAP.loose[l][0], how: "loose" };
+  if (l.length >= 5){ const hit = []; Object.keys(KMAP.loose).forEach(x => { if (x.length >= 5 && (x.startsWith(l) || l.startsWith(x))) hit.push(x); }); if (hit.length === 1) return { c: KMAP.loose[hit[0]][0], how: "prefix" }; }
+  const cr = kCore(nm); if (cr.length >= 3 && KMAP.core[cr] && KMAP.core[cr].length === 1) return { c: KMAP.core[cr][0], how: "core" };
+  const sub = kSubj(src), pool = KMAP.ref.filter(c => !sub || sub.includes(deckOf(c)) || sub.includes(c.deck));
+  if (cr.length < 3 || !pool.length) return null;
+  let best = null, b1 = 0, b2 = 0; pool.forEach(c => { const v = kDice(cr, kCore(c.title)); if (v > b1){ b2 = b1; b1 = v; best = c; } else if (v > b2) b2 = v; });
+  if (best && b1 >= 0.72 && b1 - b2 >= 0.08) return { c: best, how: "near", score: Math.round(b1 * 100) / 100 };
   return null;
 }
-function kBuild(){ const byTitle = {}, loose = {}; CARDS.forEach(c => { const k = kn(c.title); (byTitle[k] = byTitle[k] || []).push(c); const l = kLoose(c.title); if (l) (loose[l] = loose[l] || []).push(c); });
-  KMAP = { byTitle, loose, per: {}, ref: CARDS };
-  Object.keys(S.kian || {}).forEach(src => { const d = S.kian[src]; (d.rows || []).forEach(r => { const seen = {}; (r.ro || []).forEach(nm => { const c = kFind(nm); if (c && !seen[c.id]) { seen[c.id] = 1; const arr = (KMAP.per[c.id] = KMAP.per[c.id] || []); const ek0 = src + "|" + kn(r.q).slice(0, 40), nn = arr.filter(x => x.src === src && x.ek0 === ek0).length; arr.push({ src, ek0, ek: nn ? ek0 + "|" + (nn + 1) : ek0, yr: r.yr || d.yr || "", r }); } }); }); }); }
+/* 見つからない論証名に、近い題名のカードを3つまで出す（取り込み結果の一覧用。自動では結びつけない） */
+function kNear(nm, src){ const cr = kCore(nm); if (!cr || !KMAP) return []; const sub = kSubj(src);
+  return KMAP.ref.filter(c => !sub || sub.includes(deckOf(c)) || sub.includes(c.deck)).map(c => ({ c, v: kDice(cr, kCore(c.title)) })).filter(x => x.v >= 0.3).sort((a, b) => b.v - a.v).slice(0, 3).map(x => x.c.title); }
+function kBuild(){ const byTitle = {}, loose = {}, core = {}; CARDS.forEach(c => { const k = kn(c.title); (byTitle[k] = byTitle[k] || []).push(c); const l = kLoose(c.title); if (l) (loose[l] = loose[l] || []).push(c); const cr = kCore(c.title); if (cr) (core[cr] = core[cr] || []).push(c); });
+  KMAP = { byTitle, loose, core, per: {}, ref: CARDS };
+  Object.keys(S.kian || {}).forEach(src => { const d = S.kian[src]; (d.rows || []).forEach(r => { const seen = {}; (r.ro || []).forEach(nm => { const c = kFind(nm, src); if (c && !seen[c.id]) { seen[c.id] = 1; const arr = (KMAP.per[c.id] = KMAP.per[c.id] || []); const ek0 = src + "|" + kn(r.q).slice(0, 40), nn = arr.filter(x => x.src === src && x.ek0 === ek0).length; arr.push({ src, ek0, ek: nn ? ek0 + "|" + (nn + 1) : ek0, yr: r.yr || d.yr || "", r }); } }); }); }); }
 function kImport(text, fname){
   const rows = csvParse(text); if (rows.length < 2) throw new Error("データの行がありません（1行目は列の名前です）。");
   const head = rows[0].map(h => String(h).normalize("NFKC")), col = (re, idx) => head.findIndex((h, i) => re.test(h) && (idx == null || (h.match(/([1-3])\s*$/) || [])[1] === String(idx)));
@@ -3118,10 +3147,22 @@ function kImport(text, fname){
     if (o.ro.length || o.q || o.fa) out.push(o); });
   const src = String(fname || "起案チェック").replace(/\.[A-Za-z0-9]+$/, "");
   if (!S.kian) S.kian = {}; S.kian[src] = { yr: kYear(src), at: Date.now(), rows: out }; st("kian", src); save(); kBuild();
-  const miss = []; let hit = 0; out.forEach(o => o.ro.forEach(nm => { if (kFind(nm)) hit++; else miss.push(nm); }));
-  let auto = 0; out.forEach(o => o.ro.forEach(nm => { const c = kFind(nm); if (c){ if (!(S.cs && S.cs[c.id])){ csSet(c, "c"); auto++; } } }));
+  const miss = [], near = []; let hit = 0; out.forEach(o => o.ro.forEach(nm => { const f = kFindHow(nm, src); if (f){ hit++; if (f.how === "near") near.push({ nm, t: f.c.title, v: f.score }); } else miss.push(nm); }));
+  let auto = 0; out.forEach(o => o.ro.forEach(nm => { const c = kFind(nm, src); if (c){ if (!(S.cs && S.cs[c.id])){ csSet(c, "c"); auto++; } } }));
   let kept = 0; Object.keys(KMAP.per).forEach(id => (KMAP.per[id] || []).forEach(e => { if (S.kov && S.kov[id] && S.kov[id][e.ek]) kept++; }));
-  return { auto, kept, src, n: out.length, hit, miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
+  const nearU = []; near.forEach(x => { if (!nearU.some(y => y.nm === x.nm)) nearU.push(x); });
+  return { auto, kept, src, n: out.length, hit, near: nearU, missNear: [...new Set(miss)].map(nm => ({ nm, cand: kNear(nm, src) })), miss: [...new Set(miss)], yr: S.kian[src].yr, urlCols: hu.some(i => i >= 0), pathCols: hp.some(i => i >= 0) };
+}
+/* 取り込み結果の一覧：見つからない論証名（近い題名の候補つき）と、近い題名で結びつけたもの。「一覧をコピー」で、そのまま司令塔に貼れる */
+function kResultList(out, r){
+  const box = el("div", "kres"); const lines = [];
+  if (r.miss.length){ const h = el("div"); h.innerHTML = "<b>カードが見つからない論証名（" + r.miss.length + " 件）</b>"; box.append(h); const ul = el("ul");
+    r.missNear.forEach(x => { const li = el("li"); li.textContent = x.nm + (x.cand.length ? "　→ 近い題名：" + x.cand.join(" ／ ") : "　→ 近い題名なし"); ul.append(li); lines.push("・" + x.nm + (x.cand.length ? "（近い題名：" + x.cand.join(" ／ ") + "）" : "（近い題名なし）")); }); box.append(ul); }
+  if (r.near && r.near.length){ const h = el("div"); h.innerHTML = "<b>近い題名で結びつけた論証名（" + r.near.length + " 件。違っていたら司令塔へ）</b>"; box.append(h); const ul = el("ul");
+    r.near.forEach(x => { const li = el("li"); li.textContent = x.nm + "　→ " + x.t; ul.append(li); lines.push("・[近い題名で結んだ] " + x.nm + " → " + x.t); }); box.append(ul); }
+  if (!lines.length){ const p = el("div"); p.textContent = "論証名は全部カードに結びつきました。"; box.append(p); }
+  else { const b = el("button"); b.type = "button"; b.textContent = "この一覧をコピー"; b.onclick = () => kCopy("起案チェックの取り込み結果（" + r.src + "）\n" + lines.join("\n")); box.append(b); }
+  out.append(box);
 }
 function kCopy(t){ const done = () => toast("コピーしました", "ok", 2500);
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => kCopyOld(t, done)); else kCopyOld(t, done); }
@@ -3214,7 +3255,8 @@ function renderKian(){
 $("kIn").onclick = () => $("kFile").click();
 $("kFile").onchange = async e => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const out = $("kMsg"); out.textContent = "読み込み中…";
   try { const buf = await f.arrayBuffer(); let text; try { text = new TextDecoder("utf-8", { fatal: true }).decode(buf); } catch(e2){ text = new TextDecoder("shift_jis").decode(buf); }
-    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + "。確認中にしたカード：" + r.auto + " 枚（まだ状態の記録が無かったカードだけ）" + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.join("、") : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.kept ? "。直した項目のある " + r.kept + " 件は、直した内容をそのまま残しました" : "") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
+    const r = kImport(text, f.name); out.textContent = "✔ 「" + r.src + "」から " + r.n + " 行を取り込みました。論証をカードに結びつけた数：" + r.hit + "。確認中にしたカード：" + r.auto + " 枚（まだ状態の記録が無かったカードだけ）" + (r.miss.length ? "。カードが見つからない論証名：" + r.miss.length + " 件（下の一覧）" : "") + (r.yr ? "。出題年度（ファイル名から）：" + r.yr : "。出題年度はファイル名から分かりませんでした（列『出題年度』を足すと出ます）") + (r.kept ? "。直した項目のある " + r.kept + " 件は、直した内容をそのまま残しました" : "") + (r.pathCols ? "" : "。判例のパス列（判例パス1〜3）が無いので、判例は名前だけ出て、押してもコピーできません") + "。";
+    kResultList(out, r);
     toast("起案チェックを取り込みました", "ok"); renderCs(); renderKian(); renderTags(true); renderTagFilter(); refilter();
   } catch(err){ out.textContent = "取り込めませんでした：" + (err && err.message || err); toast("取り込めませんでした", "ng"); } };
 $("kClr").onclick = () => { if (!S.kian || !Object.keys(S.kian).length){ $("kMsg").textContent = "起案チェックのデータは、ありません。"; return; } if (!confirm("取り込んだ起案チェックのデータを、全部消します（同期すると、ほかの端末からも消えます）。よろしいですか？")) return; Object.keys(S.kian).forEach(k => st("kian", k)); S.kian = {}; save(); kBuild(); renderKian(); renderTags(true); renderTagFilter(); refilter(); $("kMsg").textContent = "消しました。"; };
