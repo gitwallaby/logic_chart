@@ -151,7 +151,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
 .tabs{display:flex;gap:6px;margin:8px 0 0}.tabs button{flex:1;font:inherit;padding:8px 6px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tabs button[aria-selected=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}
 #app.cb > *:not(.tabs):not(#cbTab){display:none!important}#app:not(.cb) #cbTab{display:none}
-.cbv button[aria-pressed=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}.plnote{color:#e8c070}.plr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid var(--barline);padding:5px 0;font-size:13px}.plr .pn{width:2.2em;text-align:right;color:var(--sub)}.plr .pt{flex:1;min-width:8rem}.plr.off .pt{text-decoration:line-through;opacity:.55}
+.cbv button[aria-pressed=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}.plnote{color:#e8c070}.plh{cursor:grab;touch-action:none;user-select:none;padding:4px 8px;font-size:18px;color:#9fb3a0;border-radius:4px;background:rgba(255,255,255,.05)}.plr.sel{background:rgba(120,170,230,.14)}.plr.drag{opacity:.45}.plr.dropb{box-shadow:0 -3px 0 0 #6fc3ff}.plr.dropa{box-shadow:0 3px 0 0 #6fc3ff}.plr input.plsel{width:20px;height:20px}.plr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid var(--barline);padding:5px 0;font-size:13px}.plr .pn{width:2.2em;text-align:right;color:var(--sub)}.plr .pt{flex:1;min-width:8rem}.plr.off .pt{text-decoration:line-through;opacity:.55}
 .plsum{margin:8px 0;font-size:13px}.plsum button{margin-left:6px}
 .cbctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0}.cbctl input[type=search]{flex:1;min-width:12rem;box-sizing:border-box;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
 .cbwrap{overflow:auto;max-height:70vh;border:1px solid var(--barline);border-radius:8px}.cbt{border-collapse:collapse;width:100%;font-size:13px}.cbt th,.cbt td{border-bottom:1px solid var(--barline);padding:6px 8px;text-align:left;vertical-align:top}
@@ -2412,7 +2412,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271425";
+const VER = "版 202611271454";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -3135,13 +3135,48 @@ function renderPl(){
   if (plAsk){ const a = el("div", "plask"); a.id = "plAsk"; const t = el("span"); t.textContent = "いまの再生順（" + d.ids.length + " 枚）を、確認中の " + plAsk.length + " 枚で作り直します。よろしいですか？"; const y = el("button", "grad"); y.type = "button"; y.id = "plAskYes"; y.textContent = "上書きする"; y.onclick = () => { const ids = plAsk; plAsk = null; plCsApply(ids); };
     const nn = el("button", "grad"); nn.type = "button"; nn.id = "plAskNo"; nn.textContent = "やめる"; nn.onclick = () => { plAsk = null; renderPl(); }; a.append(t, y, nn); v.append(a); }
   const n = el("p", "small"); n.textContent = d.ids.length ? d.ids.length + " 枚（今回は外す " + d.off.length + " 枚）。変更は自動で保存され、「☁ Googleドライブと同期」で他の端末にも入ります。「一覧」の表でカードを選んで「再生順の先頭（最後）に追加」でも入れられます。" : "まだ空です。「いまの絞り込みから作る」「確認中だけで再生順を作る」か、「一覧」の表でカードを選んで追加してください。"; v.append(n);
-  d.ids.forEach((id, k) => { const r = el("div", "plr" + (d.off.includes(id) ? " off" : "")), no = el("span", "pn"); no.textContent = String(k + 1);
+  plSel.forEach(id => { if (!d.ids.includes(id)) plSel.delete(id); });
+  const sb = el("div", "cbctl"); sb.id = "plSelBar";
+  const sl = el("span", "small"); sl.id = "plSelN"; sl.textContent = plSel.size ? "選択中 " + plSel.size + " 枚（⠿ をドラッグして、カードとカードの間に落とすと、まとめて移ります）" : "カードを選ぶ(☐)と、まとめて動かせます。選ばずに ⠿ をドラッグすると、そのカード1枚だけ動きます。";
+  const sa = el("button", "grad"); sa.type = "button"; sa.id = "plSelAll"; sa.textContent = "全部選ぶ"; sa.onclick = () => { d.ids.forEach(i => plSel.add(i)); renderPl(); };
+  const sc0 = el("button", "grad"); sc0.type = "button"; sc0.id = "plSelClr"; sc0.textContent = "選択を解除"; sc0.disabled = !plSel.size; sc0.onclick = () => { plSel.clear(); renderPl(); };
+  sb.append(sl, sa, sc0); v.append(sb);
+  const lst = el("div", "pllist"); lst.id = "plList"; v.append(lst);
+  d.ids.forEach((id, k) => { const r = el("div", "plr" + (d.off.includes(id) ? " off" : "") + (plSel.has(id) ? " sel" : "")), no = el("span", "pn"); no.textContent = String(k + 1); r.dataset.id = id;
+    const h = el("span", "plh"); h.textContent = "⠿"; h.setAttribute("aria-label", plTitle(id) + "を動かす（ドラッグ）"); h.title = "ドラッグして動かす"; h.onpointerdown = e => plDragStart(e, id, r);
+    const sk = el("input"); sk.type = "checkbox"; sk.className = "plsel"; sk.checked = plSel.has(id); sk.setAttribute("aria-label", plTitle(id) + "を選ぶ"); sk.onchange = () => { if (sk.checked) plSel.add(id); else plSel.delete(id); r.classList.toggle("sel", sk.checked); sl.textContent = plSel.size ? "選択中 " + plSel.size + " 枚（⠿ をドラッグして、カードとカードの間に落とすと、まとめて移ります）" : "カードを選ぶ(☐)と、まとめて動かせます。選ばずに ⠿ をドラッグすると、そのカード1枚だけ動きます。"; sc0.disabled = !plSel.size; };
     const t = el("span", "pt"); t.textContent = plTitle(id);
-    const mv = (lbl, dk) => { const b = el("button", "grad"); b.type = "button"; b.textContent = lbl; b.setAttribute("aria-label", plTitle(id) + "を" + (dk < 0 ? "上へ" : "下へ")); b.disabled = k + dk < 0 || k + dk >= d.ids.length;
-      b.onclick = () => { const a = d.ids.slice(); [a[k], a[k + dk]] = [a[k + dk], a[k]]; plPut({ ids: a, off: d.off }); }; return b; };
     const ol = el("label"), oc = el("input"); oc.type = "checkbox"; oc.checked = d.off.includes(id); ol.append(oc, document.createTextNode("今回は外す")); oc.onchange = () => plPut({ ids: d.ids, off: oc.checked ? d.off.concat([id]) : d.off.filter(x => x !== id) });
     const x = el("button", "grad"); x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label", plTitle(id) + "を再生順から消す"); x.onclick = () => plPut({ ids: d.ids.filter(v => v !== id), off: d.off });
-    r.append(no, t, mv("↑", -1), mv("↓", 1), ol, x); v.append(r); });
+    r.append(h, sk, no, t, ol, x); lst.append(r); });
+  const endz = el("div", "plend"); endz.id = "plEnd"; endz.textContent = d.ids.length ? "（最後）" : ""; lst.append(endz);
+}
+/* 並べ替え（ドラッグ）：選んだカード（無ければ持ったカード1枚）を、カードとカードの『間』へまとめて移す。移したあとの順は元の並びのまま */
+const plSel = new Set();
+function plMoveIds(ids, moving, pos){ /* pos = 移す前の配列での挿入位置（0=先頭の前、ids.length=最後の後） */
+  const ms = new Set(moving), mv = ids.filter(x => ms.has(x)), rest = ids.filter(x => !ms.has(x));
+  let k = 0; for (let i = 0; i < pos && i < ids.length; i++) if (!ms.has(ids[i])) k++;
+  return rest.slice(0, k).concat(mv, rest.slice(k));
+}
+let plDrag = null;
+function plDropPos(y){ const rows = [...document.querySelectorAll("#plList .plr")]; let pos = rows.length;
+  for (let i = 0; i < rows.length; i++){ const r = rows[i].getBoundingClientRect(); if (y < r.top + r.height / 2){ pos = i; break; } } return pos; }
+function plMark(pos){ const rows = [...document.querySelectorAll("#plList .plr")]; rows.forEach(r => r.classList.remove("dropb", "dropa")); const e = $("plEnd"); if (e) e.classList.remove("dropb");
+  if (pos < rows.length) rows[pos].classList.add("dropb"); else if (rows.length) rows[rows.length - 1].classList.add("dropa"); }
+function plDragStart(e, id, row){ if (e.button != null && e.button > 0) return; e.preventDefault();
+  const d = plData(), moving = plSel.has(id) ? d.ids.filter(x => plSel.has(x)) : [id];
+  plDrag = { moving, pos: -1, pid: e.pointerId, h: e.currentTarget }; try { e.currentTarget.setPointerCapture(e.pointerId); } catch(_){}
+  document.querySelectorAll("#plList .plr").forEach(r => r.classList.toggle("drag", moving.includes(r.dataset.id)));
+  const box = $("ordDlg").querySelector(".ovlbox");
+  const mvf = ev => { if (!plDrag) return; ev.preventDefault(); plDrag.pos = plDropPos(ev.clientY); plMark(plDrag.pos);
+    const H = window.innerHeight; if (ev.clientY < 60) { box.scrollTop -= 14; window.scrollBy(0, -14); } else if (ev.clientY > H - 60) { box.scrollTop += 14; window.scrollBy(0, 14); } };
+  const up = ev => { h.removeEventListener("pointermove", mvf); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", cancel); fin(ev, true); };
+  const cancel = ev => { h.removeEventListener("pointermove", mvf); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", cancel); fin(ev, false); };
+  const h = plDrag.h;
+  const fin = (ev, ok) => { const dr = plDrag; plDrag = null; document.querySelectorAll("#plList .plr").forEach(r => r.classList.remove("drag", "dropb", "dropa"));
+    if (!ok || !dr || dr.pos < 0) return; const dd = plData(); const out = plMoveIds(dd.ids, dr.moving.filter(x => dd.ids.includes(x)), dr.pos);
+    if (out.join("\u0001") === dd.ids.join("\u0001")) return; plPut({ ids: out, off: dd.off }); toast(dr.moving.length + " 枚を移しました", "ok", 1800); };
+  h.addEventListener("pointermove", mvf); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", cancel);
 }
 function setTab(t){ const cards = t === "cards"; $("app").classList.toggle("cb", cards);
   $("tabPlay").setAttribute("aria-selected", cards ? "false" : "true"); $("tabCards").setAttribute("aria-selected", cards ? "true" : "false");
