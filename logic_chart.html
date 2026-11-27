@@ -373,6 +373,9 @@ body{padding-bottom:215px}
 .panel>.sech:first-of-type{margin-top:4px}
 #title .np{font-size:.62em;font-weight:500;color:var(--sub);margin-right:.35em}
 .csbar{display:flex;gap:6px;margin:6px 0}.csbar .cs{flex:1;min-height:42px;font:inherit;font-size:14px;border-radius:10px;border:2px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer;padding:6px 4px}
+.board.msm .blk,.blk.msel{position:relative}.board.msm .blk{cursor:pointer}.board.msm .blk::before{content:"\2610";position:absolute;left:-4px;top:-4px;z-index:3;font-size:18px;line-height:1;color:#ff9f43;background:#222;border-radius:4px;padding:0 3px}
+.blk.msel{outline:3px solid #ff9f43;outline-offset:2px;background:rgba(255,159,67,.16)}.board.msm .blk.msel::before{content:"\2611"}
+.blkbar .tbar button[aria-pressed="true"]{background:#ff9f43;color:#111;border-color:#ff9f43}
 .csbar .cs.on{font-weight:bold;color:#111}.csbar .pg-n.on{background:#c9ced6;border-color:#8b929e}.csbar .pg-x.on{background:#ff9a8a;border-color:#d1493a}.csbar .pg-d.on{background:#ffd966;border-color:#c99a00}.csbar .pg-o.on{background:#9fd3ff;border-color:#3a8fd1}.csbar .pg-g.on{background:#8fe0a6;border-color:#2f9e55}.csbar .cs-u.on{background:#c9ced6;border-color:#8b929e}.csbar .cs-c.on{background:#ffd966;border-color:#c99a00}.csbar .cs-m.on{background:#ff9a8a;border-color:#d1493a}.csbar .cs-d.on{background:#8fe0a6;border-color:#2f9e55}
 .csb{display:inline-block;border-radius:99px;padding:1px 9px;font-size:12px;border:1px solid var(--btnline)}.csb-c{background:#ffd966;color:#111}.csb-m{background:#ff9a8a;color:#111}.csb-d{background:#8fe0a6;color:#111}.csb-u{background:transparent}
 .scopelab{font-size:13px;margin-right:8px}.plask{margin:8px 0;padding:8px;border:1px solid #c99a00;border-radius:8px;font-size:13px}.plask button{margin-left:6px}
@@ -548,7 +551,7 @@ body{padding-bottom:215px}
       <div class="bt" id="blkTitle"></div>
       <div class="tbar" id="blkBody"></div>
       <p class="small" id="editMsg"></p>
-      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkUndo">未同期の直しを全部取消し</button><button class="go" id="blkEnd" title="編集モードを終わります。打ちかけの文があれば、自動で保存してから終わります">編集モードを終わる</button></div>
+      <div class="tbar"><button id="ncEdit" hidden>元の文章を書き直す</button><button id="blkMs" aria-pressed="false" title="ブロックを複数まとめて選び、枠・統合・関係線・対応づけ・音声の有無・削除をします（PCは Shift＋クリックでも）">☑ 複数選択</button><button id="blkUndo">未同期の直しを全部取消し</button><button class="go" id="blkEnd" title="編集モードを終わります。打ちかけの文があれば、自動で保存してから終わります">編集モードを終わる</button></div>
     </div>
     <section class="tsheet" id="treeBox" hidden data-sz="1" aria-label="ツリーのプレビュー">
       <div class="th"><b id="treeSum">ツリー</b><span class="sp"></span><button id="treeDb" title="このカードのツリーを、DB（判断ロジックツリー）の画面で開きます">🌳 DBで開く ↗</button><button id="treeSize">たたむ</button><button id="treeClose">✕ 閉じる</button></div>
@@ -798,6 +801,7 @@ function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({},
    refs[u] = u番目の文が、図のどこにあるか { p:文, b:ブロック, row:行, sec:区切り } */
 let secEd = -1;
 let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0, treeOpen = false, treeSz = 1, treeFlash = 0;
+let msMode = false, msel = [], msAnchor = null, msCard = null;
 let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
 function edited(c){ return !!S.cv[c.id]; }
 /* 読み手：vv＝PCで作ったVOICEVOXの音声、tts＝端末の読み上げ（Edgeなら Microsoft の声）。カードごとに選べる。選んでいなければ、文言を直したカードは tts、そのほかは vv */
@@ -1006,6 +1010,7 @@ function commit(){
 function closeEd(){ board.querySelectorAll(".edtag").forEach(x => x.remove()); edEl = null; edU = -1; if (txMode){ blkLevel = blkU != null ? "0" : ""; blkDraw(); } load(false, true); }
 function txTap(ev){
   if (blkLevel === "tree") return;
+  if (msMode || msel.length || ev.shiftKey || ev.ctrlKey || ev.metaKey){ if (blkLevel !== "frame" && blkLevel !== "pair"){ msTap(ev); return; } }
   if (blkLevel === "frame"){ frTap(ev); return; }
   if (blkLevel === "pair"){ prTap(ev); return; }
   const pt = ev.target.closest(".pt[data-u],.pt[data-vu]") || ptNear(ev);       /* 文字のすき間を押しても、そのブロックの文を開く */
@@ -1035,11 +1040,12 @@ function setTx(v){
   txMode = v; if (v){ dbMode = false; blkLevel = ""; blkU = null; if (playing) stop(); }
   $("blkBar").hidden = !v; document.body.classList.toggle("txon", v); blkDraw(); render(); renderTree();
 }
-$("blkEnd").onclick = () => setTx(false);
+$("blkEnd").onclick = () => { if (msMode || msel.length){ msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); } setTx(false); };
 $("blkUndo").onclick = () => { const c = card(); if (!S.cv[c.id]){ $("editMsg").textContent = "このカードには、直しがありません。"; return; }
   const h0 = hist(c.id); h0.u.push(h0.cur); h0.r.length = 0; delete S.cv[c.id]; h0.cur = "null"; st("cv", c.id); save(); edEl = null; blkLevel = ""; blkU = null; blkDraw(); $("editMsg").textContent = "このカードの未同期の直しを取り消しました。"; load(false, true); };
 /* 長押し（PCは右クリック）：編集を始めて、そのブロックのメニューを出す */
 function blkMenu(u){
+  if (msMode || msel.length) return;
   if (!txMode) setTx(true);
   if (edEl && !commit()) return;
   blkU = u; blkLevel = "0"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
@@ -1050,6 +1056,7 @@ function blkMenu(u){
 }
 /* ブロック左の「⋯」：その行の先頭のブロックの「その他の操作」を開く（文を打つ画面ではなく、図・枠・矢印・関係線・音声・ツリーの一覧） */
 function moreMenu(u){
+  if (msMode || msel.length) return;
   if (!txMode) setTx(true);
   if (edEl && !commit()) return;
   blkU = u; blkLevel = "0"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
@@ -1074,15 +1081,16 @@ function blkDraw(){
   const c = card(); if (!c || !txMode){ return; }
   const draft = !!c.draft, ttl = $("blkTitle");
   body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
-  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。ブロック左の「⋯」を押すと「その他の操作」、長押しすると「関係線」のメニューが出ます（ブロックの左端の長押し・PCは右クリックでも、関係線が出ます）。"; return; }
+  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。複数のブロックをまとめて操作するときは、PCは Shift（範囲）／Ctrl（追加）＋クリック、スマホは「☑ 複数選択」を押してからブロックをタップします。ブロック左の「⋯」を押すと「その他の操作」、長押しすると「関係線」のメニューが出ます（ブロックの左端の長押し・PCは右クリックでも、関係線が出ます）。"; return; }
   const q = blkU != null && refs[blkU] ? "" : "";
   const sample = (() => { const pt = board.querySelector(".pt.pick,.pt.ed"); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 18) : ""; })();
   if (blkLevel === "0"){
     ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
     const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
-    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("枠でまとめる", () => blkGo("frame"), "", draft); add("矢印・線の文字", () => blkGo("line"), "", draft); add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
+    lab0("ブロックのつなぎ方・形"); add("図の変更", () => blkGo("fig"), "", draft); add("矢印・線の文字", () => blkGo("line"), "", draft); add("関係線", () => blkGo("lside"), "", draft);
     lab0("音声・ツリー"); add("音声の有無の切替", () => blkGo("aud"), "", draft); add("ツリー作成", () => blkGo("tree"));
+    lab0("複数のブロックをまとめて（枠・統合・関係線・対応づけ・音声・削除）"); add("☑ 複数のブロックを選ぶ（このブロックから）", () => msStart(blkU), "go", draft).dataset.a = "ms:start";
     if (draft) $("editMsg").textContent = "新規カードの文字と図は、「元の文章を書き直す」で直します（ツリー作成は使えます）。";
     return; }
   if (blkLevel === "fsel"){
@@ -1103,6 +1111,7 @@ function blkDraw(){
     if (I.hasLo) add("線の下から出る矢印だけ消す（左の線は残す）", () => lsOp("loOff")).dataset.a = "ls:loOff";
     const why2 = why.filter(Boolean); if (why2.length){ const n = el("div", "small"); n.textContent = "灰色のボタンの理由： " + why2.join(" ／ "); body.append(n); }
     add("← 戻る", () => blkGo("lside")); return; }
+  if (blkLevel === "multi"){ msDraw(body, ttl, add); return; }
   if (blkLevel === "pair"){
     const r = refs[prU]; if (!r){ blkGo("0"); return; }
     const mem = r.b.pr ? [...board.querySelectorAll(".blk[data-pr]")].filter(x => x.dataset.pr === r.b.pr).length : 0;
@@ -1153,7 +1162,7 @@ function blkDraw(){
         /* 文字を選ぶ前：ブロックそのものの操作 */
         const rf0 = refs[blkU != null ? blkU : edU], first0 = !rf0 || rf0.sec.rows.indexOf(rf0.row) < 1, yk0 = c.kind === "yk";
         add("⌨ 入力を始める（キーボードが出ないとき）", () => { if (edEl){ edEl.focus(); } }, "go").dataset.a = "kbd";
-        lab("ブロックの操作"); [["split","ここでブロックを分割"],["add","下にブロックを追加"],["mergeNext","下のブロックと統合"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
+        lab("ブロックの操作"); [["split","ここでブロックを分割"],["add","下にブロックを追加"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
         if (!first0) (yk0 ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
       } else {
         /* 文字を選んだ後：選んだ文字についての操作 */
@@ -1165,6 +1174,73 @@ function blkDraw(){
   add("この文を保存", () => edAct("save"), "go").dataset.a = "save"; add("この文の変更を捨てる", () => edAct("cancel")).dataset.a = "cancel";
 }
 let prU = null;
+/* ---------- 複数選択：S.cv は触らず、選んだブロックの代表の文の番号 msel（refs の u。昇順）を持つ。操作は ensureCv() のあと refs[u] から行う ---------- */
+function msRep(u){ const R = refs[u]; if (!R) return null; let m = u; Object.keys(refs).forEach(k => { const x = refs[k]; if (x && x.b === R.b && +k >= 1 && +k < m) m = +k; }); return m; }
+function msUs(rep){ const R = refs[rep]; if (!R) return []; const o = []; Object.keys(refs).forEach(k => { const x = refs[k]; if (x && x.b === R.b && +k >= 1) o.push(+k); }); return o.sort((a, b) => a - b); }
+function msPaint(){
+  if (!board) return; const c = card(); if (msCard && c && c.id !== msCard){ msel = []; msAnchor = null; }
+  board.querySelectorAll(".blk.msel").forEach(x => x.classList.remove("msel")); if (!txMode) return;
+  msel.forEach(u => { const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'), bk = pt && pt.closest(".blk"); if (bk) bk.classList.add("msel"); });
+}
+function msAfter(){ msel.sort((a, b) => a - b); blkU = null; blkLevel = (msMode || msel.length) ? "multi" : ""; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); msPaint(); blkDraw(); }
+function msTap(ev){
+  const pt = ev.target.closest(".pt[data-u],.pt[data-vu]") || ptNear(ev); if (!pt || +pt.dataset.u === 0) return;
+  const u = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu); if (edEl && !commit()) return; const rep = msRep(u); if (rep == null) return;
+  msCard = card().id;
+  if (ev.shiftKey && msAnchor != null && refs[msAnchor]){ const lo = Math.min(msAnchor, rep), hi = Math.max(msAnchor, rep);
+    for (let k = lo; k <= hi && k < 1000000; k++){ const r = msRep(k); if (r != null && !msel.includes(r)) msel.push(r); } }
+  else { const i = msel.indexOf(rep); if (i >= 0) msel.splice(i, 1); else msel.push(rep); }
+  msAnchor = rep; msAfter();
+}
+function msStart(u){ if (edEl && !commit()) return; msMode = true; msel = []; msAnchor = null; if (u != null && refs[u]){ const r = msRep(u); msel = [r]; msAnchor = r; msCard = card().id; } $("blkMs").setAttribute("aria-pressed", "true"); board.classList.add("msm"); try { getSelection().removeAllRanges(); } catch(e){} msAfter(); }
+function msStop(){ msMode = false; msel = []; msAnchor = null; $("blkMs").setAttribute("aria-pressed", "false"); board.classList.remove("msm"); blkLevel = ""; msPaint(); blkDraw(); }
+$("blkMs").onclick = () => { if (msMode) msStop(); else { if (!txMode) setTx(true); msStart(null); } };
+/* 選んだブロックでできる操作の条件。空の文字＝できる／文字あり＝できない理由 */
+function msPlan(){
+  const out = { frame: msel.length ? "" : "ブロックを選んでください", merge: "", link: "", pair: msel.length < 2 ? "2つ以上選んでください" : "", aud: msel.length ? "" : "ブロックを選んでください", del: msel.length ? "" : "ブロックを選んでください" };
+  const allUs = [...new Set(msel.flatMap(msUs))].sort((a, b) => a - b), lo = allUs[0], hi = allUs[allUs.length - 1];
+  if (msel.length < 2) out.merge = out.link = "2つ以上選んでください";
+  else {
+    if (allUs.length !== hi - lo + 1 || allUs.some(v => v >= 1000000)) out.merge = "続いて並んだブロックだけ、1つにできます";
+    else for (let v = lo + 1; v <= hi; v++){ if (v === qaIdx || !refs[v - 1] || !refs[v] || refs[v - 1].sec !== refs[v].sec){ out.merge = "表面と裏面の境目や区切りの境目は、またげません"; break; } }
+    const rows = []; msel.forEach(u => { const R = refs[u]; if (R && !rows.includes(R.row)) rows.push(R.row); });
+    if (rows.length < 2) out.link = "同じ行のブロックは、すでにつながっています";
+    else { const R0 = refs[msel[0]]; for (let k = 0; k < rows.length - 1; k++){ const u = msel.find(x => refs[x] && refs[x].row === rows[k]), I = lsInfo(u);
+        if (!I || !I.joinable(I.row) || !I.joinable(I.nx) || I.nx !== rows[k + 1] || !I.same(I.row, I.nx)){ out.link = "続いた行で、横に並んでいない・同じ枠の中のブロックだけ、左の線でつなげます"; break; } } }
+  }
+  return out;
+}
+function msDraw(body, ttl, add){
+  const n = msel.length, P = msPlan(); ttl.textContent = n ? "☑ " + n + " 個のブロックを選んでいます（橙の枠）。できる操作だけ押せます。" : "☑ 複数選択：まとめて直したいブロックを、タップして選びます（もう一度タップで外す）。PCは Shift＋クリックで範囲、Ctrl＋クリックで追加。";
+  const dis = k => !!P[k], go = (k, t, f, cls) => add(t, f, cls || "", dis(k)).dataset.a = "ms:" + k;
+  go("frame", "枠で囲う（選んだ行をまとめて1つの枠に）", () => msGo("frame"), "go"); go("merge", "1つのブロックに統合", () => msGo("merge")); go("link", "関係線でつなぐ（左の線で繋ぐ）", () => msGo("link"));
+  go("pair", "対応づけ（組にして一緒に光らせる／もう一度で外す）", () => msGo("pair")); go("aud", "音声の有無の切替（選んだブロック全部）", () => msGo("aud")); go("del", "選んだブロックを削除", () => msGo("del"), "dng");
+  const why = ["merge", "link", "pair"].filter(k => P[k] && n).map(k => ({ merge: "統合", link: "関係線", pair: "対応づけ" })[k] + "：" + P[k]); if (why.length){ const d = el("div", "small"); d.textContent = "灰色の理由： " + why.join(" ／ "); body.append(d); }
+  if (n === 1) add("このブロックだけ、文を直す・分割・追加する", () => { const u = msel[0]; msel = []; msAnchor = null; const was = msMode; msMode = false; $("blkMs").setAttribute("aria-pressed", "false"); board.classList.remove("msm"); msPaint(); blkMenu(u); }, "").dataset.a = "ms:one";
+  if (n) add("選びなおす（選択だけやめる）", () => { msel = []; msAnchor = null; msAfter(); }).dataset.a = "ms:clear";
+  add(msMode ? "複数選択モードをやめる" : "選択をやめる", () => msStop()).dataset.a = "ms:off";
+}
+function msDone(msg){ msel = []; msAnchor = null; blkU = null; blkLevel = msMode ? "multi" : ""; render(); msPaint(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 3000); }
+function msGo(a){
+  if (!msel.length) return; const P = msPlan(); if (P[a]){ $("editMsg").textContent = P[a]; return; }
+  const reps = msel.slice().sort((x, y) => x - y), allUs = [...new Set(reps.flatMap(msUs))].sort((x, y) => x - y), lo = allUs[0], hi = allUs[allUs.length - 1];
+  if (a === "frame"){ frU1 = reps[0]; frU2 = reps[reps.length - 1]; frChg = null; const wasLv = blkLevel; frApply(); if (/^✔/.test($("editMsg").textContent)){ msel = []; msAnchor = null; blkU = null; blkLevel = msMode ? "multi" : ""; msPaint(); blkDraw(); } else blkLevel = wasLv; return; }
+  if (a === "merge"){ ensureCv(); for (let v = hi; v > lo; v--){ const d = el("div"); d.innerHTML = refs[v].p.h; mergeInto(v, trimRuns(runsOf(d))); } touch(); msDone(reps.length + " 個のブロックを、1つに統合しました。"); return; }
+  if (a === "link"){ const rows = []; reps.forEach(u => { const R = refs[u]; if (R && !rows.includes(R.row)) rows.push(R.row); }); ensureCv(); const R = refs[reps[0]]; const i = R.sec.rows.indexOf(R.row); let k = 0; for (; k < rows.length - 1; k++){ if (!joinRows(R.sec, i, "ladder")) break; } touch(); msDone(rows.length + " 行を、左の線でつなぎました（もとに戻すのは「関係線」→「線を変える」）。"); return; }
+  if (a === "pair"){ ensureCv(); const bl = []; reps.forEach(u => { const R = refs[u]; if (R && !bl.includes(R.b)) bl.push(R.b); });
+    const g0 = bl[0].pr, mem = g0 ? [...new Set(Object.values(refs).filter(x => x && x.b && x.b.pr === g0).map(x => x.b))] : [];
+    if (g0 && bl.every(b => b.pr === g0) && mem.length === bl.length){ bl.forEach(b => { delete b.pr; }); touch(); msDone("対応づけを外しました。"); return; }
+    const olds = new Set(bl.map(b => b.pr).filter(Boolean)); bl.forEach(b => { delete b.pr; });
+    olds.forEach(g => { const left = [...new Set(Object.values(refs).filter(x => x && x.b && x.b.pr === g).map(x => x.b))]; if (left.length === 1) delete left[0].pr; });
+    const gid = "p" + Date.now().toString(36); bl.forEach(b => { b.pr = gid; }); touch(); msDone(bl.length + " 個のブロックを、対応づけました（どれか1つを見ると一緒に光ります）。"); return; }
+  if (a === "aud"){ const cv = ensureCv(); const info = allUs.map(u => { const d = el("div"); d.innerHTML = refs[u].p.h; return [u, runsOf(d)]; });
+    const allOff = info.every(([u, runs]) => runs.filter(r => r.ch !== "\n").every(r => r.n)), nv = allOff ? 0 : 1;
+    info.forEach(([u, runs]) => { runs.forEach(r => { if (r.ch !== "\n") r.n = nv; }); const was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); });
+    touch(); msDone("選んだ " + reps.length + " 個のブロックを、" + (nv ? "音声なし" : "音声あり") + "にしました。"); return; }
+  if (a === "del"){ if (!window.confirm(reps.length + " 個のブロックを消します。よいですか？\n（Ctrl+Z か、「未同期の直しを全部取消し」で、元に戻せます）")) return;
+    ensureCv(); for (let k = allUs.length - 1; k >= 0; k--){ if (refs[allUs[k]]) delBlock(allUs[k], true); }
+    msel = []; msAnchor = null; blkU = null; blkLevel = msMode ? "multi" : ""; msPaint(); blkDraw(); return; }
+}
 function prTap(ev){
   const pt = ev.target.closest(".pt[data-u],.pt[data-vu]"); if (!pt || +pt.dataset.u === 0) return; const u = +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu);
   const a = refs[prU], b = refs[u]; if (!a || !b) return; if (b.b === a.b){ $("editMsg").textContent = "いまのブロック自身です。ほかのブロックをタップしてください。"; return; }
@@ -1224,6 +1300,7 @@ function splitLadder(sec, i, bi){
   rows.splice(i, 1, ...parts);
 }
 function lsMenu(u){
+  if (msMode || msel.length) return;
   if (!txMode) setTx(true);
   if (edEl && !commit()) return;
   blkU = u; blkLevel = "lside"; dbMode = false; board.classList.remove("dbm"); $("editMsg").textContent = "";
@@ -1248,6 +1325,7 @@ function drawLoops(){
     w.append(svg); w.classList.add("lofd");
   });
 }
+{ const _rd = render; render = function(){ const x = _rd.apply(this, arguments); try { msPaint(); } catch(e){} return x; }; }
 { const _df = drawFrames; drawFrames = function(){ _df.apply(this, arguments); try { drawLoops(); } catch(e){} }; }
 /* ---- 枠でまとめる：行（row）に fr:[枠の印…]、最初の行に fl:{枠の印:名前} を持たせる。図（S.cv）の一部なので、同期・書き出しにそのまま乗る ---- */
 let frU1 = null, frU2 = null, frWho = "end", frNameV = "";
@@ -1479,7 +1557,7 @@ function render(){
   $("pick").value = String(pi);
   $("flag").hidden = !c.flags; if (c.flags) $("flag").textContent = "要確認：" + c.flags.join("、");
   renderPg();
-  board.className = "board" + (c.kind ? " yk" : "") + (editing ? " editing" : "") + (txMode ? " txm" : "") + (dbMode ? " dbm" : "");
+  board.className = "board" + (c.kind ? " yk" : "") + (editing ? " editing" : "") + (txMode ? " txm" : "") + (msMode && txMode ? " msm" : "") + (dbMode ? " dbm" : "");
   board.innerHTML = ""; utts = []; refs = []; vk = 0; curRow = curSec = null; edEl = null; edU = -1;
   const top = el("div", "row one top"); top.append(makeBlock({ t:"subj", h:deckOf(c), s:deckOf(c) + "。" })); board.append(top);
   if (c.flow) board.append(makeFlow(c.flow));
@@ -2258,7 +2336,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271144";
+const VER = "版 202611271202";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
