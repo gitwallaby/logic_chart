@@ -151,7 +151,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .memo h3{margin:0 0 6px;font-size:14px}.memo textarea{width:100%;box-sizing:border-box;min-height:64px;font:inherit;font-size:14px;line-height:1.6;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;resize:vertical}.memo .small{margin-top:2px;min-height:1em}
 .tabs{display:flex;gap:6px;margin:8px 0 0}.tabs button{flex:1;font:inherit;padding:8px 6px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);cursor:pointer}.tabs button[aria-selected=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}
 #app.cb > *:not(.tabs):not(#cbTab){display:none!important}#app:not(.cb) #cbTab{display:none}
-.cbv button[aria-pressed=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}.plnote{color:#e8c070}.plh{cursor:grab;touch-action:none;user-select:none;padding:4px 8px;font-size:18px;color:#9fb3a0;border-radius:4px;background:rgba(255,255,255,.05)}.plr.sel{background:rgba(120,170,230,.14)}.plr.drag{opacity:.45}.plr.dropb{box-shadow:0 -3px 0 0 #6fc3ff}.plr.dropa{box-shadow:0 3px 0 0 #6fc3ff}.plr input.plsel{width:20px;height:20px}.plr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid var(--barline);padding:5px 0;font-size:13px}.plr .pn{width:2.2em;text-align:right;color:var(--sub)}.plr .pt{flex:1;min-width:8rem}.plr.off .pt{text-decoration:line-through;opacity:.55}
+.cbv button[aria-pressed=true]{background:#3a4a35;border-color:#5c7a52;font-weight:bold}.plnote{color:#e8c070}.plscope{border:1px solid #7a6a3a;background:rgba(232,192,112,.1);border-radius:6px;padding:7px 9px;margin:6px 0;font-size:13px}.plscope.on{border-color:#4f8a5a;background:rgba(111,195,120,.1)}.plh{cursor:grab;touch-action:none;user-select:none;padding:4px 8px;font-size:18px;color:#9fb3a0;border-radius:4px;background:rgba(255,255,255,.05)}.plr.sel{background:rgba(120,170,230,.14)}.plr.drag{opacity:.45}.plr.dropb{box-shadow:0 -3px 0 0 #6fc3ff}.plr.dropa{box-shadow:0 3px 0 0 #6fc3ff}.plr input.plsel{width:20px;height:20px}.plr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;border-bottom:1px solid var(--barline);padding:5px 0;font-size:13px}.plr .pn{width:2.2em;text-align:right;color:var(--sub)}.plr .pt{flex:1;min-width:8rem}.plr.off .pt{text-decoration:line-through;opacity:.55}
 .plsum{margin:8px 0;font-size:13px}.plsum button{margin-left:6px}
 .cbctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0}.cbctl input[type=search]{flex:1;min-width:12rem;box-sizing:border-box;font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink)}
 .cbwrap{overflow:auto;max-height:70vh;border:1px solid var(--barline);border-radius:8px}.cbt{border-collapse:collapse;width:100%;font-size:13px}.cbt th,.cbt td{border-bottom:1px solid var(--barline);padding:6px 8px;text-align:left;vertical-align:top}
@@ -2412,7 +2412,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271454";
+const VER = "版 202611271506";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -3000,20 +3000,22 @@ function cbItems(){
   let it = base.map(cbInfo);
   const k = CB.key, d = CB.dir, cmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
   const key = x => k === "deck" ? deckNo(x.deck) : k === "imp" ? x.imp : k === "tags" ? x.tags.length : k === "yr" ? x.yr.join(",") : k === "cs" ? CSORD.indexOf(x.cs) : k === "pg" ? PGORD.indexOf(x.pg) : k === "rev" ? x.revKey : x.title;
-  if (!k) return it;
+  const plAt0 = {}; plData().ids.forEach((id, i) => plAt0[id] = i + 1); const byPl = (a, b) => (plAt0[a.c.id] || 1e9) - (plAt0[b.c.id] || 1e9);
+  if (k === "pl"){ it.sort((a, b) => byPl(a, b) * d); return it; }
+  if (!k){ if (scopeOf() === "pl" && plData().ids.length) it.sort(byPl); return it; }
   it.sort((a, b) => { const A = key(a), B = key(b); const r = (typeof A === "string" && typeof B === "string") ? A.localeCompare(B, "ja") : cmp(A, B); return (r || a.title.localeCompare(b.title, "ja")) * d; });
   return it;
 }
 function renderCb(){
   if (!$("ordDlg").hidden) renderPl();
   $("cbFilt").textContent = "いまの絞り込み: " + filtText(); trashBtn();
-  const sel = $("cbSort"); if (!sel.options.length){ const o0 = el("option"); o0.value = ""; o0.textContent = "再生の順"; sel.append(o0); } if (sel.options.length === 1) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
+  const sel = $("cbSort"); if (!sel.options.length){ const o0 = el("option"); o0.value = ""; o0.textContent = "再生の順"; sel.append(o0); } if (sel.options.length === 1){ CBCOLS.concat([["pl", "再生順の番号"]]).forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); }); }
   sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順";
   const it = cbItems(), show = it.slice(0, CB.shown), t = $("cbT"); t.innerHTML = "";
   $("cbCnt").textContent = "いまの条件（絞り込み＋検索）に合うカード " + it.length + " 枚中 " + show.length + " 枚を表示";
   const hr = el("tr"); CBCOLS.forEach(([k, l]) => { const th = el("th"); th.setAttribute("scope", "col"); if (k === "title"){ const ca = el("input"); ca.type = "checkbox"; ca.id = "cbSelAll"; ca.setAttribute("aria-label", "見えている行を全部選ぶ・全部外す"); ca.checked = show.length > 0 && show.every(x => CB.sel.has(x.c.id));
       ca.onchange = () => { show.forEach(x => { if (ca.checked) CB.sel.add(x.c.id); else CB.sel.delete(x.c.id); }); renderCb(); }; th.append(ca, document.createTextNode(" ")); } const b = el("button"); b.type = "button"; b.textContent = l + (CB.key === k ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === k) CB.dir = -CB.dir; else { CB.key = k; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); });
-  { const th = el("th"); th.textContent = "再生順"; hr.append(th); }
+  { const th = el("th"); th.setAttribute("scope", "col"); const b = el("button"); b.type = "button"; b.id = "cbSortPl"; b.textContent = "再生順" + (CB.key === "pl" ? (CB.dir > 0 ? " ↑" : " ↓") : ""); b.onclick = () => { if (CB.key === "pl") CB.dir = -CB.dir; else { CB.key = "pl"; CB.dir = 1; } CB.shown = 50; renderCb(); }; th.append(b); hr.append(th); }
   const plAt = {}; plData().ids.forEach((id, k) => plAt[id] = k + 1);
   const thd = el("thead"); thd.append(hr); t.append(thd);
   const tb = el("tbody");
@@ -3122,7 +3124,10 @@ let plAsk = null;
 function plCsApply(ids){ S.scope = "pl"; $("scopeSel").value = "pl"; plPut({ ids, off: [] }); toast("確認中の " + ids.length + " 枚で再生順を作り、再生する範囲を『再生順』にしました", "ok", 3500); if (!$("ordDlg").hidden) renderPl(); }
 function renderPl(){
   const v = $("plView"), d = plData(); v.innerHTML = "";
-  const c1 = el("p", "small"); c1.textContent = "この再生順で再生するには、『プレイヤー』の上の「再生する範囲」を「再生順（プレイリスト）」にします（端末ごとの設定です）。"; v.append(c1);
+  const onPl = scopeOf() === "pl", sbx = el("div", "plscope" + (onPl ? " on" : "")); sbx.id = "plScope";
+  const st1 = el("b"); st1.id = "plScopeT"; st1.textContent = onPl ? "いまの再生する範囲: 再生順（プレイリスト）。再生は、下のこの順番です。" : "いまの再生する範囲: " + (scopeOf() === "all" ? "全カード" : "いまの絞り込み") + "。再生はまだ、下の再生順の順番ではありません。"; sbx.append(st1);
+  if (!onPl){ const ub = el("button", "grad"); ub.type = "button"; ub.id = "plUse"; ub.textContent = "この再生順で再生する"; ub.disabled = !d.ids.length; ub.onclick = () => { S.scope = "pl"; $("scopeSel").value = "pl"; save(); refilter(); renderCb(); toast("再生する範囲を『再生順』にしました", "ok", 2500); }; sbx.append(document.createTextNode(" "), ub); }
+  const sx = el("p", "small"); sx.textContent = "【ちがい】『並べ方』(上の窓)=絞り込みで出てきたカードの並びを変えるだけ。『再生順』=自分で決めた順番(ここで動かす)。再生順で再生するには、『再生する範囲』を『再生順』にします。"; sbx.append(sx); v.append(sbx);
   const c2 = el("div", "cbctl"); const mk = (id, t, f) => { const b = el("button", "grad"); b.type = "button"; b.id = id; b.textContent = t; b.onclick = f; c2.append(b); return b; };
   mk("plMake", "いまの絞り込みから作る", () => { const ids = [...new Set(baseList().map(i => CARDS[i].id))]; if (!ids.length){ toast("いまの絞り込みに合うカードがありません", "ng", 3000); return; }
     if (d.ids.length && !confirm("いまの再生順を、いまの絞り込み（" + ids.length + " 枚）で作り直します。よろしいですか？")) return; plPut({ ids, off: [] }); });
@@ -3175,7 +3180,7 @@ function plDragStart(e, id, row){ if (e.button != null && e.button > 0) return; 
   const h = plDrag.h;
   const fin = (ev, ok) => { const dr = plDrag; plDrag = null; document.querySelectorAll("#plList .plr").forEach(r => r.classList.remove("drag", "dropb", "dropa"));
     if (!ok || !dr || dr.pos < 0) return; const dd = plData(); const out = plMoveIds(dd.ids, dr.moving.filter(x => dd.ids.includes(x)), dr.pos);
-    if (out.join("\u0001") === dd.ids.join("\u0001")) return; plPut({ ids: out, off: dd.off }); toast(dr.moving.length + " 枚を移しました", "ok", 1800); };
+    if (out.join("\u0001") === dd.ids.join("\u0001")) return; plPut({ ids: out, off: dd.off }); if (scopeOf() === "pl") toast(dr.moving.length + " 枚を移しました", "ok", 1800); else toast("再生順を変えました。いまの再生範囲は「絞り込み」なので、再生はまだこの順ではありません。上の『この再生順で再生する』を押してください", "ok", 7000); };
   h.addEventListener("pointermove", mvf); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", cancel);
 }
 function setTab(t){ const cards = t === "cards"; $("app").classList.toggle("cb", cards);
