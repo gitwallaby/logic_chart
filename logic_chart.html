@@ -306,6 +306,7 @@ body.sheeton{padding-bottom:46vh}body.sheeton[data-tsz="0"]{padding-bottom:100px
 #treeList .pu{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #2f855a;font-size:12px;color:#2f6f4f;background:rgba(47,133,90,.08);border-radius:0 8px 8px 0}
 #treeList .pu a{margin-left:6px;color:var(--te)}#treeList .src{margin:1px 0 3px 8px;padding:3px 8px;border-left:3px solid #d6aa1f;font-size:12px;color:var(--sub)}
 #treeList a.pl{color:var(--tb);text-decoration:underline;font-size:11.5px}#treeList .un{font-size:11px;color:var(--sub)}
+.blk.blank{display:none}body.txon .blk.blank{display:block;min-height:36px}.pt.emptyp{min-height:28px}.pt.emptyp:empty::before{content:"（空のブロック：タップして文を入れます）";color:var(--gray);font-size:12px}.pt.emptyp.ed:empty::before{content:""}
 .pt.pick{outline:1px dashed rgba(232,198,74,.55);outline-offset:2px;border-radius:4px}
 .edtag{position:absolute;top:-11px;right:8px;z-index:4;font-size:11px;line-height:18px;padding:0 9px;border-radius:9px;pointer-events:none;white-space:nowrap}
 .edtag.on{background:#4fd8ff;color:#06222b;font-weight:700}.edtag.sel{background:#3a3f48;color:#c7ccd4;font-weight:400}
@@ -761,12 +762,14 @@ function makeBlock(b){
   const u0 = utts.length;
   parts.forEach(p => {
     const x = el("div", "pt" + (p.c ? " " + p.c : "")); x.innerHTML = p.h; if (p.e) x.dataset.e = 1;
-    if (!p.s && p.h){ x.dataset.af = utts.length; if (txMode && !card().draft){ const vu = 1000000 + (vk++); x.dataset.vu = vu; refs[vu] = { p: b.p ? p : b, b, row: curRow, sec: curSec, after: utts.length }; x.classList.add("mm"); } }
+    if (!p.s && !p.h && txMode && !card().draft) x.classList.add("emptyp");
+    if (!p.s && (p.h || (txMode && !card().draft))){ x.dataset.af = utts.length; if (txMode && !card().draft){ const vu = 1000000 + (vk++); x.dataset.vu = vu; refs[vu] = { p: b.p ? p : b, b, row: curRow, sec: curSec, after: utts.length }; x.classList.add("mm"); } }
     if (p.s){ const u = utts.length; x.dataset.u = u; refs[u] = { p: b.p ? p : b, b, row: curRow, sec: curSec };
       if (p.x){ x.classList.add("chg"); delete x.dataset.e; }
       utts.push({ text: p.s, el: x }); }
     d.append(x);
   });
+  if (!parts.some(p => p.h)) d.classList.add("blank");           /* 文が空のブロック：編集中だけ見える */
   const u1 = utts.length - 1;
   if (u1 >= u0){
     d.dataset.u0 = u0; d.dataset.u1 = u1; if (u1 > u0) d.classList.add("multi");
@@ -916,20 +919,21 @@ function openEd(u){
   const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); if (!pt) return;
   if (playing) stop();
   edEl = pt; edU = u; lastSel = null; pt._dirty = false; pt.addEventListener("input", () => { pt._dirty = true; });
-  pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.setAttribute("inputmode", "text"); pt.setAttribute("enterkeyhint", "enter"); pt.focus();
+  pt.innerHTML = htmlOf(runsOf(pt), true); pt.classList.add("ed"); pt.classList.remove("pick"); pt.contentEditable = "true"; pt.setAttribute("inputmode", "text"); pt.setAttribute("enterkeyhint", "done"); pt.focus();
   board.querySelectorAll(".edtag").forEach(x => x.remove()); { const bk = pt.closest(".blk"); if (bk){ const tg = el("span", "edtag on", "✎ 文字入力中"); tg.setAttribute("aria-hidden", "true"); bk.append(tg); } }
-  pt.addEventListener("beforeinput", e => {                            /* 改行キー：その場に改行の文字を入れる */
+  /* Enter＝いまの文を確定する（編集モードは続く）。変換中(isComposing)の Enter は、変換の決定だけ。Shift+Enter（または「文の中で改行する」ボタン）＝文の中の改行（g202611271647） */
+  pt.addEventListener("keydown", e => { if (e.key !== "Enter" || e.isComposing || e.keyCode === 229 || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return; e.preventDefault(); if (edEl === pt) commit(); });
+  pt.addEventListener("beforeinput", e => {
+    if (e.inputType === "insertParagraph" && !e.isComposing){ e.preventDefault(); if (edEl === pt) commit(); return; }       /* スマホのキーボードの Enter */
     if (e.inputType !== "insertParagraph" && e.inputType !== "insertLineBreak") return;
-    e.preventDefault(); const v = selNow() || lastSel; if (!v) return;
-    const runs = runsOf(edEl), a = Math.min(v[0], v[1]), b = Math.max(v[0], v[1]);
-    runs.splice(a, b - a, { ch:"\n" }); redraw(runs, a + 1, a + 1); });
+    e.preventDefault(); edAct("nl"); });
   pt.addEventListener("input", () => { if (edEl && edEl.querySelector("br,div,p")){ const v = selNow(), runs = runsOf(edEl); redraw(runs, v ? v[0] : runs.length, v ? v[1] : runs.length); } });
 }
 /* ---- ブロックのコピー・切り取り・貼り付け・削除 ---- */
 let blkClip = null;
 function pendingSave(u){
   if (!edEl) return true;
-  const runs = trimRuns(runsOf(edEl)); if (!hasText(runs)){ $("editMsg").textContent = "文が空です。"; return false; }
+  const runs = trimRuns(runsOf(edEl));
   if (htmlOf(runs, false) !== normH(refs[u].p.h)){ const cv = ensureCv(), was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); }
   return true;
 }
@@ -1007,9 +1011,9 @@ function edAct(a){
   }
   if (a === "add"){
     const u = edU; if (!pendingSave(u)) return;
-    const np = {}; setPart(np, Array.from("（新しいブロック：文を書き換えてください）").map(ch => ({ ch, c:"", m:"", b:0, n:0 })));
+    const np = {}; setPart(np, []);          /* 仮の文は入れない。空のブロックにする */
     if (refs[u].b.t) np.t = refs[u].b.t; insertBelow(u, np);
-    touch(); $("editMsg").textContent = "下に新しいブロックを足しました（直列）。足したブロックをタップして、文を書き換えてください。"; toast("下にブロックを足しました", "ok"); closeEd(); return;
+    touch(); $("editMsg").textContent = "下に空の新しいブロックを足しました（直列）。足したブロックをタップして、文を入れてください。"; toast("下にブロックを足しました", "ok"); closeEd(); return;
   }
   if (a === "del"){ delBlock(edU >= 0 ? edU : blkU, false); return; }
   if (a === "copy"){ const u = edU >= 0 ? edU : blkU; if (blkCopy(u)) toast("ブロックをコピーしました（「下に貼り付け」か Ctrl+V で、選んでいるブロックの下に入ります）", "ok", 3500); return; }
@@ -1026,6 +1030,16 @@ function edAct(a){
     { const fon = !fpart.every(r => r.f === fk); fpart.forEach(r => r.f = fon ? fk : ""); }
     redraw(fr0, flo, fhi); return;
   }
+  if (a === "nl"){ const runs0 = runsOf(edEl), v0 = v || [runs0.length, runs0.length], a0 = Math.min(v0[0], v0[1]), b0 = Math.max(v0[0], v0[1]); runs0.splice(a0, b0 - a0, { ch:"\n" }); redraw(runs0, a0 + 1, a0 + 1); return; }
+  if (a === "b" || a.indexOf("c:") === 0 || a.indexOf("m:") === 0){   /* 文字色(c)・ハイライト(m)・太字(b)：選んだ文字だけ。もう一度同じものを押すと外れる（g202611271647 で復活） */
+    const cr = runsOf(edEl);
+    if (!v || v[0] === v[1]){ $("editMsg").textContent = "色や太字を変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
+    $("editMsg").textContent = "";
+    const clo = Math.min(v[0], v[1]), chi = Math.max(v[0], v[1]), cpart = cr.slice(clo, chi).filter(r => r.ch !== "\n");
+    if (a === "b"){ const on = !cpart.every(r => r.b); cpart.forEach(r => r.b = on ? 1 : 0); }
+    else { const kv = a.split(":"), k = kv[0], val = kv[1] || ""; const same = val && cpart.every(r => (r[k] || "") === val); cpart.forEach(r => { r[k] = same ? "" : val; }); }
+    redraw(cr, clo, chi); return;
+  }
   if (a !== "n") return;
   const runs = runsOf(edEl), noSel = !v || v[0] === v[1];
   if (noSel){ $("editMsg").textContent = "音声の有無を変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
@@ -1036,8 +1050,7 @@ function edAct(a){
 }
 function commit(){
   if (!edEl) return true;
-  const runs = trimRuns(runsOf(edEl)), u = edU;
-  if (!hasText(runs)){ $("editMsg").textContent = "文を空にはできません。消したいときは「前の文とつなげる」でまとめてから、いらない文字を消してください。"; return false; }
+  const runs = trimRuns(runsOf(edEl)), u = edU;       /* 文が空でも確定できる（空のブロックとして残る。編集中の画面には薄い案内が出て、タップでまた文を入れられる。再生・音声には出ない） */
   if (htmlOf(runs, false) !== normH(refs[u].p.h)){ const cv = ensureCv(), was = refs[u].p.s; setPart(refs[u].p, runs); qaFix(cv, posOf(u), was, refs[u].p.s); touch(); }
   $("editMsg").textContent = ""; closeEd(); return true;
 }
@@ -1194,7 +1207,7 @@ function blkDraw(){
     return; }
   const BT = { aud: [["n","選んだ範囲の音声の有無：切替"]] };
   const selOnNow = blkLevel === "text" && selOn(); selWas = selOnNow;
-  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直した文は自動で保存されます" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。分けたい位置にカーソルを置いて「ここでブロックを分割」。直したら「この文を保存」。ほかの操作は、ブロック左の「⋯」ボタンから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：文字の色・ハイライト・太字・枠、音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直した文は自動で保存されます" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。Enter で確定（編集モードは続きます）、文の中の改行は Shift+Enter。ほかのブロックの文をタップすると、この文を保存してそちらに移ります。分けたい位置にカーソルを置いて「ここでブロックを分割」。ほかの操作は、ブロック左の「⋯」ボタンから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
   ttl.classList.toggle("typing", blkLevel === "text" && !!edEl);
   if (blkLevel === "fig"){
     const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
@@ -1206,10 +1219,14 @@ function blkDraw(){
         /* 文字を選ぶ前：ブロックそのものの操作 */
         const rf0 = refs[blkU != null ? blkU : edU], first0 = !rf0 || rf0.sec.rows.indexOf(rf0.row) < 1, yk0 = c.kind === "yk";
         add("⌨ 入力を始める（キーボードが出ないとき）", () => { if (edEl){ edEl.focus(); } }, "go").dataset.a = "kbd";
-        lab("ブロックの操作"); [["split","ここでブロックを分割"],["add","下にブロックを追加"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
+        lab("ブロックの操作"); [["split","ここでブロックを分割"],["nl","文の中で改行する"],["add","下にブロックを追加"],["del","このブロックを削除"]].forEach(([a, t]) => { add(t, () => edAct(a), a === "del" ? "dng" : "").dataset.a = a; });
         if (!first0) (yk0 ? [["hr","この行の前に横線を入れる"]] : [["hr","この行から新しい帰結"],["hr1","この行の前に横線だけ"]]).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
       } else {
         /* 文字を選んだ後：選んだ文字についての操作 */
+        lab("文字（選んだ文字の色・ハイライト・太字。同じものをもう一度押すと外れます）");
+        [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"]].forEach(([a, t]) => add("文字色：" + t, () => edAct(a)).dataset.a = a);
+        [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","なし"]].forEach(([a, t]) => add("ハイライト：" + t, () => edAct(a)).dataset.a = a);
+        add("太字", () => edAct("b")).dataset.a = "b";
         lab("音声・ツリー"); add("選んだ範囲の音声の有無：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
         lab("要件の枠（選んだ語句を小さな四角で囲む。同じ色をもう一度押すと外れます）"); Object.keys(FC).forEach(k => { const fb = add("▢ " + FC[k][0], () => edAct("f:" + k)); fb.dataset.a = "f:" + k; fb.style.borderLeft = "6px solid " + FC[k][1]; });
         add("選択をやめる", () => selOff()).dataset.a = "seloff";
@@ -2525,7 +2542,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271635";
+const VER = "版 202611271645";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
