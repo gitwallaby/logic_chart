@@ -1049,6 +1049,7 @@ function txTap(ev){
   if (blkLevel === "pair"){ prTap(ev); return; }
   const pt = ev.target.closest(".pt[data-u],.pt[data-vu]") || ptNear(ev);       /* 文字のすき間を押しても、そのブロックの文を開く */
   if (edEl && pt === edEl) return;
+  if (Date.now() - swAt < 300) return;                                    /* 離した瞬間に、すでに移った（swAt）ときの、あとから来るクリックは無視 */
   if (!pt || +pt.dataset.u === 0){ if (!edEl && !ev.target.closest(".sec-hd")) $("editMsg").textContent = "このブロックは直せません。"; return; }
   blkMenu(+(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu));
 }
@@ -2196,6 +2197,22 @@ function leftBlk(e){
   return x >= r.left - (row.classList.contains("ladder") ? 26 : 0) && x <= r.left + 8 ? best : null;
 }
 function uOfBlk(b){ const p = b && b.querySelector(".pt[data-u],.pt[data-vu]"); return p ? +(p.dataset.u != null ? p.dataset.u : p.dataset.vu) : null; }
+/* ---- 文を直している最中に、別のブロックの文を押したとき（g202611271622）：いまの文を保存して、押したブロックをそのまま入力中にする（編集モードを終わらなくてよい）。
+   押した瞬間にどのブロックかを覚え、指(マウス)を離したときに移る。文字を打つ欄から外れても、キーボードが閉じて画面がずれたり、
+   文字を選んでいた状態が解けて上の操作ボタンが入れ替わったりして、離したときの位置が別の場所になり、押したブロックを開けなかったため。
+   押した瞬間の「文字を打つ欄から外れる」動き(mousedown)は止めて、打つ欄をそのままにしておく。
+   対象は「いま文字入力中(blkLevel text)」のときの、別のブロックの文だけ。枠・対応づけ・ツリー・複数選択・「改行を直す」・ボタン類は今までどおり。 */
+let swPend = null, swAt = 0;
+function swOk(e){ return txMode && edEl && blkLevel === "text" && !editing && !dbMode && !msMode && !msel.length && !sg && !e.shiftKey && !e.ctrlKey && !e.metaKey && !(e.button > 0); }
+function swTarget(e){ const t = e.target; if (!t || !t.closest || t.closest(".dh,.mh,.frl,button,input,select,textarea")) return null;
+  const pt = t.closest(".pt[data-u],.pt[data-vu]") || ptNear(e); if (!pt || pt === edEl || pt.dataset.u === "0" || !board.contains(pt)) return null; return pt; }
+board.addEventListener("mousedown", e => { if (swOk(e) && swTarget(e)) e.preventDefault(); }, true);
+board.addEventListener("pointerdown", e => { swPend = null; if (!swOk(e)) return; const pt = swTarget(e); if (!pt) return;
+  swPend = { u: +(pt.dataset.u != null ? pt.dataset.u : pt.dataset.vu), x: e.clientX, y: e.clientY, at: Date.now() }; }, true);
+board.addEventListener("pointerup", e => { const p = swPend; swPend = null; if (!p || lpFired) return;
+  if (Date.now() - p.at > 400 || Math.hypot((e.clientX || 0) - p.x, (e.clientY || 0) - p.y) > 16) return;
+  if (!swOk(e) || !refs[p.u]) return; swAt = Date.now(); blkMenu(p.u); }, true);
+board.addEventListener("pointercancel", () => { swPend = null; }, true);
 /* 長押しが成立したら1回だけ実行する（タイマーと、ブラウザの contextmenu の両方から呼ばれても二重にならない） */
 function lpGo(fn){ const now = Date.now(); if (lpDone && now - lpDoneAt < 700) return; lpDone = true; lpDoneAt = now; clearTimeout(lpT); lpFired = true; setTimeout(() => { lpFired = false; }, 900); fn(); }
 /* 長押しを無視する場面：ツリー・枠・対応づけの選択中、「改行を直す」中、いま直している文そのもの（その中の長押しは文字の範囲選択に使う）。
@@ -2508,7 +2525,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271619";
+const VER = "版 202611271635";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
