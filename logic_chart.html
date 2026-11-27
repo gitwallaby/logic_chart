@@ -402,7 +402,7 @@ body{padding-bottom:215px}
     <div class="tabs" id="tabs" role="tablist"><button id="tabPlay" role="tab" aria-selected="true">プレイヤー</button><button id="tabCards" role="tab" aria-selected="false">ブラウザ</button></div>
     <section class="panel cbtab" id="cbTab">
     <div class="srch">
-      <div class="cbctl cbtop"><button class="grad" id="ordOpen" type="button" title="カードを並べる順番（並べ方・シャッフルなど）の窓を開く">↕ 表示順</button><button class="grad" id="fltOpen" type="button" title="科目・進捗・状態・重要度などで、カードを選ぶ窓を開く">🎚 絞り込み</button></div>
+      <div class="cbctl cbtop"><button class="grad" id="ordOpen" type="button" title="カードを並べる順番（並べ方・シャッフルなど）の窓を開く">↕ 表示順</button><button class="grad" id="trashOpen" type="button" hidden title="削除したカードを見て、戻したり完全に消したりする">🗑 ゴミ箱</button><button class="grad" id="fltOpen" type="button" title="科目・進捗・状態・重要度などで、カードを選ぶ窓を開く">🎚 絞り込み</button></div>
       <div class="qrow"><input type="search" id="qIn" enterkeyhint="search" placeholder="検索（題名・本文・タグ。スペース区切りで全部を含む）" aria-label="検索する言葉"><button id="qGo" type="button" aria-label="検索" title="検索">🔍</button><button id="tqMode" type="button" aria-pressed="false" title="タグで探す（押すと、ワード検索とタグ検索が切り替わります）">タグ検索</button><button id="impOpen" title="取り込みの小窓を開く">📥 インポート</button><button id="qX" hidden>解除</button></div>
       <div class="qrow tgrow" id="tagRow" hidden><button id="tagPick" type="button">タグを選択</button><span class="small" id="tagSumm"></span></div>
       <div class="tsug" id="tagSug" hidden></div>
@@ -599,6 +599,9 @@ body{padding-bottom:215px}
 </div>
 <div class="ovl" id="bulkDlg" hidden role="dialog" aria-modal="true" aria-labelledby="bulkT">
   <div class="ovlbox"><div class="ovlhd"><b id="bulkT">まとめて変える</b><button class="grad" id="bulkClose">閉じる</button></div><div id="bulkBody"></div></div>
+</div>
+<div class="ovl" id="trashDlg" hidden role="dialog" aria-modal="true" aria-labelledby="trashT">
+  <div class="ovlbox"><div class="ovlhd"><b id="trashT">🗑 ゴミ箱（削除したカード）</b><button class="grad" id="trashClose">閉じる</button></div><div id="trashBody"></div></div>
 </div>
 <div class="ctl" id="ctl" hidden>
   <div class="ctl-in">
@@ -2404,7 +2407,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271413";
+const VER = "版 202611271424";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -2998,7 +3001,7 @@ function cbItems(){
 }
 function renderCb(){
   if (!$("ordDlg").hidden) renderPl();
-  $("cbFilt").textContent = "いまの絞り込み: " + filtText();
+  $("cbFilt").textContent = "いまの絞り込み: " + filtText(); trashBtn();
   const sel = $("cbSort"); if (!sel.options.length){ const o0 = el("option"); o0.value = ""; o0.textContent = "再生の順"; sel.append(o0); } if (sel.options.length === 1) CBCOLS.forEach(([k, l]) => { const o = el("option"); o.value = k; o.textContent = l; sel.append(o); });
   sel.value = CB.key; $("cbDir").textContent = CB.dir > 0 ? "↑ 昇順" : "↓ 降順";
   const it = cbItems(), show = it.slice(0, CB.shown), t = $("cbT"); t.innerHTML = "";
@@ -3050,7 +3053,29 @@ function bulkCardDel(cs){
   cs.forEach(c => { const id = c.id, bak = { at, title: c.title, deck: deckOf(c) };
     ["cv", "tags", "imp", "deckOv", "cs", "pg", "rev", "memo", "kov", "kx", "tree", "newCards"].forEach(k => { if (S[k] && S[k][id] !== undefined) bak[k] = JSON.parse(JSON.stringify(S[k][id])); });
     S.delBak[id] = bak; S.cdel[id] = { on: 1, ts: at, title: c.title }; st("cdel", id); });
-  CB.sel.clear(); save(); CARDS = liveCards(); stop(); list = []; pi = 0; buildList(keepId); fillPick(); renderTagFilter(); load(false); renderCb(); toast(cs.length + " 枚を削除しました（削除前の内容は、書き出しの控えに残ります）", "ok", 4000); }
+  CB.sel.clear(); save(); CARDS = liveCards(); stop(); list = []; pi = 0; buildList(keepId); fillPick(); renderTagFilter(); load(false); renderCb(); toast(cs.length + " 枚を削除しました（『🗑 ゴミ箱』から戻せます）", "ok", 4000); }
+/* ゴミ箱：S.cdel[id] = { on:1, ts, title, gone? }。戻す＝on:0（控え S.delBak で足りないデータを戻す）。完全に消す＝gone:1（控えを消す。data.json のカード自体は物理的に消せないので、見えないままになるだけ）。同期は cdel の新しい方が勝つ */
+function trashList(){ return Object.keys(S.cdel).filter(id => S.cdel[id] && S.cdel[id].on && !S.cdel[id].gone).map(id => Object.assign({ id }, S.cdel[id])).sort((a, b) => (b.ts || 0) - (a.ts || 0)); }
+function trashReload(){ let keep = null; try { keep = card().id; } catch(e){} CARDS = liveCards(); stop(); list = []; pi = 0; buildList(keep); fillPick(); renderTagFilter(); load(false); renderCb(); }
+function trashRestore(ids){ const at = Date.now();
+  ids.forEach(id => { const b = S.delBak[id]; if (b) ["cv", "tags", "imp", "deckOv", "cs", "pg", "rev", "memo", "kov", "kx", "tree", "newCards"].forEach(k => { if (b[k] !== undefined && S[k] && S[k][id] === undefined) S[k][id] = JSON.parse(JSON.stringify(b[k])); });
+    S.cdel[id] = { on: 0, ts: at, title: (S.cdel[id] || {}).title }; st("cdel", id); delete S.delBak[id]; });
+  save(); trashReload(); }
+function trashGone(ids){ const at = Date.now(); ids.forEach(id => { S.cdel[id] = { on: 1, ts: at, title: (S.cdel[id] || {}).title, gone: 1 }; st("cdel", id); delete S.delBak[id]; }); save(); renderCb(); }
+function renderTrash(){
+  const v = $("trashBody"), L = trashList(); v.innerHTML = "";
+  if (!L.length){ const p = el("p", "small"); p.textContent = "ゴミ箱は空です。"; v.append(p); $("trashOpen").hidden = true; return; }
+  const sel = new Set(), bar = el("div", "cbctl"), msg = el("p", "small"); msg.id = "trashMsg";
+  const mk = (t, f, cls) => { const b = el("button", "grad" + (cls ? " " + cls : "")); b.type = "button"; b.textContent = t; b.onclick = f; bar.append(b); return b; };
+  mk("選んだカードを戻す", () => { if (!sel.size){ msg.textContent = "先にカードにチェックを付けてください。"; return; } trashRestore([...sel]); renderTrash(); });
+  mk("選んだカードを完全に消す", () => { if (!sel.size){ msg.textContent = "先にカードにチェックを付けてください。"; return; } if (!confirm(sel.size + " 枚を完全に消します。元に戻せません（削除前の控えも消えます）。よろしいですか？")) return; trashGone([...sel]); renderTrash(); }, "dng");
+  mk("ゴミ箱を空にする", () => { if (!confirm("ゴミ箱の " + L.length + " 枚を、すべて完全に消します。元に戻せません（削除前の控えも消えます）。よろしいですか？")) return; trashGone(L.map(x => x.id)); renderTrash(); }, "dng");
+  v.append(bar);
+  const nt = el("p", "small"); nt.textContent = "ゴミ箱に " + L.length + " 枚。『完全に消す』は、見えないまま二度と戻せなくなる、という意味です（カードの元のデータそのものは消えません）。"; v.append(nt);
+  L.forEach(x => { const l = el("label", "tgi"), c = el("input"); c.type = "checkbox"; c.onchange = () => { if (c.checked) sel.add(x.id); else sel.delete(x.id); }; const sp = el("span", "small"); sp.textContent = "　" + (x.ts ? new Date(x.ts).toLocaleString("ja-JP") + " に削除" : ""); l.style.display = "block"; l.append(c, document.createTextNode(" " + (x.title || x.id)), sp); v.append(l); });
+  v.append(msg); $("trashOpen").hidden = false;
+}
+function trashBtn(){ const n = trashList().length; $("trashOpen").hidden = !n; $("trashOpen").textContent = "🗑 ゴミ箱(" + n + ")"; }
 function bulkOpen(kind){
   const cs = bulkCards(); if (!cs.length){ toast("先に、表でカードにチェックを付けてください", "ng", 3000); return; }
   const body = $("bulkBody"); body.innerHTML = ""; const msg = el("p", "small"); msg.id = "bulkMsg";
@@ -3065,10 +3090,10 @@ function bulkOpen(kind){
     const d2 = row(); lab(d2, "重要度: "); const si = el("select"); si.id = "bulkImp"; [["", "変えない"], ["1", "1 丸暗記"], ["2", "2 要素"], ["3", "3 ざっくり"]].forEach(([v, t]) => { const o = el("option"); o.value = v; o.textContent = t; si.append(o); }); d2.append(si);
     const d3 = row(); lab(d3, "タグの置き換え: "); const f = el("input"); f.type = "text"; f.id = "bulkFrom"; f.placeholder = "いまのタグ"; f.setAttribute("aria-label", "いまのタグ"); const t2 = el("input"); t2.type = "text"; t2.id = "bulkTo"; t2.placeholder = "新しいタグ"; t2.setAttribute("aria-label", "新しいタグ"); d3.append(f, document.createTextNode(" → "), t2);
     const d4 = row(); btn(d4, cs.length + " 枚を変える", () => bulkChange(cs, { cs: sc.value, imp: +si.value || 0, from: normTag(f.value), to: normTag(t2.value) })); }
-  else if (kind === "card"){ $("bulkT").textContent = "🗑 カードを削除"; const w = el("p"); w.className = "small"; w.style.color = "#f99"; w.textContent = "チェックしたカード " + cs.length + " 枚を削除します。削除したカードは、再生・一覧・検索に出なくなり（ほかの端末にも同期されます）、元に戻せません。"; body.append(w);
+  else if (kind === "card"){ $("bulkT").textContent = "🗑 カードを削除"; const w = el("p"); w.className = "small"; w.style.color = "#f99"; w.textContent = "チェックしたカード " + cs.length + " 枚を削除します。削除したカードは、再生・一覧・検索に出なくなり（ほかの端末にも同期されます）、ゴミ箱から戻せます。"; body.append(w);
     const ul = el("p", "small"); ul.textContent = cs.slice(0, 8).map(c => "・" + c.title).join("　") + (cs.length > 8 ? "　ほか " + (cs.length - 8) + " 枚" : ""); body.append(ul);
-    const ps = el("p", "small"); ps.textContent = "念のため、削除前の直し・タグ・進捗などを控えとして残します（「直した内容を書き出す」のファイルに入ります。復元が必要になったら司令塔に相談してください）。"; body.append(ps);
-    const d = row(); btn(d, cs.length + " 枚を削除する（元に戻せません）", () => { bulkCardDel(cs); return ""; }, "dng"); const d2 = row(); btn(d2, "やめる", () => ""); }
+    const ps = el("p", "small"); ps.textContent = "削除前の直し・タグ・進捗などの控えも残します。『🗑 ゴミ箱』から戻せます（書き出しの控えにも入ります）。"; body.append(ps);
+    const d = row(); btn(d, cs.length + " 枚を削除する", () => { bulkCardDel(cs); return ""; }, "dng"); const d2 = row(); btn(d2, "やめる", () => ""); }
   body.append(msg); $("bulkDlg").hidden = false;
 }
 $("cbBTag").onclick = () => bulkOpen("add"); $("cbBDel").onclick = () => bulkOpen("del"); $("cbBChg").onclick = () => bulkOpen("chg"); $("cbBCard").onclick = () => bulkOpen("card");
@@ -3129,13 +3154,14 @@ $("impOpen").onclick = () => impShow(true); $("impClose").onclick = () => impSho
 $("impDlg").addEventListener("click", e => { if (e.target === $("impDlg")) impShow(false); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("impDlg").hidden) impShow(false); });
 /* 表示順・絞り込み・タグ・まとめて変える の窓 */
-const DLGS = { ord: "ordDlg", flt: "fltDlg", tag: "tagDlg", bulk: "bulkDlg" };
-function dlgShow(k, on){ const d = $(DLGS[k]); d.hidden = !on; if (k === "tag"){ tagOpen = on; renderTagFilter(); if (on) $("tqIn").focus(); } if (k === "ord" && on) renderPl(); if (!on && k !== "ord") renderCb(); }
+const DLGS = { ord: "ordDlg", flt: "fltDlg", tag: "tagDlg", bulk: "bulkDlg", trash: "trashDlg" };
+function dlgShow(k, on){ const d = $(DLGS[k]); d.hidden = !on; if (k === "tag"){ tagOpen = on; renderTagFilter(); if (on) $("tqIn").focus(); } if (k === "ord" && on) renderPl(); if (k === "trash" && on) renderTrash(); if (!on && k !== "ord") renderCb(); }
 Object.keys(DLGS).forEach(k => { $(DLGS[k]).addEventListener("click", e => { if (e.target === $(DLGS[k])) dlgShow(k, false); }); });
 $("ordOpen").onclick = () => dlgShow("ord", true); $("ordClose").onclick = () => dlgShow("ord", false);
 $("fltOpen").onclick = () => dlgShow("flt", true); $("fltClose").onclick = () => dlgShow("flt", false);
 $("tagPick").onclick = () => dlgShow("tag", true); $("tagClose").onclick = () => dlgShow("tag", false);
 $("bulkClose").onclick = () => dlgShow("bulk", false);
+$("trashOpen").onclick = () => dlgShow("trash", true); $("trashClose").onclick = () => dlgShow("trash", false);
 document.addEventListener("keydown", e => { if (e.key === "Escape") Object.keys(DLGS).forEach(k => { if (!$(DLGS[k]).hidden) dlgShow(k, false); }); });
 $("ordBody").append($("ordPart"));
 (function(){ const t = $("fltTop"), body = $("fltBody"); [...t.children].forEach(ch => { if (ch.tagName !== "SUMMARY") body.append(ch); }); t.hidden = true; })();
