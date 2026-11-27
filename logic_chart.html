@@ -119,7 +119,7 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .row.ladder>.blk::after{content:"";position:absolute;left:-17px;width:2px;top:-4px;bottom:-4px;background:var(--trace)}
 .row.ladder>.blk:first-of-type::after{top:-6px}
 .row.ladder>.blk:last-child::after{bottom:auto;height:24px}
-.blk.pairlit{outline:2px solid #ffd54a;outline-offset:2px;box-shadow:0 0 12px 3px rgba(255,213,74,.65);transition:box-shadow .15s}
+.wire.wih{visibility:hidden}.blk.pairlit,.blk.pairon{outline:2px solid #ffd54a;outline-offset:2px;box-shadow:0 0 12px 3px rgba(255,213,74,.65);transition:box-shadow .15s}
 .blk[data-pr]{position:relative}
 .board.editing .blk[data-pr] .pt:first-child::after,.board.txm .blk[data-pr] .pt:first-child::after{content:" 🔗";font-size:11px;color:#ffd54a}
 .row.ladder>.blk.lf::after{top:18px}
@@ -818,6 +818,9 @@ function ecard(){ const c = card(), v = S.cv[c.id]; return v ? Object.assign({},
 let secEd = -1;
 let vk = 0, lpFired = false, dbMode = false, dbLastSel = null, blkLevel = "", blkU = null, treeSel = 0, treeOpen = false, treeSz = 1, treeFlash = 0;
 let msMode = false, msel = [], msAnchor = null, msCard = null;
+/* 枠の色（要件の枠・ブロックをまとめる枠で共通）。色を増やすときは、ここに1行足すだけ：[名前, 色] */
+const FC = { g: ["緑水色", "#7fd0c8"], l: ["薄い水色", "#c4ecf7"], y: ["黄色", "#ffd54a"] };
+(function(){ const sty = document.createElement("style"); sty.textContent = ".rq{border:1.5px solid #7fd0c8;border-radius:4px;padding:0 2px;margin:0 1px}" + Object.keys(FC).map(k => ".rq-" + k + "{border-color:" + FC[k][1] + "}").join(""); document.head.append(sty); })();
 let txMode = false, edEl = null, edU = -1, lastSel = null, refs = [], curRow = null, curSec = null;
 function edited(c){ return !!S.cv[c.id]; }
 /* 読み手：vv＝PCで作ったVOICEVOXの音声、tts＝端末の読み上げ（Edgeなら Microsoft の声）。カードごとに選べる。選んでいなければ、文言を直したカードは tts、そのほかは vv */
@@ -851,17 +854,17 @@ function runsOf(root){
   const out = [];
   (function walk(n, a){
     n.childNodes.forEach(k => {
-      if (k.nodeType === 3){ for (let i = 0; i < k.data.length; i++) out.push({ ch:k.data[i], c:a.c, m:a.m, b:a.b, n:a.n }); return; }
+      if (k.nodeType === 3){ for (let i = 0; i < k.data.length; i++) out.push({ ch:k.data[i], c:a.c, m:a.m, b:a.b, n:a.n, f:a.f }); return; }
       if (k.nodeType !== 1 || k.classList.contains("ubr") || k.classList.contains("tbar")) return;
       if (k.tagName === "BR"){ if (!(k.parentNode !== root && k.parentNode.childNodes.length === 1)) out.push({ ch:"\n" }); return; }
-      const b = { c:a.c, m:a.m, b:a.b, n:a.n }, cl = k.classList; if (cl.contains("n")) b.n = 1;
+      const b = { c:a.c, m:a.m, b:a.b, n:a.n, f:a.f }, cl = k.classList; if (cl.contains("n")) b.n = 1; cl.forEach(x => { if (x.indexOf("rq-") === 0) b.f = x.slice(3); });
       if (cl.contains("c")) b.c = "c"; if (cl.contains("y")) b.c = "y"; if (cl.contains("w")) b.c = "w";
       if (cl.contains("m1")) b.m = "m1"; if (cl.contains("m2")) b.m = "m2";
       if (k.tagName === "B" || k.tagName === "STRONG") b.b = 1;
       if ((k.tagName === "DIV" || k.tagName === "P") && out.length && out[out.length - 1].ch !== "\n") out.push({ ch:"\n" });
       walk(k, b);
     });
-  })(root, { c:"", m:"", b:0, n:0 });
+  })(root, { c:"", m:"", b:0, n:0, f:"" });
   return out;
 }
 function htmlOf(runs, forEdit){
@@ -870,8 +873,9 @@ function htmlOf(runs, forEdit){
     const r = runs[i];
     if (r.ch === "\n"){ out += forEdit ? "\n" : "<br>"; i++; continue; }
     let j = i, t = "";
-    while (j < runs.length && runs[j].ch !== "\n" && runs[j].c === r.c && runs[j].m === r.m && !runs[j].b === !r.b && !runs[j].n === !r.n) t += runs[j++].ch;
+    while (j < runs.length && runs[j].ch !== "\n" && runs[j].c === r.c && runs[j].m === r.m && !runs[j].b === !r.b && !runs[j].n === !r.n && (runs[j].f || "") === (r.f || "")) t += runs[j++].ch;
     t = esc(t);
+    if (r.f) t = "<span class='rq rq-" + r.f + "'>" + t + "</span>";
     if (r.n) t = "<span class='n'>" + t + "</span>";
     if (r.m) t = "<span class='" + r.m + "'>" + t + "</span>";
     if (r.b) t = "<b>" + t + "</b>";
@@ -1008,6 +1012,14 @@ function edAct(a){
   if (a === "undo"){ if (edEl && edEl._dirty){ try { document.execCommand("undo"); } catch(e){} } else undoCard(false); return; }
   if (a === "redo"){ if (edEl && edEl._dirty){ try { document.execCommand("redo"); } catch(e){} } else undoCard(true); return; }
   const v = selNow() || lastSel;
+  if (a.indexOf("f:") === 0){   /* 要件の枠：選んだ語句を小さな四角い枠で囲む（同じ色をもう一度押すと外れる） */
+    const fk = a.slice(2), fr0 = runsOf(edEl);
+    if (!FC[fk] || !v || v[0] === v[1]){ $("editMsg").textContent = "枠で囲みたい語句を、先に選んでください。"; return; }
+    $("editMsg").textContent = "";
+    const flo = Math.min(v[0], v[1]), fhi = Math.max(v[0], v[1]), fpart = fr0.slice(flo, fhi).filter(r => r.ch !== "\n");
+    { const fon = !fpart.every(r => r.f === fk); fpart.forEach(r => r.f = fon ? fk : ""); }
+    redraw(fr0, flo, fhi); return;
+  }
   if (a !== "n") return;
   const runs = runsOf(edEl), noSel = !v || v[0] === v[1];
   if (noSel){ $("editMsg").textContent = "音声の有無を変えたい文字を、先に選んでください（文字を長押しして、両端をずらして範囲を選ぶ）。"; return; }
@@ -1113,6 +1125,10 @@ function blkDraw(){
     const I = frInfo(frSelId); if (!I.idx.length){ blkGo("0"); return; }
     ttl.textContent = "枠を選んでいます：「" + (I.label || "名前なし") + "」（" + I.idx.length + " 行）。枠の中は1つのまとまりです。";
     const nm = el("input"); nm.type = "text"; nm.id = "frName"; nm.maxLength = 30; nm.placeholder = "枠の名前（空でもよい）"; nm.setAttribute("aria-label", "枠の名前"); nm.value = I.label; body.before(nm);
+    { const fpv = ((S.cv[card().id] || {}).fp || {})[frSelId] || {};
+      Object.keys(FC).forEach(k => { const fb = add((fpv.c === k ? "✔ " : "") + "枠の色：" + FC[k][0], () => frProp(frSelId, o => { o.c = k; })); fb.dataset.a = "fc:" + k; fb.style.borderLeft = "6px solid " + FC[k][1]; });
+      if (fpv.c) add("枠の色を、ふつうの色にもどす", () => frProp(frSelId, o => { delete o.c; })).dataset.a = "fc:";
+      add(fpv.h ? "枠の中の矢印を戻す" : "枠の中の矢印を消す", () => frProp(frSelId, o => { if (o.h) delete o.h; else o.h = 1; })).dataset.a = "fh"; }
     add("名前を保存", () => frRename(frSelId, nm.value.trim())); add("枠で囲う範囲を変更", () => frChange(frSelId), "go"); add("この枠を削除（中のブロックは残ります）", () => { if (confirm("この枠を削除します（中のブロックはそのまま残ります）。よろしいですか？")) frDelete(frSelId); }, "dng"); add("← 戻る", () => { frSelId = null; blkGo("0"); drawFrames(); }); return; }
   if (blkLevel === "lside"){
     const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
@@ -1183,6 +1199,7 @@ function blkDraw(){
       } else {
         /* 文字を選んだ後：選んだ文字についての操作 */
         lab("音声・ツリー"); add("選んだ範囲の音声の有無：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
+        lab("要件の枠（選んだ語句を小さな四角で囲む。同じ色をもう一度押すと外れます）"); Object.keys(FC).forEach(k => { const fb = add("▢ " + FC[k][0], () => edAct("f:" + k)); fb.dataset.a = "f:" + k; fb.style.borderLeft = "6px solid " + FC[k][1]; });
         add("選択をやめる", () => selOff()).dataset.a = "seloff";
       }
     } else (BT[blkLevel] || []).forEach(([a, t]) => { add(t, () => edAct(a)).dataset.a = a; });
@@ -1405,15 +1422,19 @@ function frInfo(id){ const all = flatRows(ecard().sections), idx = []; all.forEa
 function frUOf(row){ for (let u = 1; u < refs.length; u++){ if (refs[u] && refs[u].row === row) return u; } for (const k of Object.keys(refs)){ if (refs[k] && refs[k].row === row) return +k; } return null; }
 function frChange(id){ const I = frInfo(id); if (!I.idx.length) return; const u1 = frUOf(I.all[I.idx[0]]), u2 = frUOf(I.all[I.idx[I.idx.length - 1]]); if (u1 == null || u2 == null) return;
   frU1 = u1; frU2 = u2; frWho = "end"; frNameV = I.label; frChg = id; blkLevel = "frame"; board.querySelectorAll(".pt.pick").forEach(x => x.classList.remove("pick")); blkDraw(); frMark(); }
+/* 枠の色・枠の中の矢印を消すか：cv.fp[枠のid] = { c:色の記号, h:1 }。図の直し(S.cv)に入るので同期される */
+function frProp(id, fn){ const cv = ensureCv(); cv.fp = cv.fp || {}; const o = cv.fp[id] || {}; fn(o); if (Object.keys(o).length) cv.fp[id] = o; else delete cv.fp[id]; if (!Object.keys(cv.fp).length) delete cv.fp;
+  touch(); blkLevel = "fsel"; render(); blkDraw(); drawFrames(); $("editMsg").textContent = "✔ 枠の設定を直しました。"; }
 function frRename(id, name){ const cv = ensureCv(), rows = flatRows(cv.sections); const first = rows.find(r => (r.fr || []).includes(id)); if (!first) return; rows.forEach(r => { if (r.fl && r.fl[id] !== undefined){ delete r.fl[id]; if (!Object.keys(r.fl).length) delete r.fl; } });
   if (name) first.fl = Object.assign({}, first.fl, { [id]: name }); touch(); blkLevel = "fsel"; render(); blkDraw(); drawFrames(); $("editMsg").textContent = "✔ 枠の名前を直しました。"; }
 function frDelete(id){ frRemove(id); frSelId = null; blkLevel = "0"; blkDraw(); $("editMsg").textContent = "枠を削除しました（中のブロックはそのまま残っています）。"; }
 function frRemove(id){
-  const cv = ensureCv(); flatRows(cv.sections).forEach(r => { if (r.fr && r.fr.includes(id)){ r.fr = r.fr.filter(x => x !== id); if (!r.fr.length) delete r.fr; if (r.fl){ delete r.fl[id]; if (!Object.keys(r.fl).length) delete r.fl; } } });
+  const cv = ensureCv(); if (cv.fp && cv.fp[id]){ delete cv.fp[id]; if (!Object.keys(cv.fp).length) delete cv.fp; } flatRows(cv.sections).forEach(r => { if (r.fr && r.fr.includes(id)){ r.fr = r.fr.filter(x => x !== id); if (!r.fr.length) delete r.fr; if (r.fl){ delete r.fl[id]; if (!Object.keys(r.fl).length) delete r.fl; } } });
   touch(); render(); blkDraw(); $("editMsg").textContent = "枠を外しました。"; toast("枠を外しました。", "ok");
 }
 function drawFrames(){
-  board.querySelectorAll(".frm").forEach(x => x.remove()); board.querySelectorAll(".wire").forEach(w => { w.style.marginTop = ""; w.style.marginBottom = ""; });
+  board.querySelectorAll(".frm").forEach(x => x.remove()); board.querySelectorAll(".wire").forEach(w => { w.style.marginTop = ""; w.style.marginBottom = ""; w.classList.remove("wih"); });
+  const fpAll = (S.cv[card().id] || {}).fp || {};
   const mem = {}; board.querySelectorAll(".row").forEach(e => { if (e._row && e._row.fr) e._row.fr.forEach(id => { const f = mem[id] || (mem[id] = { id, els: [], label: "" }); f.els.push(e); if (e._row.fl && e._row.fl[id]) f.label = e._row.fl[id]; }); });
   const L = Object.values(mem); if (!L.length){ board.style.removeProperty("padding-left"); board.style.removeProperty("padding-right"); return; }
   L.forEach(f => { f.set = new Set(f.els); });
@@ -1426,6 +1447,7 @@ function drawFrames(){
   const padOf = id => { const f = mem[id]; return f ? 8 + 8 * lv[id] + (f.label ? 4 : 0) : 0; };
   board.querySelectorAll(".wire").forEach(w => { const a = w.previousElementSibling, b = w.nextElementSibling; if (!a || !b || !a._row || !b._row) return;
     const fa = a._row.fr || [], fb = b._row.fr || []; const out = fa.filter(id => !fb.includes(id)), inn = fb.filter(id => !fa.includes(id));
+    if (fa.some(id => fb.includes(id) && fpAll[id] && fpAll[id].h)) w.classList.add("wih");   /* 枠の中の矢印を消す設定：両側の行が同じ枠に入っている矢印だけ隠す（枠の端から出入りする矢印は残す） */
     if (out.length) w.style.marginTop = Math.max(...out.map(padOf)) + "px"; if (inn.length) w.style.marginBottom = Math.max(...inn.map(padOf)) + "px"; });
   const br = board.getBoundingClientRect();
   L.sort((a, b) => lv[b.id] - lv[a.id]).forEach(f => {
@@ -1434,7 +1456,8 @@ function drawFrames(){
     d.style.left = (x0 - br.left + board.scrollLeft - pad) + "px"; d.style.top = (y0 - br.top + board.scrollTop - pad - (f.label ? 4 : 0)) + "px";
     d.style.width = (x1 - x0 + pad * 2) + "px"; d.style.height = (y1 - y0 + pad * 2 + (f.label ? 4 : 0)) + "px";
     d.dataset.f = f.id; if (blkLevel === "fsel" && frSelId === f.id) d.classList.add("sel");
-    { const tb = el("span", "frl" + (f.label ? "" : " tab"), f.label || "枠"); tb.dataset.f = f.id; tb.onclick = e => { if (!txMode) return; e.stopPropagation(); if (drgMoved){ drgMoved = false; return; } frSelect(f.id); }; tb.onpointerdown = e => { if (!txMode) return; drgStart(e, flatRows(ecard().sections).filter(r => (r.fr || []).includes(f.id)), tb); }; d.append(tb); } board.append(d); });
+    const fcol = fpAll[f.id] && FC[fpAll[f.id].c] ? FC[fpAll[f.id].c][1] : ""; if (fcol) d.style.borderColor = fcol;
+    { const tb = el("span", "frl" + (f.label ? "" : " tab"), f.label || "枠"); tb.dataset.f = f.id; if (fcol) tb.style.color = fcol; tb.onclick = e => { if (!txMode) return; e.stopPropagation(); if (drgMoved){ drgMoved = false; return; } frSelect(f.id); }; tb.onpointerdown = e => { if (!txMode) return; drgStart(e, flatRows(ecard().sections).filter(r => (r.fr || []).includes(f.id)), tb); }; d.append(tb); } board.append(d); });
 }
 try { new ResizeObserver(() => requestAnimationFrame(drawFrames)).observe(board); } catch(e){}
 window.addEventListener("resize", () => requestAnimationFrame(drawFrames));
@@ -1639,6 +1662,10 @@ function update(){
   board.querySelectorAll(".blk[data-u0]").forEach(e => { const a = +e.dataset.u0, b = +e.dataset.u1;
     e.classList.toggle("on", cur >= a && cur <= b); e.classList.toggle("past", cur > b); });
   board.querySelectorAll(".pt[data-u]").forEach(e => e.classList.toggle("on", +e.dataset.u === cur));
+  /* 対応づけたブロック：下のブロックを読んでいる間は、上の対応ブロックも光る（上を読んでいるときは、下は光らせない） */
+  board.querySelectorAll(".blk.pairon").forEach(x => x.classList.remove("pairon"));
+  if (cur >= 0){ const allPr = [...board.querySelectorAll(".blk[data-pr]")];
+    board.querySelectorAll(".blk.on[data-pr]").forEach(b => allPr.forEach(o => { if (o !== b && o.dataset.pr === b.dataset.pr && (o.compareDocumentPosition(b) & 4)) o.classList.add("pairon"); })); }
   board.querySelectorAll(".pt[data-af]").forEach(e => e.classList.toggle("cv", covered(+e.dataset.af) && S.hide === "all"));
   board.querySelectorAll("[data-w]").forEach(e => e.classList.toggle("lit", cur >= 0 && cur >= +e.dataset.w));
   board.classList.toggle("playing", playing);
@@ -2377,7 +2404,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271410";
+const VER = "版 202611271413";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
