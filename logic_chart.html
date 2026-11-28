@@ -182,6 +182,8 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .note{display:block;font-size:11px;color:var(--gray);margin-top:4px}
 .m1{background:var(--m1);border-radius:2px;padding:0 1px}
 .m2{background:var(--m2);border-radius:2px;padding:0 1px}
+.m3{background:#4a2a78;border-radius:2px;padding:0 1px;box-shadow:0 0 0 1px #b88cff}   /* 後で確認（紫） */
+.lrflash{outline:3px solid #ffd54a;border-radius:3px}#lrBot h3{margin:0 0 6px;font-size:14px}#lrBot .lrb{display:block;width:100%;text-align:left;margin:3px 0;white-space:normal}
 .blk.on{box-shadow:0 0 0 2px var(--current),0 0 16px rgba(243,236,210,.28)}
 .board.playing .blk:not(.on):not(.past){opacity:.72}
 
@@ -358,7 +360,7 @@ details.sub{margin:8px 0;border:1px solid var(--rule);border-radius:10px;padding
 body{padding-bottom:215px}
 .cv{background:rgba(236,235,230,.10);border-radius:4px;cursor:pointer}
 .cv,.cv *{color:transparent !important}
-.cv .m1,.cv .m2{background:transparent}
+.cv .m1,.cv .m2{background:transparent}.cv .m3{background:transparent;box-shadow:none}
 .blk:has(.cv) .to,.blk:has(.cv) .cond{visibility:hidden}
 .pt.cm .m1{background:#7a3030;cursor:pointer}
 .pt.cm .m1,.pt.cm .m1 *{color:transparent !important}
@@ -530,6 +532,7 @@ body{padding-bottom:215px}
       <span><i class="sw" style="color:var(--yellow)">字</i>規範・具体化・要件</span>
       <span><i class="sw" style="background:var(--m1)"></i>文言ごと暗記</span>
       <span><i class="sw" style="background:var(--m2)"></i>要素は落とせない</span>
+      <span><i class="sw" style="background:#4a2a78"></i>後で確認</span>
       <span id="lgOut" hidden><i class="sw" style="background:var(--outbg)"></i>要件事実に入らない</span>
     </div>
     <div class="panel study">
@@ -590,6 +593,7 @@ body{padding-bottom:215px}
     </section>
     <div class="board" id="board"></div>
     <section class="panel kbot" id="kBot" hidden></section>
+    <section class="panel" id="lrBot" hidden aria-label="後で確認の一覧"></section>
 
     <details class="panel" id="setup">
       <summary>🔑 クライアントID（Googleドライブ同期の設定）</summary>
@@ -669,6 +673,7 @@ let au2 = document.createElement("audio"); au2.preload = "auto"; au2.id = "au2";
 const A1 = au, A2 = au2;
 function wire(n, f){ [A1, A2].forEach(a => a.addEventListener(n, e => { if (a === au) f(e); })); }
 const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const lrCache = new Map();   /* 後で確認の一覧：元のカードごとの走査結果（直したカードは毎回調べ直す） */
 let DATA = null, CARDS = [], list = [], pi = 0, cur = -1, playing = false, utts = [], hasAudio = false, synced = false, tok = 0, objUrl = null;
 
 /* ---------- 設定（この端末に保存） ---------- */
@@ -897,7 +902,7 @@ function runsOf(root){
       if (k.tagName === "BR"){ if (!(k.parentNode !== root && k.parentNode.childNodes.length === 1)) out.push({ ch:"\n" }); return; }
       const b = { c:a.c, m:a.m, b:a.b, n:a.n, f:a.f }, cl = k.classList; if (cl.contains("n")) b.n = 1; cl.forEach(x => { if (x.indexOf("rq-") === 0) b.f = x.slice(3); });
       if (cl.contains("c")) b.c = "c"; if (cl.contains("y")) b.c = "y"; if (cl.contains("w")) b.c = "w";
-      if (cl.contains("m1")) b.m = "m1"; if (cl.contains("m2")) b.m = "m2";
+      if (cl.contains("m1")) b.m = "m1"; if (cl.contains("m2")) b.m = "m2"; if (cl.contains("m3")) b.m = "m3";
       if (k.tagName === "B" || k.tagName === "STRONG") b.b = 1;
       if ((k.tagName === "DIV" || k.tagName === "P") && out.length && out[out.length - 1].ch !== "\n") out.push({ ch:"\n" });
       walk(k, b);
@@ -1253,7 +1258,7 @@ function blkDraw(){
         /* 文字を選んだ後：選んだ文字についての操作 */
         lab("文字（選んだ文字の色・ハイライト・太字。同じものをもう一度押すと外れます）");
         [["c:c","水色"],["c:y","黄"],["c:w","白"],["c:","もとの色"]].forEach(([a, t]) => add("文字色：" + t, () => edAct(a)).dataset.a = a);
-        [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:","なし"]].forEach(([a, t]) => add("ハイライト：" + t, () => edAct(a)).dataset.a = a);
+        [["m:m1","赤マーカー"],["m:m2","緑マーカー"],["m:m3","後で確認（紫）"],["m:","なし"]].forEach(([a, t]) => add("ハイライト：" + t, () => edAct(a)).dataset.a = a);
         add("太字", () => edAct("b")).dataset.a = "b";
         lab("音声・ツリー"); add("選んだ範囲の音声の有無：切替", () => edAct("n")).dataset.a = "n"; add("ツリー作成", () => blkGo("tree")).dataset.a = "tree";
         lab("要件の枠（選んだ語句を小さな四角で囲む。同じ色をもう一度押すと外れます）"); Object.keys(FC).forEach(k => { const fb = add("▢ " + FC[k][0], () => edAct("f:" + k)); fb.dataset.a = "f:" + k; fb.style.borderLeft = "6px solid " + FC[k][1]; });
@@ -1782,7 +1787,7 @@ function render(){
       const prev = tgt.previousElementSibling; (prev && prev.classList.contains("wire") ? prev : tgt).before(dv); } }
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
-  renderKian();
+  renderKian(); lrRender();
   renderCs(); renderPg();
   update();
 }
@@ -2751,7 +2756,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611281442";
+const VER = "版 202611281443";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
@@ -3515,6 +3520,40 @@ function openCardAt(n){
   pi = i; stop(); setTab("play"); return load(false).then(() => { window.scrollTo(0, 0); });
 }
 function cbOpen(n){ openCardAt(n); }
+/* ---- 後で確認（g202611281100(3)）：文字に紫の「後で確認」ハイライト(クラス m3)を付けると、全カードのいちばん下に、その文字があるカードへ飛ぶ一覧が出る。
+   データは文の HTML の中の class='m3'（ほかの色と同じ仕組み＝直しと同期にそのまま乗る）。外す(ハイライト：なし)と一覧から消える。1つも無いときは一覧を出さない。 ---- */
+function lrScan(secs){
+  const out = [];
+  (secs || []).forEach(sec => (sec.rows || []).forEach(r => (r.b || []).forEach(b => (b.p || [b]).forEach(p => {
+    if (!p || typeof p.h !== "string" || p.h.indexOf("m3") < 0) return;
+    const d = el("div"); d.innerHTML = p.h; d.querySelectorAll(".m3").forEach(x => { const t = x.textContent.replace(/\s+/g, " ").trim(); if (t) out.push(t); }); }))));
+  return out;
+}
+function lrAll(){
+  const res = [];
+  CARDS.forEach((c, n) => { const v = S.cv[c.id]; let items;
+    if (v) items = lrScan(v.sections); else if (c.draft) items = lrScan(c.sections);
+    else { if (!lrCache.has(c.id)) lrCache.set(c.id, lrScan(c.sections)); items = lrCache.get(c.id); }
+    if (items.length) res.push({ n, id: c.id, title: c.title, items }); });
+  return res;
+}
+function lrRender(){
+  const box = $("lrBot"); if (!box) return; let L = []; try { L = lrAll(); } catch(e){}
+  box.innerHTML = ""; box.hidden = !L.length; if (!L.length) return;
+  const clip = t => t.length > 26 ? t.slice(0, 26) + "…" : t;
+  const h = el("h3"); h.textContent = "🔖 後で確認（紫のハイライトのある文字：" + L.length + "枚のカード）"; box.append(h);
+  const hint = el("div", "small"); hint.textContent = "押すと、そのカードへ移って、該当の文字を見せます。確認が済んだら、その文字を選んで「ハイライト：なし」にすると、この一覧から消えます。"; box.append(hint);
+  L.slice(0, 100).forEach(it => { const b = el("button", "lrb"); b.type = "button"; b.dataset.id = it.id;
+    b.textContent = "▶ " + it.title + " ＞ 「" + clip(it.items[0]) + "」" + (it.items.length > 1 ? "　ほか" + (it.items.length - 1) + "か所" : ""); b.onclick = () => lrGo(it); box.append(b); });
+  if (L.length > 100){ const m = el("div", "small"); m.textContent = "ほか " + (L.length - 100) + " 枚（先頭の100枚だけ表示）"; box.append(m); }
+}
+function lrGo(it){
+  return openCardAt(it.n).then(() => {
+    if (S.hide){ allShown = true; update(); }
+    const t = it.items[0], xs = [...board.querySelectorAll(".m3")], x = xs.find(e => e.textContent.replace(/\s+/g, " ").trim() === t) || xs[0];
+    if (x){ try { x.scrollIntoView({ block: "center" }); } catch(e){} x.classList.add("lrflash"); setTimeout(() => x.classList.remove("lrflash"), 2500); }
+  });
+}
 /* ---------- 再生順（プレイリスト・1本）：S.pl.main = { ids:[カードid…], off:[今回は外すカードid…] }（同期あり=kind pl。端末ごとの「使う」は S.plOn）。使っている間は、絞り込み・並べ方・シャッフルは効かず、この順に再生する ---------- */
 /* g202611271821: プレイリストを名前つきで複数持てる。S.pl[名前] = { ids, off }。前からの 1本は S.pl.main（画面では『メイン』）。いま使う1本は S.plCur（端末ごと）。同期は名前ごと（kind pl、S.ts['pl:名前']） */
 function plCurK(){ const k = S.plCur || "main"; return k === "main" || (S.pl && S.pl[k]) || plMadeNow.has(k) ? k : "main"; }
