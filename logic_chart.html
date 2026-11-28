@@ -1194,7 +1194,7 @@ function blkDraw(){
     const I = lsInfo(blkU); if (!I){ blkGo("0"); return; }
     ttl.textContent = "関係線 ＞ 線を変える：選んだブロック「" + (sample || "") + (sample.length >= 18 ? "…" : "") + "」の、左の線のつなぎ方を選びます";
     const why = lsWhy(I); H("左の線のつなぎ方");
-    [["down", "① 下のブロックと繋ぐ（逆L字）", !I.canDown], ["up", "② 上のブロックと繋ぐ（L字）", !I.canUp], ["upArrow", "③ 上のブロックと繋いで、矢印を伸ばす", !I.canUpArrow], ["none", "④ 矢印に変える（左の線をなくして、ふつうの直列に戻す）", !I.canNone]].forEach(([a, t, dis]) => add(t, () => lsOp(a), "", dis).dataset.a = "ls:" + a);
+    [["down", "① 下のブロックと繋ぐ（逆L字）", !I.canDown], ["up", "② 上のブロックと繋ぐ（L字）", !I.canUp], ["upArrow", "③ 上のブロックと繋いで、線の先端を矢印にして次のブロックを指す", !I.canUpArrow], ["none", "④ 矢印に変える（左の線をなくして、ふつうの直列に戻す）", !I.canNone], ["mid", "⑤ 上下の両方と繋ぐ（ト字：左の縦線の途中から横にも線が出る）", !I.canMid], ["par", "⑥ 下のブロックと横に並べる（┬の形。左の線は使わない）", !I.canPar]].forEach(([a, t, dis]) => add(t, () => lsOp(a), "", dis).dataset.a = "ls:" + a);
     if (I.hasLo){ H("矢印"); } if (I.hasLo) add("線の下から出る矢印だけ消す（左の線は残す）", () => lsOp("loOff")).dataset.a = "ls:loOff";
     const why2 = why.filter(Boolean); if (why2.length){ const n = el("div", "small"); n.textContent = "灰色のボタンの理由： " + why2.join(" ／ "); body.append(n); }
     add("← 戻る", () => blkGo("lside")); return; }
@@ -1459,7 +1459,9 @@ function lsInfo(u){
     canDown: mine && isLast && joinable(nx) && same(row, nx),
     canUp: mine && bi === 0 && joinable(pv) && same(row, pv),
     canUpArrow: (lad && isLast && !row.lo) || (!lad && mine && n === 1 && joinable(pv) && same(row, pv)),
-    canNone: lad, hasLo: lad && isLast && !!row.lo };
+    canNone: lad, hasLo: lad && isLast && !!row.lo,
+    canMid: mine && n === 1 && joinable(pv) && same(row, pv) && joinable(nx) && same(row, nx),
+    canPar: (rowKind(row) === "one" || rowKind(row) === "par") && !!nx && (rowKind(nx) === "one" || rowKind(nx) === "par") && same(row, nx) };
 }
 function lsWhy(I){
   const o = [], side = I.mine ? "" : "横に並んだブロックは左の線でつなげません";
@@ -1467,6 +1469,8 @@ function lsWhy(I){
   if (!I.canUp) o.push("②は、" + (side || (I.bi > 0 ? "すでに上のブロックと左の線でつながっています" : !I.pv ? "上にブロックがありません" : !I.joinable(I.pv) ? "上が横に並んだブロックです" : "上の行と枠の入り方が違います")));
   if (!I.canUpArrow) o.push("③は、" + (I.row.lo && I.lad && I.isLast ? "すでに矢印を伸ばしています" : I.lad && !I.isLast ? "左の線のいちばん下のブロックで使います" : side || (!I.pv ? "上にブロックがありません" : "上とつなげられません")));
   if (!I.canNone) o.push("④は、このブロックに左の線がありません");
+  if (!I.canMid) o.push("⑤は、" + (I.n > 1 ? "横に並んだブロック・左の線でつながったブロックでは使えません（1つだけのブロックで使います）" : !I.pv || !I.nx ? "上と下の両方にブロックが必要です" : !I.joinable(I.pv) || !I.joinable(I.nx) ? "上か下が横に並んだブロックです" : "上か下の行と枠の入り方が違います"));
+  if (!I.canPar) o.push("⑥は、" + (I.lad ? "左の線でつながったブロックでは使えません（先に④で矢印に戻してください）" : !I.nx ? "下にブロックがありません" : "下の行が横に並べられない形か、枠の入り方が違います"));
   return o;
 }
 function lsOp(act){
@@ -1474,6 +1478,8 @@ function lsOp(act){
   if (act === "down"){ if (!I.canDown) return; joinRows(I.R.sec, I.i, "ladder"); msg = "下のブロックと、左の線でつなぎました（逆L字）。"; }
   else if (act === "up"){ if (!I.canUp) return; joinRows(I.R.sec, I.i - 1, "ladder"); msg = "上のブロックと、左の線でつなぎました（L字）。"; }
   else if (act === "upArrow"){ if (!I.canUpArrow) return; let row = I.row; if (!I.lad){ joinRows(I.R.sec, I.i - 1, "ladder"); row = I.R.sec.rows[I.i - 1]; } row.lo = 1; msg = "上のブロックと左の線でつなぎ、線の下から次のブロックへ矢印を伸ばしました。"; }
+  else if (act === "mid"){ if (!I.canMid) return; joinRows(I.R.sec, I.i - 1, "ladder"); joinRows(I.R.sec, I.i - 1, "ladder"); msg = "上下のブロックと、左の線でつなぎました（ト字：左の線の途中から横にも線が出ます）。"; }
+  else if (act === "par"){ if (!I.canPar) return; joinRows(I.R.sec, I.i, "par"); msg = "下のブロックと横に並べました（┬の形）。"; }
   else if (act === "none"){ if (!I.canNone) return; splitLadder(I.R.sec, I.i, I.bi); msg = "左の線をなくして、ふつうの矢印（直列）にしました。"; }
   else if (act === "loOff"){ if (!I.hasLo) return; delete I.row.lo; msg = "線の下から出る矢印を消しました（左の線は残っています）。"; }
   else return;
@@ -2742,7 +2748,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611280959";
+const VER = "版 202611281105";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
