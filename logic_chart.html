@@ -44,8 +44,11 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .board{background:var(--board);color:var(--w);border-radius:10px;padding:14px 10px 18px;overflow-x:auto;position:relative}
 .frm{position:absolute;box-sizing:border-box;border:2px solid #7fd0c8;border-radius:12px;pointer-events:none;z-index:1}
 .frm .frl.tab{color:#7fd0c8}.board:not(.txm) .frm .frl.tab{display:none}.board.txm .frm .frl{pointer-events:auto;cursor:pointer}.frm.sel{box-shadow:0 0 0 3px rgba(255,154,60,.55)}
-.dh,.mh{display:none}.board.txm .row>.dh,.board.txm .row>.mh{display:flex;position:absolute;top:2px;height:30px;align-items:center;justify-content:center;font-size:18px;color:#7fd0c8;touch-action:none;z-index:3;user-select:none;-webkit-user-select:none;background:rgba(20,22,26,.6);border-radius:6px}
-.board.txm .row>.mh{left:-16px;width:26px;cursor:pointer;font-weight:700;border:1px solid rgba(127,208,200,.5)}.board.txm .row>.dh{right:-8px;width:24px;cursor:grab}
+.ctx{position:fixed;z-index:70;min-width:230px;max-width:min(340px,94vw);max-height:72vh;overflow:auto;background:#1b1f26;color:#e8ecf0;border:1px solid #7fd0c8;border-radius:10px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.55)}
+.ctx[hidden]{display:none}.ctx .ch{font-size:12px;color:#7fd0c8;padding:4px 6px 6px;line-height:1.4}.ctx button{display:block;width:100%;text-align:left;margin:2px 0;padding:9px 10px;border-radius:8px;border:1px solid rgba(127,208,200,.35);background:rgba(255,255,255,.04);color:inherit;font-size:14px;cursor:pointer;line-height:1.4}
+.ctx button.dng{color:#ff9a9a}.ctx button.bk{border-style:dashed;color:#7fd0c8}.ctx button:disabled{opacity:.45}
+.dh{display:none}.board.txm .row>.dh{display:flex;position:absolute;top:2px;height:30px;align-items:center;justify-content:center;font-size:18px;color:#7fd0c8;touch-action:none;z-index:3;user-select:none;-webkit-user-select:none;background:rgba(20,22,26,.6);border-radius:6px}
+.board.txm .row>.dh{right:-8px;width:24px;cursor:grab}
 .board.txm .frm .frl{touch-action:none}.row.dropb{box-shadow:0 -4px 0 0 #ffd54a}.row.dropa{box-shadow:0 4px 0 0 #ffd54a}.row.drgsrc{opacity:.45}
 .frm.l1{border-color:#e8c64a}.frm.l2{border-color:#c58ae8}.frm.l3{border-color:#f08a6b}
 .frm .frl{position:absolute;left:12px;top:-11px;background:var(--board);color:#7fd0c8;font-size:11.5px;font-weight:700;padding:0 7px;line-height:20px;border-radius:6px;white-space:nowrap;max-width:85%;overflow:hidden;text-overflow:ellipsis}
@@ -1136,7 +1139,7 @@ function blkMenu(u){
   if (pt){ blkLevel = "text"; openEd(u); }          /* ブロックを選んだら、そのまま文を直せる */
   blkDraw(); renderTree();
 }
-/* ブロック左の「⋯」：その行の先頭のブロックの「その他の操作」を開く（文を打つ画面ではなく、図・枠・矢印・関係線・音声・ツリーの一覧） */
+/* ブロックを選ぶ（タップ・メニューから）：「選ばれています」にして下のバーを出す。旧：ブロック左の「⋯」から「その他の操作」を開いていた（文を打つ画面ではなく、図・枠・矢印・関係線・音声・ツリーの一覧） */
 function moreMenu(u){
   if (msMode || msel.length) return;
   if (!txMode) setTx(true);
@@ -1165,22 +1168,13 @@ function blkDraw(){
   const c = card(); if (!c || !txMode){ return; }
   const draft = false, ttl = $("blkTitle");      /* 新しいカード(c.draft)も、ふつうのカードと同じに直せる（g202611271751） */
   body.onpointerdown = e => { if (e.target.closest("button")) e.preventDefault(); };       /* ボタンを押しても、文字の選択が外れないようにする */
-  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。複数のブロックをまとめて操作するときは、PCは Shift（範囲）／Ctrl（追加）＋クリック、スマホからの複数選びは、いまは用意していません。ブロック左の「⋯」を押すと「その他の操作」、長押しすると「関係線」のメニューが出ます（ブロックの左端の長押し・PCは右クリックでも、関係線が出ます）。"; return; }
+  if (!blkLevel){ ttl.textContent = "編集中：直したいブロックを、タップ（または長押し）してください。見出しの行もタップできます。複数のブロックをまとめて操作するときは、PCは Shift（範囲）／Ctrl（追加）＋クリック、スマホからの複数選びは、いまは用意していません。ブロックを右クリック（スマホは長押し）すると、分類→各操作のメニューが出ます（ブロックの左端の長押しは「関係線」）。"; return; }
   const q = blkU != null && refs[blkU] ? "" : "";
   const sample = (() => { const pt = board.querySelector(".pt.pick,.pt.ed"); return pt ? pt.textContent.replace(/\s+/g, "").slice(0, 18) : ""; })();
   if (blkLevel === "0"){
-    ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "");
-    const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
+    ttl.textContent = "このブロック：" + (sample || "") + (sample.length >= 18 ? "…" : "") + "　（選ばれています。操作は、ブロックを右クリック／スマホは長押しで出るメニュー［分類→各操作］から。下の「メニューを開く」でも出ます）";
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
-    lab0("関係線・矢印・左の印・まとめ"); add("関係線", () => blkGo("lside"), "", draft);
-    add("枠でまとめる（始まりと終わりの行を選んで、1つの枠に）", () => blkGo("frame"), "", draft).dataset.a = "frame:start";
-    add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft).dataset.a = "pair:start";
-    { const cmk = refs[blkU] && refs[blkU].b.mk; lab0("左の印（理由づけのプラス面・マイナス面、反対説への批判）"); [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => { const mb = add((MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, () => mkSet(blkU, k), "", draft); mb.dataset.a = "mk:" + k; });
-      if (cmk) add("左の印を外す", () => mkSet(blkU, ""), "", draft).dataset.a = "mk:"; }
-    lab0("理由づけのまとめ（折衷型）"); add("⊕⊖でまとめる（プラス面・マイナス面・次の規範を選んで、1回で）", () => sgStart(), "", draft).dataset.a = "sg:start";
-    if (refs[blkU] && refs[blkU].row && refs[blkU].row.sg) add("このまとまりの左の線と矢印を消す（枠と印は残ります）", () => sgRemove(blkU), "dng").dataset.a = "sg:rm";
-    lab0("音声"); add("音声の有無の切替", () => blkGo("aud"), "", draft);
-    lab0("カード全体"); add("このカードの直しを全部もとに戻す（Ctrl+Z で戻せます）", () => { if (window.confirm("このカードの、同期していない直しを全部取り消します。\nよろしいですか？（そのあと Ctrl+Z で元に戻せます）")) cardReset(); }, "dng", draft);
+    add("メニューを開く（分類 → 各操作）", () => ctxOpen(blkU, null, null), "", draft).dataset.a = "ctx:open";
     return; }
   if (blkLevel === "fsel"){
     const I = frInfo(frSelId); if (!I.idx.length){ blkGo("0"); return; }
@@ -1244,7 +1238,7 @@ function blkDraw(){
     return; }
   const BT = { aud: [["n","選んだ範囲の音声の有無：切替"]] };
   const selOnNow = blkLevel === "text" && selOn(); selWas = selOnNow;
-  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：文字の色・ハイライト・太字・枠、音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直した文は自動で保存されます" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。Enter で確定（編集モードは続きます）、文の中の改行は Shift+Enter。ほかのブロックの文をタップすると、この文を保存してそちらに移ります。分けたい位置にカーソルを置いて「ここでブロックを分割」。ほかの操作は、ブロック左の「⋯」ボタンから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
+  ttl.textContent = blkLevel === "text" ? (selOnNow ? "✎ 文字入力中（文字を選んでいます）：文字の色・ハイライト・太字・枠、音声の有無を変えたり、ツリーを作れます。選びなおすか「選択をやめる」で、ふつうの入力にもどります。直した文は自動で保存されます" : "✎ 文字入力中：文はそのまま打ち直せます（水色の太い枠の中が打てる場所です）。Enter で確定（編集モードは続きます）、文の中の改行は Shift+Enter。ほかのブロックの文をタップすると、この文を保存してそちらに移ります。分けたい位置にカーソルを置いて「ここでブロックを分割」。ほかの操作は、いま入力中でないブロックを右クリック（スマホは長押し）して出るメニューから") : blkLevel === "fig" ? "図の変更：カーソルの位置などで、ブロックを分けたり、つなげたりします" : "音声の有無：音声で読まない範囲（メモなど）を選んで切替（画面には灰色で残ります）";
   ttl.classList.toggle("typing", blkLevel === "text" && !!edEl);
   if (blkLevel === "fig"){
     const rf = refs[blkU], first = !rf || rf.sec.rows.indexOf(rf.row) < 1, yk = c.kind === "yk";
@@ -1775,13 +1769,7 @@ function render(){
         if (row.via){ const l = el("span", "lbl"); l.textContent = row.via; w.append(l); } s.append(w); }
       const r = el("div", "row " + (row.k || "one")); r._row = row; r.style.setProperty("--n", row.b.length); r.dataset.w = utts.length;
       if (row.lab){ const l = el("div", "lad-lab"); l.textContent = row.lab; r.append(l); }
-      if (txMode){ const m = el("span", "mh", "⋯"); m.title = "その他の操作（長押し・PCは右クリックで関係線）"; m.setAttribute("role", "button"); m.setAttribute("aria-label", "その他の操作（長押しで関係線）");
-        const mu = () => { const b0 = r.querySelector(".blk"); return b0 ? uOfBlk(b0) : null; }; let mt = 0, mf = false;
-        m._lp = () => lpGo(() => { const u = mu(); if (u != null){ mf = true; lsMenu(u); } });
-        m.onpointerdown = e => { if (e.button > 0) return; mf = false; clearTimeout(mt); mt = setTimeout(m._lp, 450); };
-        m.onpointerup = m.onpointercancel = () => clearTimeout(mt);
-        m.onclick = e => { e.stopPropagation(); clearTimeout(mt); if (mf || lpFired){ mf = false; return; } const u = mu(); if (u != null) moreMenu(u); };
-        r.append(m);
+      if (txMode){
         const h = el("span", "dh", "⠿"); h.title = "ドラッグで、この行（ブロック）の位置を変えます"; h.setAttribute("aria-label", "この行を移動"); h.onpointerdown = e => drgStart(e, [row], h); r.append(h); }
       curRow = row; curSec = sec; row.b.forEach(b => r.append(makeBlock(b)));
       { const bl = [...r.children].filter(x => x.classList.contains("blk")); if (row.k === "ladder" && bl[0]) bl[0].classList.add("lf");
@@ -2305,7 +2293,58 @@ function ptNear(e){
   return best;
 }
 function lpTarget(e){ const t = e.target; if (!t || !t.closest) return null; return t.closest(".pt[data-u],.pt[data-vu],.sec-hd") || ptNear(e); }
-function lpAct(t){ if (t.classList.contains("sec-hd")){ if (!txMode) setTx(true); } else blkMenu(+(t.dataset.u != null ? t.dataset.u : t.dataset.vu)); }
+/* ---- ブロックを右クリック（スマホは長押し）したときのメニュー：分類 → 各操作 の2段（g202611280947）。
+   ブロック左の「⋯」ボタンは廃止し、中にあった操作（文字を直す・関係線・枠でまとめる・対応づけ・左の印・⊕⊖でまとめる・音声の有無・カード全体を戻す）はここへ移した。 ---- */
+let ctxEl = null, ctxU = null, ctxPos = null;
+function ctxCats(u){
+  const R = refs[u]; if (!R) return [];
+  const cmk = R.b.mk, pre = () => { if (blkU !== u || blkLevel !== "0") moreMenu(u); };
+  const act = fn => () => { pre(); fn(); };
+  const cats = [
+    { k: "text", t: "文字（文を直す）", items: [["文字を直す（入力を始める）。色・ハイライト・太字・ブロックの分割・追加・削除は、その画面にあります", () => blkMenu(u), ""]] },
+    { k: "str", t: "構造（関係線・枠・対応づけ）", items: [
+      ["関係線（左の線のつなぎ方・線の横の文字）", act(() => blkGo("lside")), ""],
+      ["枠でまとめる（始まりと終わりの行を選ぶ）", act(() => blkGo("frame")), ""],
+      ["対応づけ（一緒に光らせる）", act(() => blkGo("pair")), ""] ] },
+    { k: "mk", t: "左の印・まとめ（⊕⊖▲）", items: [] },
+    { k: "aud", t: "音声", items: [["音声の有無の切替", act(() => blkGo("aud")), ""]] },
+    { k: "all", t: "カード全体", items: [["このカードの直しを全部もとに戻す（Ctrl+Z で戻せます）", act(() => { if (window.confirm("このカードの、同期していない直しを全部取り消します。\nよろしいですか？（そのあと Ctrl+Z で元に戻せます）")) cardReset(); }), "dng"]] }
+  ];
+  const mk = cats[2].items;
+  [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => mk.push([(MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, act(() => mkSet(u, k)), "", "mk:" + k]));
+  if (cmk) mk.push(["左の印を外す", act(() => mkSet(u, "")), "", "mk:"]);
+  mk.push(["⊕⊖でまとめる（プラス面・マイナス面・次の規範を選んで、1回で）", () => { pre(); sgStart(); }, "", "sg:start"]);
+  if (R.row && R.row.sg) mk.push(["このまとまりの左の線と矢印を消す（枠と印は残ります）", act(() => sgRemove(u)), "dng", "sg:rm"]);
+  return cats;
+}
+function ctxClose(){ if (ctxEl) ctxEl.hidden = true; ctxU = null; lpFired = false; lpDone = false; }
+function ctxDraw(catK){
+  if (!ctxEl || ctxU == null) return; const u = ctxU, cats = ctxCats(u); if (!cats.length){ ctxClose(); return; }
+  ctxEl.innerHTML = ""; const add = (t, f, k, a) => { const b = document.createElement("button"); b.type = "button"; b.textContent = t; if (k) b.className = k; if (a) b.dataset.a = a; b.onclick = e => { e.stopPropagation(); f(); }; ctxEl.append(b); return b; };
+  const h = document.createElement("div"); h.className = "ch"; const pt = board.querySelector('.pt[data-u="' + u + '"],.pt[data-vu="' + u + '"]'); const sm = pt ? pt.textContent.replace(/\s+/g, "").slice(0, 14) : "";
+  const cat = cats.find(c => c.k === catK);
+  h.textContent = "ブロック「" + sm + (sm.length >= 14 ? "…" : "") + "」" + (cat ? " ＞ " + cat.t : "：分類を選んでください"); ctxEl.append(h);
+  if (!cat){ cats.forEach(c => add(c.t + "  ›", () => ctxDraw(c.k), "", "cat:" + c.k)); add("閉じる", ctxClose, "bk", "ctx:close"); }
+  else { cat.items.forEach(([t, f, k, a]) => add(t, () => { ctxClose(); f(); }, k, a)); add("← 分類にもどる", () => ctxDraw(""), "bk", "ctx:back"); }
+  ctxPlace();
+}
+function ctxPlace(){
+  const w = window.innerWidth, hgt = window.innerHeight; const r = ctxEl.getBoundingClientRect();
+  let x = ctxPos ? ctxPos.x + 2 : (w - r.width) / 2, y = ctxPos ? ctxPos.y + 2 : (hgt - r.height) / 3;
+  x = Math.max(6, Math.min(x, w - r.width - 6)); y = Math.max(6, Math.min(y, hgt - r.height - 6)); ctxEl.style.left = x + "px"; ctxEl.style.top = y + "px";
+}
+function ctxOpen(u, x, y){
+  if (u == null || !refs[u]) return; if (msMode || msel.length) return;
+  if (!txMode) setTx(true);
+  if (edEl && !commit()) return;
+  moreMenu(u);                         /* そのブロックを「選ばれています」にする（まだ打てない状態） */
+  if (!ctxEl){ ctxEl = document.createElement("div"); ctxEl.className = "ctx"; ctxEl.id = "ctxMenu"; ctxEl.setAttribute("role", "menu"); ctxEl.hidden = true; document.body.append(ctxEl);
+    document.addEventListener("pointerdown", e => { if (ctxEl && !ctxEl.hidden && !ctxEl.contains(e.target)) ctxClose(); }, true);
+    document.addEventListener("keydown", e => { if (ctxEl && !ctxEl.hidden && e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); ctxClose(); } }, true);
+    window.addEventListener("scroll", () => { if (ctxEl && !ctxEl.hidden) ctxPlace(); }, true); }
+  ctxU = u; ctxPos = x == null ? null : { x, y }; ctxEl.hidden = false; ctxDraw("");
+}
+function lpAct(t){ if (t.classList.contains("sec-hd")){ if (!txMode) setTx(true); } else ctxOpen(+(t.dataset.u != null ? t.dataset.u : t.dataset.vu), lpx, lpy); }
 /* ブロックの左端（はしごの行は、左の線のあたりまで）を押したか。押したら、そのブロックを返す */
 function leftBlk(e){
   const t = e.target; if (!t || !t.closest || !board.contains(t)) return null; const row = t.closest(".row"); if (!row) return null;
@@ -2322,7 +2361,7 @@ function uOfBlk(b){ const p = b && b.querySelector(".pt[data-u],.pt[data-vu]"); 
    対象は「いま文字入力中(blkLevel text)」のときの、別のブロックの文だけ。枠・対応づけ・ツリー・複数選択・「改行を直す」・ボタン類は今までどおり。 */
 let swPend = null, swAt = 0;
 function swOk(e){ return txMode && edEl && blkLevel === "text" && !editing && !dbMode && !msMode && !msel.length && !sg && !e.shiftKey && !e.ctrlKey && !e.metaKey && !(e.button > 0); }
-function swTarget(e){ const t = e.target; if (!t || !t.closest || t.closest(".dh,.mh,.frl,button,input,select,textarea")) return null;
+function swTarget(e){ const t = e.target; if (!t || !t.closest || t.closest(".dh,.frl,button,input,select,textarea")) return null;
   const pt = t.closest(".pt[data-u],.pt[data-vu]") || ptNear(e); if (!pt || pt === edEl || pt.dataset.u === "0" || !board.contains(pt)) return null; return pt; }
 board.addEventListener("mousedown", e => { if (swOk(e) && swTarget(e)) e.preventDefault(); }, true);
 board.addEventListener("pointerdown", e => { swPend = null; if (!swOk(e)) return; const pt = swTarget(e); if (!pt) return;
@@ -2343,13 +2382,13 @@ function lpPlan(e){
   const lb = leftBlk(e); if (lb){ const u = uOfBlk(lb); return u == null ? null : () => lsMenu(u); }
   const t = lpTarget(e); return lpSkip(t) ? null : () => lpAct(t);
 }
-board.addEventListener("pointerdown", e => { if (e.button > 0 || (e.target.closest && e.target.closest(".dh,.mh,.frl,button,input,select,textarea"))) return; const fn = lpPlan(e); if (!fn) return;
+board.addEventListener("pointerdown", e => { if (e.button > 0 || (e.target.closest && e.target.closest(".dh,.frl,button,input,select,textarea"))) return; const fn = lpPlan(e); if (!fn) return;
   lpx = e.clientX; lpy = e.clientY; lpAt = Date.now(); lpDone = false; clearTimeout(lpT); lpT = setTimeout(() => lpGo(fn), 450); });
 board.addEventListener("pointerup", () => clearTimeout(lpT));
 /* ブラウザが先に「長押しの動作」（文字の選択・メニュー）を始めると pointercancel が来る。それが長押しの途中なら、タイマーは止めない（早い pointercancel はスクロールの始まりなので止める） */
 board.addEventListener("pointercancel", () => { if (Date.now() - lpAt < 300) clearTimeout(lpT); });
 board.addEventListener("pointermove", e => { if (Math.hypot(e.clientX - lpx, e.clientY - lpy) > 16) clearTimeout(lpT); });
-board.addEventListener("contextmenu", e => { const mh = e.target.closest && e.target.closest(".mh"); if (mh){ e.preventDefault(); if (mh._lp) mh._lp(); return; } if (e.target.closest && e.target.closest("button,input,select,textarea")) return; const fn = lpPlan(e); if (!fn) return; e.preventDefault(); lpGo(fn); });
+board.addEventListener("contextmenu", e => { if (e.target.closest && e.target.closest("button,input,select,textarea")) return; lpx = e.clientX; lpy = e.clientY; const fn = lpPlan(e); if (!fn) return; e.preventDefault(); lpGo(fn); });
 
 /* ---------- 操作 ---------- */
 $("play").onclick = () => thinking ? endThink(true) : playing ? stop() : start();
@@ -2703,7 +2742,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611280956";
+const VER = "版 202611280959";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
