@@ -30,9 +30,9 @@
   color-scheme:dark;
 }
 /* g202611281525 (4): ドライブへ送れていない直しがある間は、サイト全体の背景を濃い緑にする（暗い配色と同じ文字色で読める濃さ）。保存が済むと元の色に戻る */
-html.unsaved:root{--page:#0f4a2c; --ink:#e8f0ea; --sub:#a9c7b3; --bar:#165a38; --barline:#2c7a50; --btn:#1d6b43; --btnline:#3b8a5e; color-scheme:dark}
-.unstag{position:fixed;top:6px;right:8px;z-index:95;background:#f4d35e;color:#1a1a1a;font-size:12.5px;font-weight:700;border:0;border-radius:999px;padding:5px 12px;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer}
-.unstag[hidden]{display:none}
+html.unsaved:root{--page:#10261c; --ink:#dfe9e3; --sub:#9bb5a6; --bar:#173629; --barline:#2d5642; --btn:#1d4333; --btnline:#376651; color-scheme:dark}
+.unstag{position:fixed;top:6px;right:8px;z-index:95;background:#d9bf6a;color:#1e1b10;font-size:12.5px;font-weight:700;border:0;border-radius:999px;padding:5px 12px;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer}
+.unstag[hidden]{display:none}.unstag.busy{background:#9fc4d8;color:#10202a}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--page);color:var(--ink);
@@ -270,7 +270,7 @@ dialog#dbDlg::backdrop{background:rgba(0,0,0,.55)}
 .dbbar .act{margin-top:6px}.dbbar .tg{font-weight:600}
 .tgchip.tgnot{border-color:#d9534f;color:#d9534f}.tgcw{display:inline-flex;gap:0;align-items:center}.tgcw .tgflip{border:1px solid #5c7a52;border-left:0;background:transparent;color:var(--sub);border-radius:0 99px 99px 0;padding:3px 8px;font:inherit;font-size:11.5px;cursor:pointer}.tgcw .tgchip{border-radius:99px 0 0 99px}.tgcw.not .tgflip{border-color:#d9534f}.tgchip.tgpl,.tg.pl .tgn{border-color:#8a74c8}.tg.pl{border-color:#8a74c8}.trnote{color:#cfe3c8;margin:2px 0}.trule button[aria-pressed="true"],.qst button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}.plpick{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}.plpick select{max-width:16rem}.tgnotb{font-size:11px;padding:0 6px;margin-left:4px}
 #ncPend{border:2px solid #e0a800;background:rgba(224,168,0,.10);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}#ncPend .nph{font-weight:bold;margin-bottom:4px}#ncPend .npr{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0}#ncPend input[type=text]{min-width:12em;flex:1}
-.blkbar{position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
+.blkbar{max-height:42vh;overflow-y:auto;position:sticky;top:0;z-index:30;background:var(--bar);border:1px solid var(--btnline);border-radius:12px;padding:8px 10px;margin:6px 0;font-size:13px}
 .blkbar .tbar .lab{flex-basis:100%;font-size:11.5px;color:var(--sub);margin:5px 0 0;font-weight:600}.blkbar .tbar .lab:first-child{margin-top:0}   /* ④ 見出しは、PCでもスマホでも行の頭から（ボタンの並びの途中に入らない） */
 .blkbar .bt{font-weight:600;margin-bottom:5px}.blkbar .tbar{margin:4px 0 4px}.blkbar input{box-sizing:border-box;width:100%;border-radius:8px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:6px 8px;font:inherit;font-size:13px;margin:2px 0 4px}
 .blkbar button:disabled{opacity:.4}
@@ -713,14 +713,15 @@ const UNS_SKIP = { pg: 1, rev: 1 };
 function unsMax(){ let m = 0; for (const k in S.ts){ if (UNS_SKIP[k.slice(0, k.indexOf(":"))]) continue; if (S.ts[k] > m) m = S.ts[k]; } return m; }
 function isUnsaved(){ return unsMax() > (S.gLast || 0); }
 let unsT = 0;
-function unsPaint(){ unsT = 0; const u = isUnsaved(); document.documentElement.classList.toggle("unsaved", u); const t = document.getElementById("unsTag"); if (t) t.hidden = !u; }
+function unsPaint(){ unsT = 0; const u = isUnsaved(), b = (typeof gBusy !== "undefined" && gBusy); document.documentElement.classList.toggle("unsaved", u); const t = document.getElementById("unsTag");
+  if (t){ t.hidden = !u && !b; t.textContent = b ? "⟳ 同期中…（Googleの小窓が出たら『許可』を押してください）" : "● 未保存（ドライブに送っていません）"; t.classList.toggle("busy", b); } }
 function unsPaintSoon(){ if (!unsT) unsT = setTimeout(unsPaint, 0); }
 setInterval(unsPaint, 3000);
 unsPaintSoon();
 /* ---------- 確認の状態：S.cs[カードid] = { v:"u|c|m|d" }。記録が無いカードは「未確認」。同期あり(kind cs。カード1枚ごとに、新しい方を採用) ---------- */
 const CSORD = ["u", "c", "m", "d"], CSL = { u: "未確認", c: "確認中", m: "修正必須", d: "完成" };
 function csOf(c){ const r = S.cs && S.cs[c.id]; return r && CSL[r.v] ? r.v : "u"; }
-function csSet(c, v){ if (!S.cs) S.cs = {}; S.cs[c.id] = { v }; st("cs", c.id); save(); }
+function csSet(c, v){ if (!S.cs) S.cs = {}; S.cs[c.id] = { v }; st("cs", c.id); save(); try { renderRec(); } catch(e){} }
 function csOk(c){ return !S.csSel.length || S.csSel.includes(csOf(c)); }
 /* ---------- 進捗：S.pg[カードid] = { v:"n|x|d|o|g" }（未習・苦手×・うろ覚え△・覚えかけ○・自信あり◎）。同期あり(kind pg)。
    記録が無いカードは、前の版の「卒業」「覚えていた？」の記録から決める（元の記録 S.imp / S.rev は消さない）。起動時に1回、S.pg に書き写す ---------- */
@@ -1828,7 +1829,7 @@ function render(){
   if (!S.cv[c.id]) applyEdits(); else countLine();
   renderGrade();
   renderKian(); lrRender();
-  renderCs(); renderPg();
+  renderCs(); renderPg(); try { renderRec(); } catch(e){}
   update();
 }
 /* ---------- 隠して再生 ---------- */
@@ -1915,6 +1916,7 @@ function buildList(keepId, reshuffle){
   fillPick();
   const cnt = $("cnt"); if (cnt) cnt.textContent = none ? "いまの条件に合うカードがありません（かわりに全部のカードを出しています）" : (sc === "all" ? "全カード " : sc === "pl" && usePl ? "再生順 " : "いまの条件で ") + list.length + " 枚（うち音声つき " + list.filter(i => CARDS[i].au).length + " 枚）";
   renderSearch(none);
+  try { renderRec(); } catch(e){}
 }
 
 /* ---------- 検索とタグ ----------
@@ -2167,6 +2169,12 @@ function renderRec(){
   CARDS.forEach(c => n[progOf(c)]++);
   const p = el("p", "small recline"); p.textContent = "📒 進捗　全 " + CARDS.length + " 枚　未習 " + n.n + "・苦手× " + n.x + "・うろ覚え△ " + n.d + "・覚えかけ○ " + n.o + "・自信あり◎ " + n.g;
   box.append(p);
+  /* g202611281552 (D): 確認の状態ごとの枚数を常に表示（全カード基準。絞り込み中は枚数を添える）。csOf は記録が無いカードを「未確認」に数える */
+  const m = { u:0, c:0, m:0, d:0 };
+  CARDS.forEach(c => m[csOf(c)]++);
+  const p2 = el("p", "small recline"); p2.id = "csCount";
+  p2.textContent = "🔍 状態　" + CSORD.map(k => CSL[k] + " " + m[k]).join(" / ") + (list.length && list.length < CARDS.length ? "　（絞り込み中: " + list.length + " 枚）" : "");
+  box.append(p2);
   const t = S.log[dayKey()], q = el("p", "small recline");
   q.textContent = "今日　聞いた " + (t ? t.h : 0) + "　◎ " + (t && t.g || 0) + "　○ " + (t ? t.o : 0) + "　△ " + (t ? t.d : 0) + "　× " + (t ? t.x : 0);
   box.append(q);
@@ -2409,7 +2417,12 @@ function ctxDraw(catK){
 function ctxPlace(){
   const w = window.innerWidth, hgt = window.innerHeight; const r = ctxEl.getBoundingClientRect();
   let x = ctxPos ? ctxPos.x + 2 : (w - r.width) / 2, y = ctxPos ? ctxPos.y + 2 : (hgt - r.height) / 3;
-  x = Math.max(6, Math.min(x, w - r.width - 6)); y = Math.max(6, Math.min(y, hgt - r.height - 6)); ctxEl.style.left = x + "px"; ctxEl.style.top = y + "px";
+  x = Math.max(6, Math.min(x, w - r.width - 6)); y = Math.max(6, Math.min(y, hgt - r.height - 6));
+  /* g202611281552 (C-④): 押したブロックに重なるときは、ブロックの下（入らなければ上）へずらす */
+  try { const pk = board.querySelector(".pt.pick"), bk = pk && pk.getBoundingClientRect();
+    if (bk && bk.height < hgt * 0.6 && !(x + r.width < bk.left || x > bk.right || y + r.height < bk.top || y > bk.bottom)){
+      if (bk.bottom + 8 + r.height <= hgt - 6) y = bk.bottom + 8; else if (bk.top - 8 - r.height >= 6) y = bk.top - 8 - r.height; else if (x > bk.left + (bk.width / 2)) x = Math.max(6, bk.left - r.width - 8); else x = Math.min(w - r.width - 6, bk.right + 8); } } catch(e){}
+  ctxEl.style.left = x + "px"; ctxEl.style.top = y + "px";
 }
 function ctxOpen(u, x, y, startCat){
   if (u == null || !refs[u]) return; if (msMode || msel.length) return;
@@ -2422,6 +2435,29 @@ function ctxOpen(u, x, y, startCat){
     window.addEventListener("scroll", () => { if (ctxEl && !ctxEl.hidden) ctxPlace(); }, true); }
   ctxU = u; ctxPos = x == null ? null : { x, y }; ctxEl.hidden = false; ctxDraw(startCat || "");
 }
+/* g202611281552 (C): 編集中・選択中のブロックが、上のバー・キーボード・右クリックメニューに隠れないようにする。
+   ①選ばれた／打っているブロックを、バーの下〜キーボードの上の見える範囲に、自動スクロールで入れる ②バーは画面の約4割までで、中身が多いときはバーの中だけスクロール ④メニューは、押したブロックに重ならない位置へ */
+function revealTarget(){
+  if (!txMode) return null;
+  if (edEl && document.body.contains(edEl)) return edEl;
+  const pk = board.querySelector(".pt.pick"); if (pk) return pk;
+  const fs = board.querySelector(".frm.sel"); return fs || null;
+}
+let revT = 0;
+function revealSel(){
+  revT = 0; const t = revealTarget(); if (!t) return;
+  const vv = window.visualViewport, vh = vv ? vv.height : window.innerHeight, top0 = vv ? vv.offsetTop : 0;
+  const bar = $("blkBar"), bb = bar && !bar.hidden ? bar.getBoundingClientRect() : null;
+  const barBot = bb ? Math.max(0, bb.bottom) : 0, r = t.getBoundingClientRect(), M = 12, avail = top0 + vh - M - (barBot + M);
+  if (r.height > avail){ if (r.top < barBot + M || r.top > top0 + vh - M) window.scrollBy(0, r.top - (barBot + M)); return; }   /* 背の高いブロックは、上端を合わせる */
+  if (r.top < barBot + M) window.scrollBy(0, r.top - (barBot + M));
+  else if (r.bottom > top0 + vh - M) window.scrollBy(0, r.bottom - (top0 + vh - M));
+}
+function revealSoon(d){ clearTimeout(revT); revT = setTimeout(revealSel, d == null ? 60 : d); }
+{ const bd0 = blkDraw; blkDraw = function(){ const r = bd0.apply(this, arguments); revealSoon(); return r; }; }
+document.addEventListener("focusin", e => { if (txMode && e.target && e.target.closest && board.contains(e.target)) { revealSoon(80); revealSoon2(); } });
+function revealSoon2(){ setTimeout(revealSel, 350); }      /* スマホのキーボードが出きってから、もう一度合わせる */
+if (window.visualViewport){ visualViewport.addEventListener("resize", () => { if (txMode) revealSoon(120); }); }
 function lpAct(t){ if (t.classList.contains("sec-hd")){ if (!txMode) setTx(true); } else ctxOpen(+(t.dataset.u != null ? t.dataset.u : t.dataset.vu), lpx, lpy); }
 /* ブロックの左端（はしごの行は、左の線のあたりまで）を押したか。押したら、そのブロックを返す */
 function leftBlk(e){
@@ -2792,9 +2828,9 @@ async function gFind0(name, extra){ const j = await (await gApi("https://www.goo
 async function gSync(){
   if (gBusy) return;
   if (!S.gcid){ $("setup").open = true; $("gcid").focus(); gStatus(); return; }
-  gBusy = true; $("gBtn").disabled = true;
+  gBusy = true; $("gBtn").disabled = true; unsPaint(); let again = false;
   try {
-    gMsg("Googleに接続中…"); await gToken(); S.gOk = 1;
+    gMsg("Googleに接続中…（小窓が出たら『許可』を押してください）"); await gToken(); S.gOk = 1;
     gMsg("ドライブを確認中…");
     let fo = await gFolder();
     if (!fo) fo = await (await gApi("https://www.googleapis.com/drive/v3/files?fields=id", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: G_FOLDER, mimeType: "application/vnd.google-apps.folder" }) })).json();
@@ -2815,9 +2851,13 @@ async function gSync(){
     if (n){ migrateDbq(); tidyTx(); migrateMemo(); try { CARDS = liveCards(); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
     S.gLast = dirtyDuring ? mxSnap : Date.now(); save(); unsPaint();
     try { const t = await gGet(DB_PLACE_FILE); if (t) dbPlaceAccept(t, "drive"); } catch(e){}
-    gStatus(); gMsg($("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。"));
+    gStatus(); const doneTxt = $("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。");
+    gQuiet = true; try { gMsg(doneTxt); } finally { gQuiet = false; }
+    if (dirtyDuring){ again = true; toast("同期の最中に直した分があります。もう一度同期します…", "", 3500); }
+    else toast("ドライブに保存しました（背景が元の色に戻ります）", "ok", 3500);
   } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e) + (isUnsaved() ? "　（直した分はまだドライブに入っていません。画面が緑のままのうちは、このページを閉じないでください）" : "")); }
   finally { gBusy = false; $("gBtn").disabled = false; unsPaint(); }
+  if (again) setTimeout(gSync, 300);      /* 送っている間に直した分は、もう一度だけ自動で送る（成功しなければ緑のまま） */
 }
 $("gBtn").onclick = gSync;
 $("unsTag").onclick = () => gSync();
@@ -2834,7 +2874,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611281546";
+const VER = "版 202611281603";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
