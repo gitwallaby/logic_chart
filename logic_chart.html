@@ -50,6 +50,8 @@ header h1{font-size:19px;line-height:1.35;margin:0 0 2px;font-weight:700}
 .frm .frl.tab{color:#7fd0c8}.board:not(.txm) .frm .frl.tab{display:none}.board.txm .frm .frl{pointer-events:auto;cursor:pointer}.frm.sel{box-shadow:0 0 0 3px rgba(255,154,60,.55)}
 .ctx{position:fixed;z-index:70;min-width:230px;max-width:min(340px,94vw);max-height:72vh;overflow:auto;background:#1b1f26;color:#e8ecf0;border:1px solid #7fd0c8;border-radius:10px;padding:6px;box-shadow:0 6px 24px rgba(0,0,0,.55)}
 .ctx[hidden]{display:none}.ctx .ch{font-size:12px;color:#7fd0c8;padding:4px 6px 6px;line-height:1.4}.ctx button{display:block;width:100%;text-align:left;margin:2px 0;padding:9px 10px;border-radius:8px;border:1px solid rgba(127,208,200,.35);background:rgba(255,255,255,.04);color:inherit;font-size:14px;cursor:pointer;line-height:1.4}
+.ctx .lnrow{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}.ctx .lnrow input{flex:1 1 100%;font-size:15px;padding:7px 9px;border-radius:6px;border:1px solid #7fd0c8;background:#11151a;color:#e8ecf0}.ctx .lnrow button{display:inline-block;width:auto;margin:0;padding:6px 11px}
+.board.txm .wire{cursor:pointer}.board.txm .wire::before{content:"";position:absolute;left:-18px;right:-18px;top:-3px;bottom:-3px}.board.txm .row.ladder>.jl{cursor:pointer}
 .ctx button.dng{color:#ff9a9a}.ctx button.bk{border-style:dashed;color:#7fd0c8}.ctx button:disabled{opacity:.45}
 .dh{display:none}.board.txm .row>.dh{display:flex;position:absolute;top:2px;height:30px;align-items:center;justify-content:center;font-size:18px;color:#7fd0c8;touch-action:none;z-index:3;user-select:none;-webkit-user-select:none;background:rgba(20,22,26,.6);border-radius:6px}
 .board.txm .row>.dh{right:-8px;width:24px;cursor:grab}
@@ -1478,7 +1480,7 @@ function prTap(ev){
   touch(); blkLevel = "pair"; render(); blkDraw(); pairLit(gid); $("editMsg").textContent = "✔ 対応づけを直しました。"; }
 function prClear(){ const src = prU; ensureCv(); const A = refs[src]; if (!A || !A.b.pr) return; const gid = A.b.pr; const seen = new Set(); Object.values(refs).forEach(x => { if (x && x.b && x.b.pr === gid && !seen.has(x.b)){ seen.add(x.b); delete x.b.pr; } }); touch(); blkLevel = "pair"; render(); blkDraw(); $("editMsg").textContent = "✔ 対応づけを外しました。"; }
 /* ---- 矢印・線の文字／直列・並列。row.via=上の矢印の文字、row.jl=[つながるブロックの間の線の文字…]、row.k=one/par/branch/ladder ---- */
-function lnOp(fn, msg){ const u = blkU; ensureCv(); const x = refs[u]; if (!x) return; fn(x); touch(); blkLevel = "line"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500); }
+function lnOp(fn, msg, back){ const u = blkU; ensureCv(); const x = refs[u]; if (!x) return; fn(x); touch(); blkLevel = back || "line"; render(); blkDraw(); $("editMsg").textContent = "✔ " + msg; toast("✔ " + msg, "ok", 2500); }
 /* 行 i と、すぐ下の行を1つにまとめる（kind: "ladder"＝左の線でつなぐ／"par"＝横に並べる）。下の行の矢印の文字は、つながるブロックの間の線の文字になる */
 function joinRows(sec, i, kind){
   const rows = sec.rows, row = rows[i], nx = rows[i + 1]; if (!row || !nx) return false;
@@ -2349,7 +2351,13 @@ function ctxCats(u){
       relItems.push([t + (dis ? "　（いまはできません：" + w + "）" : ""), act(() => lsOp(a, "0")), "", "ls:" + a, dis]); });
     if (LI.hasLo) relItems.push(["線の下から出る矢印だけ消す（左の線は残す）", act(() => lsOp("loOff", "0")), "", "ls:loOff"]);
   }
-  relItems.push(["線の横に接続詞等を付ける（文字を打つ欄が出ます）", act(() => blkGo("line")), "go", "ls:word"]);
+  /* g202611281525 (3): 線の横の文字は、このメニューの中に文字を打つ欄を出して直す（上の矢印の文字 row.via／左の線でつながったブロックの間の文字 row.jl） */
+  const lnFields = [], ri1 = R.sec ? R.sec.rows.indexOf(R.row) : -1, bi1 = R.row ? R.row.b.indexOf(R.b) : -1;
+  if (ri1 > 0) lnFields.push({ id: "ctxVia", lab: "この線の横の文字（上の矢印の文字。例：そこで）", val: R.row.via || "", ph: "矢印の文字（空で消す）", quick: ["そこで", "したがって", "しかし"],
+    save: v => { pre(); lnOp(x => { if (v) x.row.via = v; else delete x.row.via; }, v ? "矢印の文字を入れました。" : "矢印の文字を消しました。", "0"); } });
+  if (R.row && R.row.b.length > 1 && bi1 >= 0 && bi1 < R.row.b.length - 1) lnFields.push({ id: "ctxJl", lab: "このブロックと次のブロックをつなぐ線の横の文字", val: (R.row.jl || [])[bi1] || "", ph: "線の文字（空で消す）", quick: ["又は", "かつ", "そして"],
+    save: v => { pre(); lnOp(x => { const a = (x.row.jl || []).slice(); while (a.length < x.row.b.length - 1) a.push(""); a[x.row.b.indexOf(x.b)] = v; x.row.jl = a.some(Boolean) ? a : undefined; if (!x.row.jl) delete x.row.jl; }, v ? "線の文字を入れました。" : "線の文字を消しました。", "0"); } });
+  if (!lnFields.length) relItems.push(["線の横の文字は、上に矢印のあるブロックか、左の線でつながったブロックに付けられます（先に線をつないでください）", () => {}, "", "ls:wordno", true]);
   const cats = [
     { k: "blk", t: "ブロック・行（つなげる・追加・削除・横線）", items: blkItems },
     { k: "str", t: "構造（関係線・枠・対応づけ）", items: [
@@ -2359,7 +2367,7 @@ function ctxCats(u){
     { k: "mk", t: "左の印・番号・まとめ（⊕⊖▲・①②③）", items: [] },
     { k: "aud", t: "音声", items: [["音声の有無の切替", act(() => blkGo("aud")), ""]] },
     { k: "all", t: "カード全体", items: [["編集モードを終わる（打ちかけの文は自動で保存）", () => $("blkEnd").click(), "go", "all:end"], ["このカードの直しを全部もとに戻す（Ctrl+Z で戻せます）", act(() => { if (window.confirm("このカードの、同期していない直しを全部取り消します。\nよろしいですか？（そのあと Ctrl+Z で元に戻せます）")) cardReset(); }), "dng"]] },
-    { k: "rel", hid: true, up: "str", t: "構造 ＞ 関係線（左の線のつなぎ方・線の横の文字）", items: relItems }
+    { k: "rel", hid: true, up: "str", t: "関係線（線の形・線の横の文字）", items: relItems, fields: lnFields }
   ];
   const mk = cats.find(c => c.k === "mk").items;
   [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => mk.push([(MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, act(() => mkSet(u, k)), "", "mk:" + k]));
@@ -2389,7 +2397,13 @@ function ctxDraw(catK){
   const cat = cats.find(c => c.k === catK);
   h.textContent = "ブロック「" + sm + (sm.length >= 14 ? "…" : "") + "」" + (cat ? " ＞ " + cat.t : "：分類を選んでください"); ctxEl.append(h);
   if (!cat){ cats.filter(c => !c.hid).forEach(c => add(c.t + "  ›", () => ctxDraw(c.k), "", "cat:" + c.k)); add("閉じる", ctxClose, "bk", "ctx:close"); }
-  else { cat.items.forEach(([t, f, k, a, dis, sub]) => { const b = add(t, sub ? () => ctxDraw(sub) : () => { ctxClose(); f(); }, k, a); if (dis) b.disabled = true; }); add("← " + (cat.up ? "ひとつ前にもどる" : "分類にもどる"), () => ctxDraw(cat.up || ""), "bk", "ctx:back"); }
+  else { (cat.fields || []).forEach(F => { const l = document.createElement("div"); l.className = "ch"; l.textContent = F.lab; ctxEl.append(l);
+      const w = document.createElement("div"); w.className = "lnrow"; const i = document.createElement("input"); i.type = "text"; i.id = F.id; i.maxLength = 12; i.value = F.val; i.placeholder = F.ph; i.setAttribute("aria-label", F.ph);
+      i.onkeydown = e => { e.stopPropagation(); if (e.key === "Enter" && !e.isComposing){ e.preventDefault(); ctxClose(); F.save(i.value.trim()); } }; i.onpointerdown = e => e.stopPropagation(); w.append(i);
+      F.quick.forEach(q => { const b = document.createElement("button"); b.type = "button"; b.textContent = q; b.onclick = e => { e.stopPropagation(); i.value = q; }; w.append(b); });
+      const sv = document.createElement("button"); sv.type = "button"; sv.className = "go"; sv.textContent = "保存"; sv.dataset.a = F.id + ":save"; sv.onclick = e => { e.stopPropagation(); ctxClose(); F.save(i.value.trim()); };
+      const dl = document.createElement("button"); dl.type = "button"; dl.textContent = "消す"; dl.dataset.a = F.id + ":clear"; dl.onclick = e => { e.stopPropagation(); ctxClose(); F.save(""); }; w.append(sv, dl); ctxEl.append(w); });
+    cat.items.forEach(([t, f, k, a, dis, sub]) => { const b = add(t, sub ? () => ctxDraw(sub) : () => { ctxClose(); f(); }, k, a); if (dis) b.disabled = true; }); add("← " + (cat.up ? "ひとつ前にもどる" : "分類にもどる"), () => ctxDraw(cat.up || ""), "bk", "ctx:back"); }
   ctxPlace();
 }
 function ctxPlace(){
@@ -2417,6 +2431,17 @@ function leftBlk(e){
   if (!best || bd > 12) return null; const r = best.getBoundingClientRect();
   return x >= r.left - (row.classList.contains("ladder") ? 26 : 0) && x <= r.left + 8 ? best : null;
 }
+/* g202611281525 (3): 関係線そのもの（行と行の間の矢印・左の線・線の横の文字）をクリック／タップしたら、その場所に関係線のメニュー（線の形・矢印を消す・横の文字）を出す（編集モードのときだけ） */
+function lineHit(e){
+  if (!txMode || dbMode || msMode || msel.length || editing || (typeof sg !== "undefined" && sg)) return null;
+  if (blkLevel === "tree" || blkLevel === "frame" || blkLevel === "pair" || blkLevel === "fsel" || blkLevel === "sgw" || blkLevel === "multi") return null;
+  const t = e.target; if (!t || !t.closest || !board.contains(t) || t.closest("button,input,select,textarea,.frl,.dh")) return null;
+  const w = t.closest(".wire"); if (w){ const nx = w.nextElementSibling; if (!nx || !nx.classList.contains("row")) return null; const b = nx.querySelector(".blk"); return b ? uOfBlk(b) : null; }
+  const jl = t.closest(".row.ladder > .jl"); if (jl){ let b = jl.previousElementSibling; while (b && !(b.classList && b.classList.contains("blk"))) b = b.previousElementSibling; return b ? uOfBlk(b) : null; }
+  const row = t.closest(".row.ladder"); if (row){ const b = leftBlk(e); if (b && (e.clientX || 0) < b.getBoundingClientRect().left) return uOfBlk(b); }
+  return null;
+}
+board.addEventListener("click", e => { const u = lineHit(e); if (u == null || !refs[u]) return; e.preventDefault(); e.stopPropagation(); ctxOpen(u, e.clientX, e.clientY, "rel"); }, true);
 function uOfBlk(b){ const p = b && b.querySelector(".pt[data-u],.pt[data-vu]"); return p ? +(p.dataset.u != null ? p.dataset.u : p.dataset.vu) : null; }
 /* ---- 文を直している最中に、別のブロックの文を押したとき（g202611271622）：いまの文を保存して、押したブロックをそのまま入力中にする（編集モードを終わらなくてよい）。
    押した瞬間にどのブロックかを覚え、指(マウス)を離したときに移る。文字を打つ欄から外れても、キーボードが閉じて画面がずれたり、
@@ -2809,7 +2834,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611281544";
+const VER = "版 202611281546";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
