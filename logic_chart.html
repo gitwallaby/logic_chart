@@ -29,6 +29,10 @@
   --page:#1d2026; --ink:#e6e7ea; --sub:#9aa1ac; --bar:#272b32; --barline:#3a404a; --btn:#2f343c; --btnline:#454c57;
   color-scheme:dark;
 }
+/* g202611281525 (4): ドライブへ送れていない直しがある間は、サイト全体の背景を濃い緑にする（暗い配色と同じ文字色で読める濃さ）。保存が済むと元の色に戻る */
+html.unsaved:root{--page:#0f4a2c; --ink:#e8f0ea; --sub:#a9c7b3; --bar:#165a38; --barline:#2c7a50; --btn:#1d6b43; --btnline:#3b8a5e; color-scheme:dark}
+.unstag{position:fixed;top:6px;right:8px;z-index:95;background:#f4d35e;color:#1a1a1a;font-size:12.5px;font-weight:700;border:0;border-radius:999px;padding:5px 12px;box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer}
+.unstag[hidden]{display:none}
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--page);color:var(--ink);
@@ -396,6 +400,7 @@ body{padding-bottom:215px}
 </head>
 <body>
 <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+<button id="unsTag" class="unstag" hidden title="押すと Googleドライブと同期します">● 未保存（ドライブに送っていません）</button>
 <main>
   <div class="panel empty" id="empty" hidden>
     <b>まだカードが入っていません</b>
@@ -687,12 +692,29 @@ if (!S.hideDef){ S.hide = "all"; S.hideDef = 1; }
 if (!S.tagNotDef){ S.tagNot = S.noG !== false ? ["進捗：自信あり"] : []; S.tagNotDef = 1; }   /* CL17=B: 窓の「自信あり◎を外す」を、除くタグの既定に移す（1回だけ） */
 if (!Array.isArray(S.tagNot)) S.tagNot = [];          /* 初めから「裏面を隠す」。前の版から使っている人も、1回だけここで切り替える（あとで「隠さない」にすれば、そのまま） */
 /* 保存（g202611271821 の最適化）: 1回の操作の中で save() が何度呼ばれても、書き込みは操作の終わりに1回だけ（S 全体の JSON は起案データ等で大きく、スマホで重くなるため）。ページを閉じる・隠すときは、待たずにすぐ書く。書けなかった（保存領域がいっぱい等）ときは、1回だけ知らせる（前は黙って失敗していた） */
-let saveT = 0, saveWarned = false;
-function saveNow(){ if (saveT){ clearTimeout(saveT); saveT = 0; } try { localStorage.setItem("rp_set", JSON.stringify(S)); } catch(e){ if (!saveWarned){ saveWarned = true; try { toast("この端末のブラウザに保存できませんでした（保存領域がいっぱいの可能性）。直しが消えないよう、早めに『☁ Googleドライブと同期』をしてください", "ng", 12000); } catch(_){} } } }
-function save(){ if (!saveT) saveT = setTimeout(saveNow, 0); }
+let saveT = 0, saveWarned = false, saveDirty = false, staleWarned = false;
+/* g202611281525 (0): 別のタブ・画面が先に書いていたら、古い内容で上書きしない。書くたびに rp_wr に目印を付け、書く前に「自分が最後に見た目印」と同じかを確かめる */
+let myWr = ""; try { myWr = localStorage.getItem("rp_wr") || ""; } catch(e){}
+function staleNow(){ try { const cur = localStorage.getItem("rp_wr") || ""; return cur !== myWr; } catch(e){ return false; } }
+function staleWarn(){ if (staleWarned) return; staleWarned = true; try { toast("別の画面（別のタブなど）で、この端末の保存内容がすでに新しくなっています。古い内容で上書きしないよう、このタブの直しは保存していません。『☁ Googleドライブと同期』を押してから、このページを開き直してください", "ng", 0); } catch(_){} }
+function saveNow(){ if (saveT){ clearTimeout(saveT); saveT = 0; }
+  if (staleNow()){ if (saveDirty) staleWarn(); return; }
+  try { const d = String(Date.now()) + "-" + Math.random().toString(36).slice(2, 7); localStorage.setItem("rp_set", JSON.stringify(S)); localStorage.setItem("rp_wr", d); myWr = d; saveDirty = false; }
+  catch(e){ if (!saveWarned){ saveWarned = true; try { toast("この端末のブラウザに保存できませんでした（保存領域がいっぱいの可能性）。直しが消えないよう、早めに『☁ Googleドライブと同期』をしてください", "ng", 12000); } catch(_){} } } }
+function save(){ saveDirty = true; if (!saveT) saveT = setTimeout(saveNow, 0); }
+addEventListener("storage", e => { if (e.key === "rp_wr" && e.newValue !== myWr){ try { toast("別の画面で、この端末の保存内容が更新されました。内容を最新にするため、このページを開き直してください", "ng", 0); } catch(_){} } });
 addEventListener("pagehide", saveNow); document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveNow(); }); addEventListener("beforeunload", saveNow);
 /* 「いつ直したか」の記録：S.ts["種類:カード番号"] = 直した時刻。Googleドライブの同期で、時刻が新しい方を残すのに使う */
-function st(kind, id){ S.ts[kind + ":" + id] = Date.now(); }
+function st(kind, id){ S.ts[kind + ":" + id] = Date.now(); unsPaintSoon(); }
+/* g202611281525 (4): 「未保存」＝ドライブへ送れていない直しがある状態。判定は同期の仕組みと同じ（直した時刻 S.ts が、最後に同期に成功した時刻 S.gLast より新しい）。学習の記録（進捗・覚えていた？の履歴）は数えない。同期に失敗・通信できないときは gLast が進まないので、緑のまま */
+const UNS_SKIP = { pg: 1, rev: 1 };
+function unsMax(){ let m = 0; for (const k in S.ts){ if (UNS_SKIP[k.slice(0, k.indexOf(":"))]) continue; if (S.ts[k] > m) m = S.ts[k]; } return m; }
+function isUnsaved(){ return unsMax() > (S.gLast || 0); }
+let unsT = 0;
+function unsPaint(){ unsT = 0; const u = isUnsaved(); document.documentElement.classList.toggle("unsaved", u); const t = document.getElementById("unsTag"); if (t) t.hidden = !u; }
+function unsPaintSoon(){ if (!unsT) unsT = setTimeout(unsPaint, 0); }
+setInterval(unsPaint, 3000);
+unsPaintSoon();
 /* ---------- 確認の状態：S.cs[カードid] = { v:"u|c|m|d" }。記録が無いカードは「未確認」。同期あり(kind cs。カード1枚ごとに、新しい方を採用) ---------- */
 const CSORD = ["u", "c", "m", "d"], CSL = { u: "未確認", c: "確認中", m: "修正必須", d: "完成" };
 function csOf(c){ const r = S.cs && S.cs[c.id]; return r && CSL[r.v] ? r.v : "u"; }
@@ -2730,19 +2752,22 @@ async function gSync(){
       try { localStorage.setItem("rp_bak", JSON.stringify(S)); } catch(e){}          /* 混ぜる前の状態を1回ぶん控える */
       n = mergeSnap(remote); }
     gMsg("ドライブへ書き込み中…");
+    const mxSnap = unsMax();            /* 書き込む内容を作った時点での「直した時刻」の最大。送っている間に新しく直した分は、送れていないので未保存のまま */
     const body = JSON.stringify(snapshot());
     if (fl) await gApi("https://www.googleapis.com/upload/drive/v3/files/" + fl.id + "?uploadType=media", { method: "PATCH", headers: { "Content-Type": "application/json" }, body });
     else { const bd = "ronshoBoundary" + Date.now(), meta = JSON.stringify({ name: G_FILE, parents: [fo.id], mimeType: "application/json" });
       await gApi("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", { method: "POST", headers: { "Content-Type": "multipart/related; boundary=" + bd },
         body: "--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n--" + bd + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + body + "\r\n--" + bd + "--" }); }
-    S.gLast = Date.now(); save();
-    if (n){ migrateDbq(); tidyTx(); migrateMemo(); save(); try { CARDS = liveCards(); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
+    const dirtyDuring = unsMax() > mxSnap;
+    if (n){ migrateDbq(); tidyTx(); migrateMemo(); try { CARDS = liveCards(); buildList(list.length ? card().id : null); renderTagFilter(); load(false, true); } catch(e){} }
+    S.gLast = dirtyDuring ? mxSnap : Date.now(); save(); unsPaint();
     try { const t = await gGet(DB_PLACE_FILE); if (t) dbPlaceAccept(t, "drive"); } catch(e){}
     gStatus(); gMsg($("gMsg").textContent + "　" + (fl ? "ドライブから " + n + " 件を取り込み、混ぜた結果を書き戻しました。" : "ドライブに新しく保存しました。"));
-  } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e)); }
-  finally { gBusy = false; $("gBtn").disabled = false; }
+  } catch(e){ gMsg("同期できませんでした：" + (e && e.message || e) + (isUnsaved() ? "　（直した分はまだドライブに入っていません。画面が緑のままのうちは、このページを閉じないでください）" : "")); }
+  finally { gBusy = false; $("gBtn").disabled = false; unsPaint(); }
 }
 $("gBtn").onclick = gSync;
+$("unsTag").onclick = () => gSync();
 $("gSave").onclick = () => { S.gcid = $("gcid").value.trim(); S.gOk = 0; gTok = ""; save(); gStatus(); if (S.gcid) loadGis().catch(() => {}); };
 
 /* ---------- 判断ロジックツリー（DB）へ送る ----------
@@ -2756,7 +2781,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611281443";
+const VER = "版 202611281541";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
