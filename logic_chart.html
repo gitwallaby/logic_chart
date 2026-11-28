@@ -1173,6 +1173,8 @@ function blkDraw(){
     const lab0 = t => { const l = el("span", "lab"); l.textContent = t; body.append(l); };
     add("← 文字を直す（文を打ち直す画面にもどる）", () => blkGo("text"), "go", draft);
     lab0("関係線・矢印・左の印・まとめ"); add("関係線", () => blkGo("lside"), "", draft);
+    add("枠でまとめる（始まりと終わりの行を選んで、1つの枠に）", () => blkGo("frame"), "", draft).dataset.a = "frame:start";
+    add("対応づけ（一緒に光らせる）", () => blkGo("pair"), "", draft).dataset.a = "pair:start";
     { const cmk = refs[blkU] && refs[blkU].b.mk; lab0("左の印（理由づけのプラス面・マイナス面、反対説への批判）"); [["+", "⊕ プラス面"], ["-", "⊖ マイナス面"], ["▲", "▲ 批判"]].forEach(([k, t]) => { const mb = add((MKS[cmk] && MKS[cmk][0] === MKS[k][0] ? "✔ " : "") + t, () => mkSet(blkU, k), "", draft); mb.dataset.a = "mk:" + k; });
       if (cmk) add("左の印を外す", () => mkSet(blkU, ""), "", draft).dataset.a = "mk:"; }
     lab0("理由づけのまとめ（折衷型）"); add("⊕⊖でまとめる（プラス面・マイナス面・次の規範を選んで、1回で）", () => sgStart(), "", draft).dataset.a = "sg:start";
@@ -2701,7 +2703,7 @@ const shortOf = t => t.replace(/\s+/g, "").replace(/^[①-⑩（(0-9０-９)）.
 const fullOf = t => String(t || "").replace(/\s+/g, "");
 function tNorm(t){ let ch = false; (t.nodes || []).forEach(n => { if (n.kind === "group") return; const w = n.text ? fullOf(n.text) : (/^新しい(要件|判断)$/.test(n.title || "") ? "" : (n.title || "")); if (n.title !== w){ n.title = w; ch = true; } }); return ch; }
 function tNormAll(){ Object.keys(S.tree).forEach(cid => { const t = S.tree[cid]; if (t && tNorm(t)){ t.ts = Date.now(); st("tree", cid); } }); }
-const VER = "版 202611271832";
+const VER = "版 202611280956";
 $("verTag").textContent = VER;
 let toastT = null;
 function toast(t, kind, ms){ const b = $("toast"); if (!t){ b.hidden = true; return; } b.textContent = t; b.className = "toast" + (kind ? " " + kind : ""); b.hidden = false; clearTimeout(toastT); if (ms !== 0) toastT = setTimeout(() => { b.hidden = true; }, ms || 5000); }
